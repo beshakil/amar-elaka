@@ -1,0 +1,17 @@
+name: amar_elaka_api
+description: >
+  Hand-written request/response models for the Amar Elaka API, kept in sync
+  with the NestJS DTOs by hand. See docs/decisions/001-api-client-generation.md.
+version: 0.0.0
+publish_to: none
+
+environment:
+  sdk: '>=3.8.0 <4.0.0'
+
+dependencies:
+  json_annotation: ^4.12.0
+
+dev_dependencies:
+  build_runner: ^2.16.1
+  json_serializable: ^6.14.1
+  lints: ^6.1.0

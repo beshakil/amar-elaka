@@ -1,0 +1,25 @@
+{
+  "name": "@amar-elaka/e2e",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "stub": "tsx stub-api/server.ts",
+    "lint": "eslint \"tests/**/*.ts\" \"stub-api/**/*.ts\" \"*.ts\"",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@amar-elaka/config": "workspace:*",
+    "@amar-elaka/shared-types": "workspace:*",
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^22.10.2",
+    "eslint": "^9.17.0",
+    "tsx": "^4.23.13",
+    "typescript": "^5.7.2"
+  }
+}

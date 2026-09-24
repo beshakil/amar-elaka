@@ -1,0 +1,60 @@
+# Weekly dependency updates. Patch and minor updates arrive grouped in one PR
+# per ecosystem; majors arrive one per PR so each can be reviewed on its own.
+# CI (ADR 022) runs on every Dependabot PR like any other.
+version: 2
+updates:
+  - package-ecosystem: npm
+    # The pnpm workspace root covers every package in apps/* and packages/*.
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Asia/Dhaka
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: 'chore(deps)'
+      prefix-development: 'chore(deps-dev)'
+    groups:
+      npm-minor-and-patch:
+        update-types: [minor, patch]
+    ignore:
+      # Next.js 15 was chosen for the web and admin apps (ADR 021); moving
+      # to a new major is a planned migration, not a routine bump.
+      - dependency-name: next
+        update-types: ['version-update:semver-major']
+      - dependency-name: '@next/eslint-plugin-next'
+        update-types: ['version-update:semver-major']
+      # zod 3 is shared by the API's DTOs and both apps' response schemas;
+      # zod 4 changes the API they all rely on.
+      - dependency-name: zod
+        update-types: ['version-update:semver-major']
+      # Vitest 5 requires Node >= 22.12, but the repo declares `node >= 20`.
+      - dependency-name: vitest
+        update-types: ['version-update:semver-major']
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Asia/Dhaka
+    commit-message:
+      prefix: 'ci'
+    groups:
+      github-actions:
+        patterns: ['*']
+
+  - package-ecosystem: pub
+    directories:
+      - /apps/mobile
+      - /packages/shared-types/dart
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Asia/Dhaka
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: 'chore(deps)'
+    groups:
+      pub-minor-and-patch:
+        update-types: [minor, patch]

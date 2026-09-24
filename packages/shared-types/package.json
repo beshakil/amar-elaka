@@ -1,0 +1,26 @@
+{
+  "name": "@amar-elaka/shared-types",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "gen:capture": "pnpm --filter @amar-elaka/api build && node ../../apps/api/dist/openapi/capture-openapi.js openapi.json",
+    "gen:types": "openapi-typescript openapi.json -o src/types.generated.ts",
+    "gen": "pnpm gen:capture && pnpm gen:types",
+    "build": "pnpm gen:types",
+    "lint": "eslint \"src/**/*.ts\"",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "openapi-fetch": "^0.17.0"
+  },
+  "devDependencies": {
+    "@amar-elaka/config": "workspace:*",
+    "@types/node": "^22.10.2",
+    "openapi-typescript": "^7.13.0",
+    "typescript": "^5.7.2"
+  }
+}

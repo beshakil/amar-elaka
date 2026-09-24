@@ -1,0 +1,143 @@
+{
+  "app": {
+    "title": "আমার এলাকা — অ্যাডমিন"
+  },
+  "nav": {
+    "overview": "ড্যাশবোর্ড",
+    "roles": "রোল",
+    "tenants": "এলাকা",
+    "members": "সদস্য",
+    "expandSidebar": "সাইডবার খুলুন",
+    "collapseSidebar": "সাইডবার বন্ধ করুন"
+  },
+  "breadcrumb": {
+    "label": "ব্রেডক্রাম্ব",
+    "overview": "ড্যাশবোর্ড",
+    "roles": "রোল",
+    "tenants": "এলাকা"
+  },
+  "shell": {
+    "logout": "লগ আউট"
+  },
+  "theme": {
+    "label": "থিম",
+    "light": "লাইট",
+    "dark": "ডার্ক",
+    "system": "সিস্টেম"
+  },
+  "login": {
+    "title": "অ্যাডমিন লগইন",
+    "description": "আপনার এলাকা বেছে নিয়ে ইমেইল ও পাসওয়ার্ড দিন।",
+    "tenantLabel": "এলাকা",
+    "tenantPlaceholder": "এলাকা বেছে নিন",
+    "emailLabel": "ইমেইল",
+    "passwordLabel": "পাসওয়ার্ড",
+    "submit": "লগ ইন করুন",
+    "submitting": "অপেক্ষা করুন…",
+    "tenantRequired": "এলাকা বেছে নিন",
+    "emailInvalid": "সঠিক ইমেইল দিন",
+    "passwordRequired": "পাসওয়ার্ড দিন",
+    "noTenants": "কোনো এলাকা পাওয়া যায়নি। প্রথমে একটি এলাকা তৈরি করতে হবে।"
+  },
+  "overview": {
+    "title": "ড্যাশবোর্ড",
+    "welcome": "স্বাগতম, {name}",
+    "roleLabel": "আপনার রোল",
+    "tenantLabel": "বর্তমান এলাকা",
+    "permissionsLabel": "অনুমতি",
+    "platformAdmin": "প্ল্যাটফর্ম অ্যাডমিন",
+    "tenantAdmin": "এলাকা অ্যাডমিন",
+    "body": "মডিউলগুলো যুক্ত হওয়ার সাথে সাথে বাঁ পাশের মেনুতে দেখা যাবে।"
+  },
+  "dataTable": {
+    "searchPlaceholder": "তালিকায় খুঁজুন",
+    "columns": "কলাম",
+    "exportCsv": "CSV ডাউনলোড",
+    "selectAll": "সব সারি নির্বাচন করুন",
+    "selectRow": "এই সারিটি নির্বাচন করুন",
+    "selectedCount": "{count, number}টি সারি নির্বাচিত",
+    "clearSelection": "নির্বাচন বাতিল",
+    "empty": "কোনো তথ্য নেই",
+    "rowCount": "মোট {count, number}টি সারি",
+    "rowsPerPage": "প্রতি পাতায় সারি",
+    "pageOf": "পাতা {page, number} / {total, number}",
+    "previous": "আগের",
+    "next": "পরের"
+  },
+  "crud": {
+    "create": "নতুন যোগ করুন",
+    "createTitle": "নতুন {entity}",
+    "createDescription": "নিচের তথ্যগুলো পূরণ করুন।",
+    "editTitle": "{entity} সম্পাদনা",
+    "edit": "সম্পাদনা",
+    "delete": "মুছে ফেলুন",
+    "deleted": "মুছে ফেলা হয়েছে",
+    "deleteTitle": "মুছে ফেলবেন?",
+    "deleteDescription": "এই কাজটি আর ফেরানো যাবে না।",
+    "actions": "অ্যাকশন",
+    "close": "বন্ধ করুন",
+    "saved": "সংরক্ষণ করা হয়েছে",
+    "deleteSelected": "নির্বাচিতগুলো মুছুন",
+    "deleteManyTitle": "{count, number}টি মুছে ফেলবেন?",
+    "deletedCount": "{count, number}টি মুছে ফেলা হয়েছে"
+  },
+  "confirm": {
+    "confirm": "নিশ্চিত করুন",
+    "cancel": "বাতিল"
+  },
+  "roles": {
+    "title": "রোল",
+    "description": "এই এলাকার সদস্যদের জন্য রোল ও অনুমতি।",
+    "name": "নাম",
+    "code": "কোড",
+    "builtin": "বিল্ট-ইন",
+    "custom": "কাস্টম",
+    "permissionCount": "{count, number}টি অনুমতি",
+    "permissions": "অনুমতি",
+    "nameLabel": "রোলের নাম",
+    "nameRequired": "রোলের নাম দিন",
+    "permissionsRequired": "অন্তত একটি অনুমতি বেছে নিন",
+    "save": "সংরক্ষণ করুন",
+    "created": "রোল তৈরি হয়েছে",
+    "moduleLabel": "মডিউল",
+    "actionLabel": "অ্যাকশন",
+    "addPermission": "অনুমতি যোগ করুন",
+    "removePermission": "বাদ দিন",
+    "kind": "ধরন",
+    "updated": "রোল হালনাগাদ হয়েছে"
+  },
+  "tenants": {
+    "title": "এলাকা",
+    "description": "প্ল্যাটফর্মে চালু থাকা সব এলাকা।",
+    "nameBn": "নাম",
+    "nameEn": "নাম (ইংরেজি)",
+    "slug": "স্লাগ",
+    "district": "জেলা"
+  },
+  "apiError": {
+    "unreachable": "সার্ভারের সাথে সংযোগ করা যায়নি। আবার চেষ্টা করুন।",
+    "unexpected": "কিছু একটা ভুল হয়েছে। আবার চেষ্টা করুন।",
+    "server": "সার্ভারে সমস্যা হয়েছে। কিছুক্ষণ পর আবার চেষ্টা করুন।",
+    "invalidCredentials": "ইমেইল বা পাসওয়ার্ড ঠিক নয়।",
+    "unauthenticated": "আপনার সেশন শেষ হয়ে গেছে। আবার লগ ইন করুন।",
+    "accountRestricted": "এই অ্যাকাউন্টটি ব্যবহারের অনুমতি নেই।",
+    "permissionDenied": "এই কাজটি করার অনুমতি আপনার নেই।",
+    "tenantRequired": "এলাকা নির্বাচন করা হয়নি।",
+    "tenantMismatch": "আপনার সেশন অন্য এলাকার। আবার লগ ইন করুন।",
+    "tenantUnavailable": "এই এলাকাটি এখন ব্যবহার করা যাচ্ছে না।",
+    "roleAlreadyExists": "এই নামে একটি রোল আগে থেকেই আছে।",
+    "validationFailed": "দেওয়া তথ্যে সমস্যা আছে। দেখে আবার চেষ্টা করুন।",
+    "roleBuiltinImmutable": "বিল্ট-ইন রোল পরিবর্তন বা মুছে ফেলা যায় না।",
+    "roleNotFound": "রোলটি খুঁজে পাওয়া যায়নি। হয়তো এটি আগেই মুছে ফেলা হয়েছে।"
+  },
+  "error": {
+    "title": "কিছু একটা ভুল হয়েছে",
+    "body": "সাময়িক সমস্যার কারণে পাতাটি দেখানো যায়নি।",
+    "retry": "আবার চেষ্টা করুন"
+  },
+  "notFound": {
+    "title": "পাতাটি খুঁজে পাওয়া যায়নি",
+    "body": "আপনি যে পাতাটি খুঁজছেন সেটি নেই।",
+    "action": "ড্যাশবোর্ডে ফিরে যান"
+  }
+}

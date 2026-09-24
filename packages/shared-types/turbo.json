@@ -1,0 +1,16 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "build": {
+      "inputs": ["openapi.json"],
+      "outputs": ["src/types.generated.ts"]
+    },
+    "typecheck": {
+      "dependsOn": ["build", "^build", "^typecheck"]
+    },
+    "lint": {
+      "dependsOn": ["build", "^build", "^lint"]
+    }
+  }
+}

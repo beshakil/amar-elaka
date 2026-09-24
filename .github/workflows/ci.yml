@@ -1,0 +1,256 @@
+# CI for the monorepo. Design notes, branch protection and how to turn on
+# Turborepo remote caching: docs/decisions/022-ci-and-branching.md.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# A newer push to the same branch or PR supersedes the run in progress.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # Turborepo remote cache. Both are empty until it is enabled (ADR 022), and
+  # turbo then falls back to the local cache restored by actions/cache below.
+  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+  TURBO_TEAM: ${{ vars.TURBO_TEAM }}
+  TURBO_TELEMETRY_DISABLED: '1'
+
+jobs:
+  # Path filtering happens here, per job, rather than with a workflow-level
+  # `paths:` — a workflow that never starts leaves its required check pending
+  # forever and blocks the merge. Skipped jobs count as passing for `ci-ok`.
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      node: ${{ steps.filter.outputs.node }}
+      db: ${{ steps.filter.outputs.db }}
+      mobile: ${{ steps.filter.outputs.mobile }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dorny/paths-filter@v4
+        id: filter
+        with:
+          filters: |
+            node:
+              - 'apps/api/**'
+              - 'apps/web/**'
+              - 'apps/admin/**'
+              - 'apps/e2e/**'
+              - 'packages/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'turbo.json'
+              - '.nvmrc'
+              - '.github/workflows/ci.yml'
+            db:
+              - 'apps/api/**'
+              - 'infra/**'
+              - 'packages/config/**'
+              - 'pnpm-lock.yaml'
+              - '.nvmrc'
+              - '.github/workflows/ci.yml'
+            mobile:
+              - 'apps/mobile/**'
+              - 'packages/shared-types/dart/**'
+              - '.github/workflows/ci.yml'
+
+  quality:
+    name: Lint, typecheck, unit tests
+    needs: changes
+    if: needs.changes.outputs.node == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Restore Turborepo cache
+        uses: actions/cache@v6
+        with:
+          path: .turbo/cache
+          key: turbo-quality-${{ runner.os }}-${{ github.sha }}
+          restore-keys: turbo-quality-${{ runner.os }}-
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      # The committed spec is the contract the apps and the e2e stub type-check
+      # against; an API change must come with a regenerated spec.
+      - name: OpenAPI spec is up to date
+        run: |
+          pnpm gen:api
+          git diff --exit-code -- packages/shared-types/openapi.json \
+            || { echo "::error::packages/shared-types/openapi.json is stale — run 'pnpm gen:api' and commit it."; exit 1; }
+
+  integration:
+    name: Migrations + RLS (Postgres)
+    needs: changes
+    if: needs.changes.outputs.db == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        # Same image as infra/docker-compose.dev.yml.
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: ae_dev
+          POSTGRES_PASSWORD: ae_dev_pass
+          POSTGRES_DB: amar_elaka_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ae_dev -d amar_elaka_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    # Throwaway credentials for a database that lives only as long as this job.
+    env:
+      PGPASSWORD: ae_dev_pass
+      TEST_DATABASE_URL: postgresql://ae_dev:ae_dev_pass@localhost:5432/amar_elaka_test
+      TEST_APP_DATABASE_URL: postgresql://ae_app:ae_app_ci@localhost:5432/amar_elaka_test
+      TEST_MIGRATOR_DATABASE_URL: postgresql://ae_migrator:ae_migrator_ci@localhost:5432/amar_elaka_test
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Create database roles (make db-roles-test)
+        run: >-
+          psql -h localhost -U ae_dev -d amar_elaka_test -v ON_ERROR_STOP=1
+          -v app_password=ae_app_ci -v migrator_password=ae_migrator_ci
+          -f infra/db/bootstrap-roles.sql
+      # test:db's global setup resets the schema and applies every migration in
+      # deploy order (0000–0002 as superuser, the rest as ae_migrator), then runs
+      # every *.db-spec.ts: the rls-* suites, migrations, schema drift and audit.
+      - name: Apply migrations and run the RLS / database suites
+        run: pnpm --filter @amar-elaka/api test:db
+
+  build:
+    name: Build + browser e2e
+    needs: changes
+    if: needs.changes.outputs.node == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Restore Turborepo cache
+        uses: actions/cache@v6
+        with:
+          path: .turbo/cache
+          key: turbo-build-${{ runner.os }}-${{ github.sha }}
+          restore-keys: turbo-build-${{ runner.os }}-
+      - run: pnpm install --frozen-lockfile
+      # No runtime env on purpose: builds must not need it (ADR 022).
+      - run: pnpm build
+      - name: Resolve Playwright version
+        id: playwright
+        run: echo "version=$(pnpm --filter @amar-elaka/e2e exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+      - name: Restore Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+      - name: Install Chromium
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: pnpm --filter @amar-elaka/e2e exec playwright install --with-deps chromium
+      - name: Install Chromium system dependencies
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: pnpm --filter @amar-elaka/e2e exec playwright install-deps chromium
+      - name: Browser e2e (production builds, stub API)
+        run: pnpm --filter @amar-elaka/e2e test:e2e
+        env:
+          CI: 'true'
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: |
+            apps/e2e/playwright-report/
+            apps/e2e/test-results/
+          retention-days: 7
+
+  mobile:
+    name: Flutter analyze + test
+    needs: changes
+    if: needs.changes.outputs.mobile == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          # Matches apps/mobile/pubspec.lock (flutter >=3.44.0, Dart 3.12).
+          flutter-version: 3.44.0
+          cache: true
+      # Generated code is gitignored (*.g.dart, l10n output), so it is
+      # regenerated here exactly as a developer would.
+      - name: Generate shared Dart models
+        working-directory: packages/shared-types/dart
+        run: |
+          dart pub get
+          dart run build_runner build --delete-conflicting-outputs
+      - name: Generate app code
+        working-directory: apps/mobile
+        run: |
+          flutter pub get
+          flutter gen-l10n
+          dart run build_runner build --delete-conflicting-outputs
+      # Tracked sources only: generated files aren't ours to format.
+      - name: Format
+        working-directory: apps/mobile
+        run: git ls-files -z -- '*.dart' | xargs -0 dart format --output=none --set-exit-if-changed
+      - name: Analyze
+        working-directory: apps/mobile
+        run: flutter analyze
+      - name: Test
+        working-directory: apps/mobile
+        run: flutter test
+
+  # The one check branch protection requires (ADR 022): green only when every
+  # job above either passed or was skipped by the path filter.
+  ci-ok:
+    name: CI OK
+    needs: [changes, quality, integration, build, mobile]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: All required jobs passed or were skipped
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "Job results: $RESULTS"
+          for result in $RESULTS; do
+            case "$result" in
+              success|skipped) ;;
+              *) echo "::error::A required job finished as '$result'."; exit 1 ;;
+            esac
+          done

@@ -1,0 +1,122 @@
+{
+  "@@locale": "bn",
+  "appTitle": "আমার এলাকা",
+  "@appTitle": { "description": "App name, shown on the splash screen and as the Android launcher label." },
+
+  "navHome": "হোম",
+  "navMap": "মানচিত্র",
+  "navPost": "পোস্ট",
+  "navInfo": "তথ্য",
+  "navProfile": "প্রোফাইল",
+
+  "genericRetry": "আবার চেষ্টা করুন",
+  "genericLoading": "লোড হচ্ছে…",
+
+  "errorNetworkTitle": "সংযোগ পাওয়া যাচ্ছে না",
+  "errorNetworkMessage": "আপনার ইন্টারনেট সংযোগ পরীক্ষা করে আবার চেষ্টা করুন।",
+  "errorTimeoutTitle": "সময় শেষ হয়ে গেছে",
+  "errorTimeoutMessage": "সার্ভার থেকে সাড়া পেতে দেরি হচ্ছে। আবার চেষ্টা করুন।",
+  "errorGenericTitle": "কিছু একটা ভুল হয়েছে",
+  "errorGenericMessage": "একটু পর আবার চেষ্টা করুন।",
+
+  "tenantPickerTitle": "আপনার এলাকা বেছে নিন",
+  "tenantPickerSearchHint": "থানা বা উপজেলা খুঁজুন",
+  "tenantPickerEmptyTitle": "কোনো এলাকা পাওয়া যায়নি",
+  "tenantPickerErrorTitle": "এলাকার তালিকা আনা যায়নি",
+
+  "loginTitle": "শুরু করা যাক",
+  "loginPhoneLabel": "মোবাইল নম্বর",
+  "loginPhoneHint": "01XXXXXXXXX",
+  "loginContinueButton": "এগিয়ে যান",
+  "loginWithEmailLink": "ইমেইল দিয়ে লগইন করুন",
+  "loginGoogleButton": "Google দিয়ে চালিয়ে যান",
+
+  "otpVerifyTitle": "কোড যাচাই করুন",
+  "otpVerifyDescription": "{phone} নম্বরে পাঠানো কোডটি লিখুন",
+  "@otpVerifyDescription": {
+    "description": "Shown above the OTP input field.",
+    "placeholders": { "phone": { "type": "String" } }
+  },
+  "otpCodeLabel": "যাচাইকরণ কোড",
+  "otpVerifyButton": "যাচাই করুন",
+  "otpResendButton": "আবার কোড পাঠান",
+
+  "emailLoginTitle": "ইমেইল দিয়ে লগইন",
+  "emailLabel": "ইমেইল",
+  "passwordLabel": "পাসওয়ার্ড",
+  "emailLoginButton": "লগইন করুন",
+  "backToPhoneLogin": "মোবাইল নম্বর দিয়ে লগইন",
+
+  "profileTitle": "প্রোফাইল",
+  "profileLogout": "লগআউট",
+  "profileThemeLabel": "থিম",
+  "themeLight": "লাইট",
+  "themeDark": "ডার্ক",
+  "themeSystem": "সিস্টেম",
+
+  "designSystemTitle": "ডিজাইন সিস্টেম",
+
+  "homeComingSoonTitle": "হোম শীঘ্রই আসছে",
+  "mapComingSoonTitle": "মানচিত্র শীঘ্রই আসছে",
+  "postComingSoonTitle": "পোস্ট করা শীঘ্রই আসছে",
+  "infoComingSoonTitle": "তথ্য শীঘ্রই আসছে",
+  "postLoginRequiredMessage": "পোস্ট করতে হলে প্রথমে সাইন ইন করুন",
+
+  "offlineBannerMessage": "ইন্টারনেট সংযোগ নেই",
+
+  "locationPermissionTitle": "আপনার এলাকা খুঁজে বের করি",
+  "locationPermissionRationale": "আপনার অবস্থান জানতে পারলে আমরা সঙ্গে সঙ্গে আপনার থানা বা উপজেলা খুঁজে বের করতে পারব। এই তথ্য শুধু আপনার এলাকা ঠিক করতেই ব্যবহার হবে।",
+  "locationAllowButton": "অবস্থান জানার অনুমতি দিন",
+  "locationSkipButton": "নিজে থেকে বেছে নিন",
+
+  "tenantConfirmTitle": "এই এলাকাটি কি আপনার?",
+  "tenantConfirmMessage": "আমরা মনে করছি আপনি {tenantName}-এ আছেন",
+  "@tenantConfirmMessage": {
+    "description": "Shown on the nearby-tenant confirmation screen.",
+    "placeholders": { "tenantName": { "type": "String" } }
+  },
+  "tenantConfirmYesButton": "হ্যাঁ, এটাই ঠিক আছে",
+  "tenantConfirmChooseDifferentButton": "অন্য এলাকা বেছে নিন",
+
+  "tenantSwitcherTitle": "আপনার এলাকা",
+  "tenantSwitcherChangeArea": "এলাকা পরিবর্তন করুন",
+  "tenantStaleNotice": "সংরক্ষিত তথ্য দেখানো হচ্ছে, আপডেট হচ্ছে…",
+
+  "profileGuestTitle": "আপনি এখনো সাইন ইন করেননি",
+  "profileGuestMessage": "প্রোফাইল দেখতে, পোস্ট করতে বা সংরক্ষণ করতে সাইন ইন করুন",
+  "profileGuestLoginButton": "সাইন ইন করুন",
+  "profileEditButton": "প্রোফাইল সম্পাদনা করুন",
+
+  "profileCompletionTitle": "প্রোফাইল সম্পূর্ণ করুন",
+  "profileCompletionNameLabel": "আপনার নাম",
+  "profileCompletionPhotoButton": "ছবি যোগ করুন",
+  "profileCompletionChangePhotoButton": "ছবি পরিবর্তন করুন",
+  "profileCompletionSaveButton": "সংরক্ষণ করুন",
+  "profileCompletionSkipButton": "এখন না",
+  "profileCompletionEmailSectionTitle": "ইমেইল ও পাসওয়ার্ড যোগ করুন (ঐচ্ছিক)",
+  "profileCompletionEmailSectionNote": "পরে ইমেইল দিয়েও সাইন ইন করতে পারবেন",
+
+  "otpResendIn": "{seconds} সেকেন্ড পর আবার পাঠাতে পারবেন",
+  "@otpResendIn": {
+    "description": "Shown in place of the resend button while the cooldown is counting down.",
+    "placeholders": { "seconds": { "type": "int" } }
+  },
+
+  "errorOtpCooldownMessage": "একটু আগেই কোড পাঠানো হয়েছে। কিছুক্ষণ পর আবার চেষ্টা করুন।",
+  "errorOtpPhoneDailyLimitMessage": "এই নম্বরে আজ অনেকবার কোড পাঠানো হয়েছে। কাল আবার চেষ্টা করুন।",
+  "errorOtpIpDailyLimitMessage": "এই নেটওয়ার্ক থেকে আজ অনেকবার চেষ্টা করা হয়েছে। কিছুক্ষণ পর আবার চেষ্টা করুন।",
+  "errorOtpExpiredMessage": "কোডের মেয়াদ শেষ হয়ে গেছে। নতুন কোড চান।",
+  "errorOtpIncorrectMessage": "কোডটি সঠিক নয়। আবার চেষ্টা করুন।",
+  "errorOtpTooManyAttemptsMessage": "অনেকবার ভুল চেষ্টা হয়েছে। নতুন কোড চান।",
+  "errorInvalidCredentialsMessage": "ইমেইল অথবা পাসওয়ার্ড সঠিক নয়।",
+  "errorAccountRestrictedMessage": "এই অ্যাকাউন্টটি সীমিত করা হয়েছে। সাহায্যের জন্য যোগাযোগ করুন।",
+  "errorAccountBannedMessage": "এই অ্যাকাউন্টটি নিষিদ্ধ করা হয়েছে।",
+  "errorAccountTerminatedMessage": "এই অ্যাকাউন্টটি বন্ধ করে দেওয়া হয়েছে।",
+  "errorGoogleAccountNotLinkedMessage": "এই Google অ্যাকাউন্টটি কোনো প্রোফাইলের সাথে যুক্ত নয়। প্রথমে মোবাইল নম্বর দিয়ে সাইন ইন করুন।",
+  "errorGoogleAccountAlreadyLinkedMessage": "এই Google অ্যাকাউন্টটি অন্য একটি প্রোফাইলের সাথে যুক্ত আছে।",
+  "errorEmailAlreadyRegisteredMessage": "এই ইমেইলটি অন্য একটি অ্যাকাউন্টে ব্যবহৃত হচ্ছে।",
+  "errorWeakPasswordMessage": "পাসওয়ার্ডটি খুব ছোট। আরেকটু বড় পাসওয়ার্ড দিন।",
+  "errorDisplayNameTooLongMessage": "নামটি অনেক বড়। একটু ছোট নাম দিন।",
+  "errorInvalidPhoneMessage": "সঠিক বাংলাদেশি মোবাইল নম্বর দিন।",
+  "errorValidationFailedMessage": "দেওয়া তথ্যে ভুল আছে। আবার চেষ্টা করুন।"
+}

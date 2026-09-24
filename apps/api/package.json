@@ -1,0 +1,90 @@
+{
+  "name": "@amar-elaka/api",
+  "version": "0.0.0",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "node --env-file=../../.env ./node_modules/.bin/nest start --watch",
+    "build": "nest build",
+    "start": "node dist/main.js",
+    "start:prod": "node dist/main.js",
+    "start:worker": "node dist/worker.js",
+    "lint": "eslint \"src/**/*.ts\" \"test/**/*.ts\"",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:cov": "jest --coverage",
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "test:db": "jest --config ./test/jest-db.json --runInBand",
+    "test:rls": "jest --config ./test/jest-db.json --runInBand --testPathPattern=rls-tenant-isolation",
+    "db:new": "drizzle-kit generate --custom --name",
+    "db:migrate": "drizzle-kit migrate",
+    "db:seed": "tsx src/database/seed/seed.ts",
+    "db:reset": "tsx src/database/seed/reset.ts && tsx src/database/seed/seed.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1138.0",
+    "@aws-sdk/s3-request-presigner": "^3.1138.0",
+    "@fastify/static": "^7.0.4",
+    "@nestjs/bullmq": "^11.0.5",
+    "@nestjs/common": "^10.4.15",
+    "@nestjs/core": "^10.4.15",
+    "@nestjs/jwt": "^10.2.0",
+    "@nestjs/platform-fastify": "^10.4.15",
+    "@nestjs/swagger": "^8.1.0",
+    "@nestjs/terminus": "^10.2.3",
+    "argon2": "^0.45.1",
+    "bullmq": "^6.3.8",
+    "drizzle-orm": "^0.45.2",
+    "fastify": "^4.28.1",
+    "google-auth-library": "^11.1.0",
+    "ioredis": "^5.4.2",
+    "meilisearch": "^0.45.0",
+    "mjml": "^5.4.1",
+    "nestjs-pino": "^4.1.0",
+    "nodemailer": "^10.0.10",
+    "pg": "^8.13.1",
+    "pino": "^9.5.0",
+    "pino-http": "^10.3.0",
+    "postgres": "^3.4.9",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@amar-elaka/config": "workspace:*",
+    "@nestjs/cli": "^10.4.9",
+    "@nestjs/schematics": "^10.2.3",
+    "@nestjs/testing": "^10.4.15",
+    "@types/jest": "^29.5.14",
+    "@types/mjml": "^5.0.0",
+    "@types/node": "^22.10.2",
+    "@types/nodemailer": "^8.0.2",
+    "@types/pg": "^8.11.10",
+    "drizzle-kit": "^0.31.10",
+    "jest": "^29.7.0",
+    "pino-pretty": "^11.3.0",
+    "ts-jest": "^29.2.5",
+    "tsx": "^4.23.13",
+    "typescript": "^5.7.2"
+  },
+  "jest": {
+    "rootDir": "src",
+    "moduleFileExtensions": [
+      "js",
+      "json",
+      "ts"
+    ],
+    "testRegex": ".spec.ts$",
+    "transform": {
+      "^.+\\.(t|j)s$": "ts-jest"
+    },
+    "collectCoverageFrom": [
+      "**/*.(t|j)s"
+    ],
+    "coverageDirectory": "../coverage",
+    "testEnvironment": "node"
+  }
+}

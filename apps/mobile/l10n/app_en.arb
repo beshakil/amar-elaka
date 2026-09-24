@@ -1,0 +1,109 @@
+{
+  "@@locale": "en",
+  "appTitle": "Amar Elaka",
+
+  "navHome": "Home",
+  "navMap": "Map",
+  "navPost": "Post",
+  "navInfo": "Info",
+  "navProfile": "Profile",
+
+  "genericRetry": "Retry",
+  "genericLoading": "Loading…",
+
+  "errorNetworkTitle": "No connection",
+  "errorNetworkMessage": "Check your internet connection and try again.",
+  "errorTimeoutTitle": "Timed out",
+  "errorTimeoutMessage": "The server is taking too long to respond. Try again.",
+  "errorGenericTitle": "Something went wrong",
+  "errorGenericMessage": "Please try again in a moment.",
+
+  "tenantPickerTitle": "Choose your area",
+  "tenantPickerSearchHint": "Search thana or upazila",
+  "tenantPickerEmptyTitle": "No areas found",
+  "tenantPickerErrorTitle": "Couldn't load areas",
+
+  "loginTitle": "Let's get started",
+  "loginPhoneLabel": "Mobile number",
+  "loginPhoneHint": "01XXXXXXXXX",
+  "loginContinueButton": "Continue",
+  "loginWithEmailLink": "Log in with email",
+  "loginGoogleButton": "Continue with Google",
+
+  "otpVerifyTitle": "Verify code",
+  "otpVerifyDescription": "Enter the code sent to {phone}",
+  "otpCodeLabel": "Verification code",
+  "otpVerifyButton": "Verify",
+  "otpResendButton": "Resend code",
+
+  "emailLoginTitle": "Log in with email",
+  "emailLabel": "Email",
+  "passwordLabel": "Password",
+  "emailLoginButton": "Log in",
+  "backToPhoneLogin": "Log in with mobile number",
+
+  "profileTitle": "Profile",
+  "profileLogout": "Log out",
+  "profileThemeLabel": "Theme",
+  "themeLight": "Light",
+  "themeDark": "Dark",
+  "themeSystem": "System",
+
+  "designSystemTitle": "Design system",
+
+  "homeComingSoonTitle": "Home is coming soon",
+  "mapComingSoonTitle": "Map is coming soon",
+  "postComingSoonTitle": "Posting is coming soon",
+  "infoComingSoonTitle": "Info is coming soon",
+  "postLoginRequiredMessage": "Sign in to post",
+
+  "offlineBannerMessage": "No internet connection",
+
+  "locationPermissionTitle": "Let's find your area",
+  "locationPermissionRationale": "Sharing your location lets us find your thana or upazila right away. This is only used to set your area.",
+  "locationAllowButton": "Allow location access",
+  "locationSkipButton": "Choose it myself",
+
+  "tenantConfirmTitle": "Is this your area?",
+  "tenantConfirmMessage": "We think you're in {tenantName}",
+  "tenantConfirmYesButton": "Yes, that's right",
+  "tenantConfirmChooseDifferentButton": "Choose a different area",
+
+  "tenantSwitcherTitle": "Your area",
+  "tenantSwitcherChangeArea": "Change area",
+  "tenantStaleNotice": "Showing saved info, updating…",
+
+  "profileGuestTitle": "You're not signed in yet",
+  "profileGuestMessage": "Sign in to see your profile, post, or save things",
+  "profileGuestLoginButton": "Sign in",
+  "profileEditButton": "Edit profile",
+
+  "profileCompletionTitle": "Complete your profile",
+  "profileCompletionNameLabel": "Your name",
+  "profileCompletionPhotoButton": "Add photo",
+  "profileCompletionChangePhotoButton": "Change photo",
+  "profileCompletionSaveButton": "Save",
+  "profileCompletionSkipButton": "Not now",
+  "profileCompletionEmailSectionTitle": "Add email & password (optional)",
+  "profileCompletionEmailSectionNote": "You'll be able to log in with email too",
+
+  "otpResendIn": "Resend available in {seconds}s",
+
+  "errorOtpCooldownMessage": "A code was just sent. Please wait a bit before trying again.",
+  "errorOtpPhoneDailyLimitMessage": "Too many codes requested for this number today. Try again tomorrow.",
+  "errorOtpIpDailyLimitMessage": "Too many requests from this network today. Try again later.",
+  "errorOtpExpiredMessage": "This code has expired. Request a new one.",
+  "errorOtpIncorrectMessage": "That code isn't right. Try again.",
+  "errorOtpTooManyAttemptsMessage": "Too many incorrect attempts. Request a new code.",
+  "errorInvalidCredentialsMessage": "Incorrect email or password.",
+  "errorAccountRestrictedMessage": "This account is restricted. Contact support for help.",
+  "errorAccountBannedMessage": "This account has been banned.",
+  "errorAccountTerminatedMessage": "This account has been closed.",
+  "errorGoogleAccountNotLinkedMessage": "This Google account isn't linked to a profile. Sign in with your phone number first.",
+  "errorGoogleAccountAlreadyLinkedMessage": "This Google account is already linked to another profile.",
+  "errorEmailAlreadyRegisteredMessage": "This email is already in use by another account.",
+  "errorWeakPasswordMessage": "That password is too short. Choose a longer one.",
+  "errorDisplayNameTooLongMessage": "That name is too long. Use a shorter one.",
+  "errorInvalidPhoneMessage": "Enter a valid Bangladeshi mobile number.",
+  "errorValidationFailedMessage": "Some of the information isn't right. Please check and try again."
+}

@@ -1,0 +1,58 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**", ".next/**", "!.next/cache/**", "build/**"]
+    },
+    "lint": {
+      "dependsOn": ["^build", "^lint"],
+      "outputs": []
+    },
+    "typecheck": {
+      "dependsOn": ["^build", "^typecheck"],
+      "outputs": []
+    },
+    "test": {
+      "dependsOn": ["^build"],
+      "outputs": ["coverage/**"]
+    },
+    "test:db": {
+      "cache": false,
+      "outputs": [],
+      "passThroughEnv": [
+        "TEST_DATABASE_URL",
+        "TEST_APP_DATABASE_URL",
+        "TEST_MIGRATOR_DATABASE_URL",
+        "DATABASE_URL"
+      ]
+    },
+    "test:rls": {
+      "cache": false,
+      "outputs": [],
+      "passThroughEnv": [
+        "TEST_DATABASE_URL",
+        "TEST_APP_DATABASE_URL",
+        "TEST_MIGRATOR_DATABASE_URL",
+        "DATABASE_URL"
+      ]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "test:e2e": {
+      "cache": false,
+      "outputs": [],
+      "passThroughEnv": [
+        "CI",
+        "LD_LIBRARY_PATH",
+        "PLAYWRIGHT_BROWSERS_PATH",
+        "TEST_DATABASE_URL",
+        "TEST_APP_DATABASE_URL",
+        "TEST_MIGRATOR_DATABASE_URL",
+        "DATABASE_URL"
+      ]
+    }
+  }
+}

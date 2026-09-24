@@ -1,0 +1,33 @@
+{
+  "name": "amar-elaka",
+  "version": "0.0.0",
+  "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "test:db": "turbo run test:db",
+    "typecheck": "turbo run typecheck",
+    "gen:api": "pnpm --filter @amar-elaka/shared-types gen",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "prepare": "husky",
+    "test:e2e": "turbo run test:e2e",
+    "test:e2e:apps": "turbo run test:e2e --filter=@amar-elaka/e2e"
+  },
+  "devDependencies": {
+    "@amar-elaka/config": "workspace:*",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.2.10",
+    "prettier": "^3.3.3",
+    "turbo": "^2.3.3"
+  },
+  "lint-staged": {
+    "*": "prettier --write --ignore-unknown"
+  }
+}

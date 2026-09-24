@@ -1,0 +1,1631 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/health/live": {
+      "get": {
+        "operationId": "HealthController_live",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Health"
+        ]
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "operationId": "HealthController_ready",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "The Health Check is successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "ok"
+                    },
+                    "info": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "error": {
+                      "type": "object",
+                      "example": {},
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "details": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The Health Check is not successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "error"
+                    },
+                    "info": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "error": {
+                      "type": "object",
+                      "example": {
+                        "redis": {
+                          "status": "down",
+                          "message": "Could not connect"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "details": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up"
+                        },
+                        "redis": {
+                          "status": "down",
+                          "message": "Could not connect"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Health"
+        ]
+      }
+    },
+    "/auth/otp/request": {
+      "post": {
+        "operationId": "AuthController_requestOtp",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OtpRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OtpSentDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/otp/verify": {
+      "post": {
+        "operationId": "AuthController_verifyOtp",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OtpVerifyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionTokensDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/google": {
+      "post": {
+        "operationId": "AuthController_googleAuth",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GoogleAuthDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Signed in, or — when already signed in — the Google account was linked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/SessionTokensDto"
+                    },
+                    {
+                      "$ref": "#/components/schemas/GoogleLinkedDto"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/email/register": {
+      "post": {
+        "operationId": "AuthController_registerEmail",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailRegisterDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailLinkedDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/email/login": {
+      "post": {
+        "operationId": "AuthController_emailLogin",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailLoginDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionTokensDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "operationId": "AuthController_refresh",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionTokensDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "operationId": "AuthController_logout",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LogoutDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoggedOutDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/logout-all": {
+      "post": {
+        "operationId": "AuthController_logoutAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoggedOutDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "operationId": "AuthController_me",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeResultDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      },
+      "patch": {
+        "operationId": "AuthController_updateMe",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProfileDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeResultDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/tenant/config": {
+      "get": {
+        "operationId": "TenantsController_config",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantConfigDto"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "The client already holds this ETag."
+          }
+        },
+        "tags": [
+          "Tenants"
+        ]
+      }
+    },
+    "/tenants/nearby": {
+      "get": {
+        "operationId": "TenantsController_findNearby",
+        "parameters": [
+          {
+            "name": "lat",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "minimum": -90,
+              "maximum": 90,
+              "type": "number"
+            }
+          },
+          {
+            "name": "lng",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "minimum": -180,
+              "maximum": 180,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantSummaryDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Tenants"
+        ]
+      }
+    },
+    "/tenants": {
+      "get": {
+        "operationId": "TenantsController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TenantSummaryDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Tenants"
+        ]
+      }
+    },
+    "/tenants/resolve": {
+      "get": {
+        "operationId": "TenantsController_resolve",
+        "parameters": [
+          {
+            "name": "host",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 253,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResolvedHostDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Tenants"
+        ]
+      }
+    },
+    "/roles": {
+      "post": {
+        "operationId": "RolesController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRoleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Roles"
+        ]
+      },
+      "get": {
+        "operationId": "RolesController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RoleDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Roles"
+        ]
+      }
+    },
+    "/roles/{roleId}": {
+      "patch": {
+        "operationId": "RolesController_update",
+        "parameters": [
+          {
+            "name": "roleId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRoleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Roles"
+        ]
+      },
+      "delete": {
+        "operationId": "RolesController_remove",
+        "parameters": [
+          {
+            "name": "roleId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted; the role's members fall back to their built-in role."
+          }
+        },
+        "tags": [
+          "Roles"
+        ]
+      }
+    },
+    "/tenant-members/{memberId}/role": {
+      "patch": {
+        "operationId": "RolesController_assign",
+        "parameters": [
+          {
+            "name": "memberId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignRoleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleAssignedDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Roles"
+        ]
+      }
+    },
+    "/me/permissions": {
+      "get": {
+        "operationId": "MeController_getPermissions",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyPermissionsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Me"
+        ]
+      }
+    },
+    "/media/uploads": {
+      "post": {
+        "operationId": "MediaController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateUploadDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Media"
+        ]
+      }
+    },
+    "/media/uploads/{id}/confirm": {
+      "post": {
+        "operationId": "MediaController_confirm",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Media"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "Amar Elaka API",
+    "description": "Hyperlocal multi-tenant platform API",
+    "version": "1.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "schemas": {
+      "OtpRequestDto": {
+        "type": "object",
+        "properties": {
+          "phone": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "phone"
+        ]
+      },
+      "OtpSentDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "otp_sent"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "OtpVerifyDto": {
+        "type": "object",
+        "properties": {
+          "phone": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string",
+            "pattern": "^\\d{4,8}$"
+          },
+          "device": {
+            "type": "object",
+            "properties": {
+              "platformCode": {
+                "type": "string",
+                "enum": [
+                  "android",
+                  "ios",
+                  "web"
+                ]
+              },
+              "appVersion": {
+                "type": "string"
+              },
+              "deviceModel": {
+                "type": "string"
+              },
+              "fingerprintHash": {
+                "type": "string"
+              },
+              "pushToken": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "platformCode"
+            ]
+          }
+        },
+        "required": [
+          "phone",
+          "code",
+          "device"
+        ]
+      },
+      "SessionTokensDto": {
+        "type": "object",
+        "properties": {
+          "accessToken": {
+            "type": "string"
+          },
+          "refreshToken": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "accessToken",
+          "refreshToken"
+        ]
+      },
+      "GoogleLinkedDto": {
+        "type": "object",
+        "properties": {
+          "linked": {
+            "type": "number",
+            "enum": [
+              true
+            ]
+          }
+        },
+        "required": [
+          "linked"
+        ]
+      },
+      "GoogleAuthDto": {
+        "type": "object",
+        "properties": {
+          "idToken": {
+            "type": "string",
+            "minLength": 1
+          },
+          "device": {
+            "type": "object",
+            "properties": {
+              "platformCode": {
+                "type": "string",
+                "enum": [
+                  "android",
+                  "ios",
+                  "web"
+                ]
+              },
+              "appVersion": {
+                "type": "string"
+              },
+              "deviceModel": {
+                "type": "string"
+              },
+              "fingerprintHash": {
+                "type": "string"
+              },
+              "pushToken": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "platformCode"
+            ]
+          }
+        },
+        "required": [
+          "idToken",
+          "device"
+        ]
+      },
+      "EmailRegisterDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ]
+      },
+      "EmailLinkedDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "linked"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "EmailLoginDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 1
+          },
+          "device": {
+            "type": "object",
+            "properties": {
+              "platformCode": {
+                "type": "string",
+                "enum": [
+                  "android",
+                  "ios",
+                  "web"
+                ]
+              },
+              "appVersion": {
+                "type": "string"
+              },
+              "deviceModel": {
+                "type": "string"
+              },
+              "fingerprintHash": {
+                "type": "string"
+              },
+              "pushToken": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "platformCode"
+            ]
+          }
+        },
+        "required": [
+          "email",
+          "password",
+          "device"
+        ]
+      },
+      "RefreshDto": {
+        "type": "object",
+        "properties": {
+          "refreshToken": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "refreshToken"
+        ]
+      },
+      "LogoutDto": {
+        "type": "object",
+        "properties": {
+          "refreshToken": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "refreshToken"
+        ]
+      },
+      "LoggedOutDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "logged_out"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "MeResultDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "avatarStorageKey": {
+            "type": "string",
+            "nullable": true
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "memberId": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "anon",
+              "member",
+              "agent",
+              "moderator",
+              "tenant_admin",
+              "partner_owner",
+              "marketer",
+              "executive",
+              "seller",
+              "platform_admin",
+              "platform_support",
+              "platform_finance",
+              "system",
+              "restricted_user",
+              "appeal_public"
+            ]
+          }
+        },
+        "required": [
+          "userId",
+          "phone",
+          "email",
+          "displayName",
+          "avatarStorageKey",
+          "tenantId",
+          "memberId",
+          "role"
+        ]
+      },
+      "UpdateProfileDto": {
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": "string",
+            "minLength": 1
+          },
+          "avatarStorageKey": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500,
+            "nullable": true
+          }
+        }
+      },
+      "TenantConfigDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "nameBn": {
+            "type": "string"
+          },
+          "nameEn": {
+            "type": "string"
+          },
+          "defaultLocale": {
+            "type": "string"
+          },
+          "mapCenter": {
+            "type": "object",
+            "properties": {
+              "lat": {
+                "type": "number"
+              },
+              "lng": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "lat",
+              "lng"
+            ]
+          },
+          "radiusKm": {
+            "type": "number",
+            "nullable": true
+          },
+          "branding": {
+            "type": "object",
+            "properties": {
+              "logoStorageKey": {
+                "type": "string",
+                "nullable": true
+              }
+            },
+            "required": [
+              "logoStorageKey"
+            ]
+          },
+          "featureFlags": {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "enabledCategories": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "slug": {
+                  "type": "string"
+                },
+                "nameBn": {
+                  "type": "string"
+                },
+                "nameEn": {
+                  "type": "string"
+                },
+                "iconKey": {
+                  "type": "string",
+                  "nullable": true
+                }
+              },
+              "required": [
+                "slug",
+                "nameBn",
+                "nameEn",
+                "iconKey"
+              ]
+            }
+          },
+          "emergencyNumbers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "serviceType": {
+                  "type": "string"
+                },
+                "nameBn": {
+                  "type": "string"
+                },
+                "nameEn": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "phones": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "is24h": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "serviceType",
+                "nameBn",
+                "nameEn",
+                "phones",
+                "is24h"
+              ]
+            }
+          },
+          "support": {
+            "type": "object",
+            "properties": {
+              "phoneE164": {
+                "type": "string",
+                "nullable": true
+              },
+              "email": {
+                "type": "string",
+                "nullable": true
+              },
+              "whatsappE164": {
+                "type": "string",
+                "nullable": true
+              }
+            },
+            "required": [
+              "phoneE164",
+              "email",
+              "whatsappE164"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "nameBn",
+          "nameEn",
+          "defaultLocale",
+          "mapCenter",
+          "radiusKm",
+          "branding",
+          "featureFlags",
+          "enabledCategories",
+          "emergencyNumbers",
+          "support"
+        ]
+      },
+      "TenantSummaryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "nameBn": {
+            "type": "string"
+          },
+          "nameEn": {
+            "type": "string"
+          },
+          "mapCenter": {
+            "type": "object",
+            "properties": {
+              "lat": {
+                "type": "number"
+              },
+              "lng": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "lat",
+              "lng"
+            ]
+          },
+          "districtNameBn": {
+            "type": "string",
+            "nullable": true
+          },
+          "districtNameEn": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "nameBn",
+          "nameEn",
+          "mapCenter",
+          "districtNameBn",
+          "districtNameEn"
+        ]
+      },
+      "ResolvedHostDto": {
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "tenantId"
+        ]
+      },
+      "CreateRoleDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "module": {
+                  "oneOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "*"
+                      ]
+                    },
+                    {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9_]*$"
+                    }
+                  ]
+                },
+                "action": {
+                  "type": "string",
+                  "enum": [
+                    "read",
+                    "write",
+                    "approve",
+                    "delete",
+                    "*"
+                  ]
+                }
+              },
+              "required": [
+                "module",
+                "action"
+              ]
+            }
+          }
+        },
+        "required": [
+          "name",
+          "permissions"
+        ]
+      },
+      "RoleDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "isBuiltin": {
+            "type": "boolean"
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "module": {
+                  "type": "string"
+                },
+                "action": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "module",
+                "action"
+              ]
+            }
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "isBuiltin",
+          "permissions"
+        ]
+      },
+      "UpdateRoleDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "module": {
+                  "oneOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "*"
+                      ]
+                    },
+                    {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9_]*$"
+                    }
+                  ]
+                },
+                "action": {
+                  "type": "string",
+                  "enum": [
+                    "read",
+                    "write",
+                    "approve",
+                    "delete",
+                    "*"
+                  ]
+                }
+              },
+              "required": [
+                "module",
+                "action"
+              ]
+            }
+          }
+        }
+      },
+      "AssignRoleDto": {
+        "type": "object",
+        "properties": {
+          "roleCode": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$"
+          },
+          "customRoleId": {
+            "type": "string"
+          }
+        }
+      },
+      "RoleAssignedDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "assigned"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "MyPermissionsDto": {
+        "type": "object",
+        "properties": {
+          "isPlatformAdmin": {
+            "type": "boolean"
+          },
+          "grants": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "module": {
+                  "type": "string"
+                },
+                "action": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "module",
+                "action"
+              ]
+            }
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "anon",
+              "member",
+              "agent",
+              "moderator",
+              "tenant_admin",
+              "partner_owner",
+              "marketer",
+              "executive",
+              "seller",
+              "platform_admin",
+              "platform_support",
+              "platform_finance",
+              "system",
+              "restricted_user",
+              "appeal_public"
+            ]
+          }
+        },
+        "required": [
+          "isPlatformAdmin",
+          "grants"
+        ]
+      },
+      "CreateUploadDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "image",
+              "video",
+              "document"
+            ]
+          },
+          "contentType": {
+            "type": "string",
+            "minLength": 1
+          },
+          "byteSize": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "checksumSha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "required": [
+          "kind",
+          "contentType",
+          "byteSize",
+          "checksumSha256"
+        ]
+      }
+    }
+  }
+}
