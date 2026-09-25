@@ -133,7 +133,7 @@ This step is a migration-style script, written when migrations are written, not 
 ### 4. Post-import checks (fail the import if any fail)
 
 - Row counts per level match staging.
-- ADM3 rows with `level_code = 'upazila'` = **494**. Any other number means the upazila list and the release disagree; investigate before continuing.
+- ADM3 rows with `level_code = 'upazila'` match the reference (**495** in COD-AB v03 — Eidgaon and others were created after the old 494 list). The check compares against the committed reference, not a hard-coded number.
 - No invalid geometries (`ST_IsValid` on all `boundary`).
 - Every row except ADM0 has a `parent_id`, and the child's point-on-surface lies within the parent's boundary (small tolerance allowed).
 - Every pcode is unique per level.
@@ -150,15 +150,19 @@ current upazila list. These can't be classified automatically.
 - A trigger on `tenants` rejects any `geo_area_id` that still has `needs_manual_review and manually_verified_at is null`, so an unverified area can't become a tenant by accident.
 - The worklist is the `geo_areas` partial index `(adm_level) where needs_manual_review and manually_verified_at is null`.
 
-## Field mapping (fill in from step 1 before first import)
+## Field mapping (verified against COD-AB v03, valid_on 2023-05-21)
 
-| `geo_areas` column   | COD-AB attribute (ADM3 example) | Verified against release |
-| -------------------- | ------------------------------- | ------------------------ |
-| `bbs_code_geocode11` | _TBD_                           |                          |
-| `bbs_code_geocode15` | _TBD_                           |                          |
-| parent pcode         | _TBD_                           |                          |
-| `name_en`            | _TBD_                           |                          |
-| `name_bn`            | _(separate BBS list, by pcode)_ |                          |
+The 2023 release (GeoJSON) no longer carries separate 2011/2015 BBS geocode columns; each level
+has one **pcode**, stored in `geo_areas.cod_pcode` (migration 0021, ADR 026).
+
+| `geo_areas` column | COD-AB attribute                                              | Notes                                                                                                                                                      |
+| ------------------ | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `cod_pcode`        | `adm0_pcode` … `adm3_pcode` (polygons); `adm4_pcode` (points) | `BD`, `BD30`, `BD3026`, `BD30260014`, `BD45619413`.                                                                                                        |
+| parent pcode       | `adm{N-1}_pcode` on the same feature                          | ADM4 points use the 2020 ADM3 code (`BD456194`) → polygon pcode `BD45610094` (insert `00`).                                                                |
+| `name_en`          | `adm{N}_name`                                                 | `adm{N}_name1..3` are empty: **no Bengali names** in COD-AB.                                                                                               |
+| `name_bn`          | _(nuhil/bangladesh-geocode, MIT, matched to pcodes once)_     | ADR 026; review list in `infra/geo/reference/name-bn-report.md`.                                                                                           |
+| `level_code`       | derived                                                       | ADM3 pcode `…00NN` → `upazila` (**495** in this release, not 494); other ADM3 → `city_corporation` (12). ADM4 "… Paurashava" → `pourashava`, else `union`. |
+| geometry           | polygons for ADM0–ADM3; **ADM4 is points only**               | CRS EPSG:4326.                                                                                                                                             |
 
 ## Alternatives considered
 
