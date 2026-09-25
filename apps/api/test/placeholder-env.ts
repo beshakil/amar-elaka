@@ -19,6 +19,7 @@ const PLACEHOLDER_ENV: Record<string, string> = {
   MEILI_HOST: 'http://127.0.0.1:1',
   MEILI_MASTER_KEY: 'unit-test',
   STORAGE_PUBLIC_URL: 'http://127.0.0.1:1/media',
+  API_PUBLIC_URL: 'http://127.0.0.1:1',
   JWT_SECRET: 'unit-test-placeholder-secret',
   JWT_ACCESS_TTL: '15m',
   JWT_REFRESH_TTL: '60d',

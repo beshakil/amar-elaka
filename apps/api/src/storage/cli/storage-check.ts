@@ -1,4 +1,5 @@
 import { env } from '../../config/env';
+import { LocalStorageService } from '../local/local-storage.service';
 import { S3StorageService } from '../s3-storage.service';
 import type { StorageBucket } from '../storage.ports';
 
@@ -6,9 +7,9 @@ import type { StorageBucket } from '../storage.ports';
  * `pnpm --filter @amar-elaka/api storage:check [--origin https://savar.amarelaka.com ...]`
  * (in the image: `node dist/storage/cli/storage-check.js`).
  *
- * Proves the configured S3-compatible provider (ADR 027: Contabo now,
- * Backblaze B2 later) does everything the app relies on, using the same
- * S3StorageService the API uses:
+ * Proves the configured storage does everything the app relies on, using
+ * the same StorageService the API uses — STORAGE_DRIVER=local (ADR 028; the
+ * API must be running, since it serves uploads and /media) or s3 (ADR 027):
  *
  *   1. media bucket: write, read back, and fetch anonymously through
  *      STORAGE_PUBLIC_URL (public sharing must be on);
@@ -65,7 +66,8 @@ function probe(url: string, init: RequestInit = {}): Promise<Response> {
 }
 
 async function run(origins: readonly string[]): Promise<Result[]> {
-  const storage = new S3StorageService(env);
+  const storage =
+    env.STORAGE_DRIVER === 's3' ? new S3StorageService(env) : new LocalStorageService(env);
   const results: Result[] = [];
   const check = async (step: string, work: () => Promise<string>): Promise<void> => {
     try {
@@ -86,7 +88,7 @@ async function run(origins: readonly string[]): Promise<Result[]> {
       written.media.push(mediaKey);
       const back = await storage.getObject('media', mediaKey);
       if (!back.equals(body)) throw new Error('read back different bytes');
-      return env.S3_BUCKET_MEDIA ?? '';
+      return env.STORAGE_DRIVER === 's3' ? (env.S3_BUCKET_MEDIA ?? '') : 'media/';
     });
 
     const publicUrl = storage.getPublicUrl('media', mediaKey);
@@ -94,8 +96,9 @@ async function run(origins: readonly string[]): Promise<Result[]> {
       const response = await probe(publicUrl);
       if (!response.ok) {
         throw new Error(
-          `${publicUrl} answered ${response.status}. Turn on public sharing for the media ` +
-            'bucket and set STORAGE_PUBLIC_URL to its public link.',
+          `${publicUrl} answered ${response.status}. local: is the API running at ` +
+            'API_PUBLIC_URL? s3: turn on public sharing for the media bucket and set ' +
+            'STORAGE_PUBLIC_URL to its public link.',
         );
       }
       if ((await response.text()) !== PROBE_BODY) throw new Error('public URL served other bytes');
@@ -151,18 +154,27 @@ async function run(origins: readonly string[]): Promise<Result[]> {
       written.documents.push(docKey);
       const back = await storage.getObject('documents', docKey);
       if (!back.equals(body)) throw new Error('read back different bytes');
-      return env.S3_BUCKET_DOCUMENTS ?? '';
+      return env.STORAGE_DRIVER === 's3' ? (env.S3_BUCKET_DOCUMENTS ?? '') : 'documents/';
     });
 
     await check('documents: anonymous GET is refused', async () => {
-      const direct = `${(env.S3_ENDPOINT ?? '').replace(/\/+$/, '')}/${env.S3_BUCKET_DOCUMENTS ?? ''}/${docKey}`;
-      const response = await probe(direct);
-      if (response.ok) {
-        throw new Error(
-          `${direct} is publicly readable — turn public sharing OFF for this bucket.`,
+      // Through the public media address (both drivers), and for S3 also the
+      // bucket's own address, which public sharing would open up.
+      const candidates = [`${env.STORAGE_PUBLIC_URL.replace(/\/+$/, '')}/${docKey}`];
+      if (env.STORAGE_DRIVER === 's3') {
+        candidates.push(
+          `${(env.S3_ENDPOINT ?? '').replace(/\/+$/, '')}/${env.S3_BUCKET_DOCUMENTS ?? ''}/${docKey}`,
         );
       }
-      return `refused (${response.status})`;
+      const statuses: number[] = [];
+      for (const url of candidates) {
+        const response = await probe(url);
+        if (response.ok) {
+          throw new Error(`${url} is publicly readable — the documents bucket must stay private.`);
+        }
+        statuses.push(response.status);
+      }
+      return `refused (${statuses.join(', ')})`;
     });
   } finally {
     await check('clean up', async () => {
@@ -177,7 +189,11 @@ async function run(origins: readonly string[]): Promise<Result[]> {
 async function main(): Promise<boolean> {
   // settings-exempt: argv offset (node, script)
   const origins = parseOrigins(process.argv.slice(2));
-  console.log(`Endpoint ${env.S3_ENDPOINT ?? '(unset)'}, region ${env.S3_REGION ?? '(unset)'}`);
+  console.log(
+    env.STORAGE_DRIVER === 's3'
+      ? `Driver s3: endpoint ${env.S3_ENDPOINT ?? '(unset)'}, region ${env.S3_REGION ?? '(unset)'}`
+      : `Driver local: ${env.STORAGE_LOCAL_PATH}, served by ${env.API_PUBLIC_URL ?? '(unset)'}`,
+  );
   console.log(`Public media URL ${env.STORAGE_PUBLIC_URL}\n`);
   const results = await run(origins);
   for (const r of results) console.log(`${r.ok ? 'PASS' : 'FAIL'}  ${r.step}\n      ${r.detail}`);

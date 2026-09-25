@@ -12,7 +12,7 @@ import { STORAGE_SERVICE, type StorageService } from '../src/storage/storage.por
 import { resolveTestDatabaseUrl, testSqlClient } from './db/test-database';
 
 /**
- * The media pipeline end to end on real Postgres + Redis + object storage (ADR 027):
+ * The media pipeline end to end on real Postgres + Redis + storage (local driver or S3; ADR 027/028):
  * presign, PUT real bytes straight to storage (never through the API), confirm,
  * then the worker step: metadata stripped (a JPEG with GPS EXIF comes back
  * without it), thumb/card/full WebP variants in storage, a ThumbHash, `ready`.
@@ -118,12 +118,27 @@ describe('Media uploads (e2e)', () => {
       storageKey: string;
       upload: { url: string; headers: Record<string, string> };
     }>();
-    const put = await fetch(created.upload.url, {
-      method: 'PUT',
-      headers: created.upload.headers,
-      body: bytes,
-    });
-    expect(put.ok).toBe(true);
+    // STORAGE_DRIVER=local (ADR 028): the upload URL is this API's own
+    // /api/v1/storage/uploads route, so it goes through the app under test.
+    // STORAGE_DRIVER=s3: it's the provider's presigned URL, reached over HTTP.
+    const target = new URL(created.upload.url);
+    const apiOrigin = process.env.API_PUBLIC_URL ? new URL(process.env.API_PUBLIC_URL).origin : '';
+    if (target.origin === apiOrigin) {
+      const put = await app.inject({
+        method: 'PUT',
+        url: target.pathname,
+        headers: created.upload.headers,
+        payload: bytes,
+      });
+      expect(put.statusCode).toBe(200);
+    } else {
+      const put = await fetch(created.upload.url, {
+        method: 'PUT',
+        headers: created.upload.headers,
+        body: bytes,
+      });
+      expect(put.ok).toBe(true);
+    }
     return created;
   }
 

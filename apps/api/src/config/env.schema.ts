@@ -67,7 +67,12 @@ export const EnvSchema = z
     // the superRefine below), so they're optional here.
     STORAGE_DRIVER: z.enum(['local', 's3']).default('local'),
     STORAGE_LOCAL_PATH: z.string().min(1).default('./storage/uploads'),
+    // Public base of the media bucket. local: `${API_PUBLIC_URL}/media` (the
+    // API serves it); s3: the provider's public link or a CDN (ADR 027/028).
     STORAGE_PUBLIC_URL: z.string().url(),
+    // The API's public origin, e.g. https://api.amarelaka.com. Required for
+    // STORAGE_DRIVER=local: upload URLs handed to apps point here.
+    API_PUBLIC_URL: z.string().url().optional(),
     S3_ENDPOINT: z.string().url().optional(),
     S3_REGION: z.string().min(1).optional(),
     // Public-read (avatars, post photos, ...) vs private (verification
@@ -113,6 +118,13 @@ export const EnvSchema = z
     PERMISSIONS_CACHE_TTL_MS: z.coerce.number().int().positive().default(300_000),
   })
   .superRefine((env, ctx) => {
+    if (env.STORAGE_DRIVER === 'local' && !env.API_PUBLIC_URL) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['API_PUBLIC_URL'],
+        message: 'API_PUBLIC_URL is required when STORAGE_DRIVER=local',
+      });
+    }
     if (env.STORAGE_DRIVER !== 's3') return;
     for (const key of S3_REQUIRED_KEYS) {
       if (!env[key]) {

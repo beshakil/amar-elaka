@@ -15,15 +15,14 @@ import {
   StorageMisconfiguredException,
   StorageUnavailableException,
 } from './storage.exceptions';
-import type {
-  PresignedUpload,
-  StorageBucket,
-  StorageService,
-  StoredObjectInfo,
+import {
+  UPLOAD_URL_TTL_SECONDS,
+  type PresignedUpload,
+  type StorageBucket,
+  type StorageService,
+  type StoredObjectInfo,
 } from './storage.ports';
 
-// settings-exempt: presigned-URL validity window, an infra/security tuning value, not a business rule
-const UPLOAD_URL_TTL_SECONDS = 300;
 // settings-exempt: client retry/timeout tuning for object storage (CLAUDE.md rule 5), not a business rule
 const S3_MAX_ATTEMPTS = 3;
 // settings-exempt: see above

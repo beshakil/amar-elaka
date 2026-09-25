@@ -1,3 +1,6 @@
+// settings-exempt: upload-URL validity window for every driver, an infra/security tuning value, not a business rule
+export const UPLOAD_URL_TTL_SECONDS = 300;
+
 /** media = public-read (post photos, avatars); documents = private (verification papers). */
 export type StorageBucket = 'media' | 'documents';
 

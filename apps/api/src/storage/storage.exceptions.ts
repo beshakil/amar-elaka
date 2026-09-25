@@ -56,3 +56,25 @@ export class StorageUnavailableException extends DomainException {
     super('File storage is temporarily unavailable. Please try again.', { cause });
   }
 }
+
+/** A local-driver upload URL that is forged, malformed or past its expiry (like a bad S3 signature). */
+export class UploadGrantRejectedException extends DomainException {
+  readonly code = 'UPLOAD_GRANT_REJECTED';
+  readonly httpStatus = HttpStatus.FORBIDDEN;
+
+  constructor(reason: string) {
+    super(`This upload URL is not valid (${reason}). Request a new one.`);
+  }
+}
+
+/** The PUT doesn't match what the upload URL was issued for (type or size). */
+export class UploadDoesNotMatchGrantException extends DomainException {
+  readonly code = 'UPLOAD_DOES_NOT_MATCH';
+  readonly httpStatus = HttpStatus.BAD_REQUEST;
+
+  constructor(what: 'content_type' | 'size') {
+    super(
+      `The upload's ${what === 'size' ? 'size' : 'content type'} doesn't match its upload URL.`,
+    );
+  }
+}
