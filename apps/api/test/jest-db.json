@@ -8,5 +8,6 @@
     "^.+\\.(t|j)s$": "ts-jest"
   },
   "globalSetup": "<rootDir>/db/global-setup.ts",
-  "maxWorkers": 1
+  "maxWorkers": 1,
+  "setupFiles": ["<rootDir>/placeholder-env.ts"]
 }
