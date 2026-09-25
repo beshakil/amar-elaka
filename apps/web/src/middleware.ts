@@ -53,7 +53,10 @@ async function resolveCached(host: string): Promise<TenantResolution> {
   const hit = resolved.get(key);
   if (hit && hit.expiresAt > Date.now()) return hit.resolution;
 
-  const resolution = await resolve(key);
+  // One retry when the API couldn't answer (timeout, network, 5xx), like
+  // apiFetch (CLAUDE.md rule 5); a definite answer is never retried.
+  let resolution = await resolve(key);
+  if (resolution.kind === 'unavailable') resolution = await resolve(key);
   if (resolution.kind !== 'unavailable') {
     // Bounded, because the Host header is client-controlled: evict the oldest
     // entry (Map preserves insertion order) rather than grow without limit.

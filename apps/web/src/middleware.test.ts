@@ -76,25 +76,46 @@ describe('web tenant-resolution middleware', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it('retries once when the API could not answer', async () => {
+    fetchMock
+      .mockRejectedValueOnce(new TypeError('fetch failed'))
+      .mockResolvedValueOnce(Response.json({ tenantId: T1 }));
+    const res = await (await load())(request('mirpur.localhost:3001'));
+    expect(forwarded(res, 'x-tenant-id')).toBe(T1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not retry a definite answer', async () => {
+    fetchMock.mockResolvedValue(new Response(null, { status: 400 }));
+    await (
+      await load()
+    )(request('mirpur.localhost:3001'));
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it('never caches unavailable — the next request asks again', async () => {
     fetchMock
       .mockResolvedValueOnce(new Response(null, { status: 503 }))
+      .mockResolvedValueOnce(new Response(null, { status: 503 }))
       .mockResolvedValueOnce(Response.json({ tenantId: T1 }));
     const middleware = await load();
-    await middleware(request('mirpur.localhost:3001'));
+    const first = await middleware(request('mirpur.localhost:3001'));
+    expect(forwarded(first, 'x-tenant-resolution')).toBe('unavailable');
     const res = await middleware(request('mirpur.localhost:3001'));
     expect(forwarded(res, 'x-tenant-id')).toBe(T1);
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
   it('expires cached answers after the TTL', async () => {
     vi.useFakeTimers();
     try {
-      fetchMock.mockResolvedValue(Response.json({ tenantId: T1 }));
+      // A fresh Response per call: a body can only be read once.
+      fetchMock.mockImplementation(() => Promise.resolve(Response.json({ tenantId: T1 })));
       const middleware = await load();
       await middleware(request('mirpur.localhost:3001'));
       vi.advanceTimersByTime(61_000);
-      await middleware(request('mirpur.localhost:3001'));
+      const res = await middleware(request('mirpur.localhost:3001'));
+      expect(forwarded(res, 'x-tenant-id')).toBe(T1);
       expect(fetchMock).toHaveBeenCalledTimes(2);
     } finally {
       vi.useRealTimers();
