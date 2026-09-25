@@ -145,6 +145,109 @@ jobs:
       - name: Apply migrations and run the RLS / database suites
         run: pnpm --filter @amar-elaka/api test:db
 
+  api-e2e:
+    name: API e2e (Postgres + Redis + Meilisearch + MinIO)
+    needs: changes
+    if: needs.changes.outputs.node == 'true' || needs.changes.outputs.db == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: ae_dev
+          POSTGRES_PASSWORD: ae_dev_pass
+          POSTGRES_DB: amar_elaka_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ae_dev -d amar_elaka_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+      meilisearch:
+        image: getmeili/meilisearch:v1.8
+        env:
+          MEILI_MASTER_KEY: ci_meili_master_key_0123456789
+          MEILI_NO_ANALYTICS: 'true'
+        ports:
+          - 7700:7700
+        options: >-
+          --health-cmd "curl -fsS http://localhost:7700/health"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    # Throwaway credentials for services that live only as long as this job.
+    # The API reads the rest of its config from here (there is no .env in CI).
+    env:
+      PGPASSWORD: ae_dev_pass
+      TEST_DATABASE_URL: postgresql://ae_dev:ae_dev_pass@localhost:5432/amar_elaka_test
+      TEST_APP_DATABASE_URL: postgresql://ae_app:ae_app_ci@localhost:5432/amar_elaka_test
+      TEST_MIGRATOR_DATABASE_URL: postgresql://ae_migrator:ae_migrator_ci@localhost:5432/amar_elaka_test
+      NODE_ENV: test
+      REDIS_URL: redis://localhost:6379
+      MEILI_HOST: http://localhost:7700
+      MEILI_MASTER_KEY: ci_meili_master_key_0123456789
+      MEILI_INDEX_PREFIX: ci_e2e_
+      STORAGE_DRIVER: s3
+      STORAGE_PUBLIC_URL: http://localhost:9000/amar-elaka-media-ci
+      S3_ENDPOINT: http://localhost:9000
+      S3_REGION: us-east-1
+      S3_BUCKET_MEDIA: amar-elaka-media-ci
+      S3_BUCKET_DOCUMENTS: amar-elaka-documents-ci
+      S3_ACCESS_KEY_ID: ci_minio
+      S3_SECRET_ACCESS_KEY: ci_minio_secret_0123
+      S3_FORCE_PATH_STYLE: 'true'
+      JWT_SECRET: ci-jwt-secret-0123456789abcdef
+      JWT_ACCESS_TTL: 15m
+      JWT_REFRESH_TTL: 60d
+      SMTP_HOST: localhost
+      SMTP_PORT: '1025'
+      SMTP_FROM: noreply@amarelaka.test
+      GOOGLE_CLIENT_ID: ci-google-client-id
+      APP_ROOT_DOMAIN: amarelaka.test
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # MinIO needs `server /data` as its command, which a service container
+      # can't take, so it runs as a plain container with its buckets created
+      # the same way infra/docker-compose.dev.yml's minio-init does.
+      - name: Start MinIO and create buckets
+        run: |
+          docker run -d --name minio -p 9000:9000 \
+            -e MINIO_ROOT_USER="$S3_ACCESS_KEY_ID" -e MINIO_ROOT_PASSWORD="$S3_SECRET_ACCESS_KEY" \
+            minio/minio:latest server /data
+          for _ in $(seq 1 30); do curl -fsS http://localhost:9000/minio/health/live && break; sleep 2; done
+          docker run --rm --network host --entrypoint sh minio/mc:latest -c "
+            mc alias set local http://localhost:9000 $S3_ACCESS_KEY_ID $S3_SECRET_ACCESS_KEY &&
+            mc mb --ignore-existing local/$S3_BUCKET_MEDIA &&
+            mc mb --ignore-existing local/$S3_BUCKET_DOCUMENTS &&
+            mc anonymous set download local/$S3_BUCKET_MEDIA"
+      - name: Create database roles (make db-roles-test)
+        run: >-
+          psql -h localhost -U ae_dev -d amar_elaka_test -v ON_ERROR_STOP=1
+          -v app_password=ae_app_ci -v migrator_password=ae_migrator_ci
+          -f infra/db/bootstrap-roles.sql
+      - name: Apply migrations
+        working-directory: apps/api
+        run: pnpm exec tsx -e "import('./test/db/test-database').then((db) => db.resetAndMigrate())"
+      - name: API e2e suites
+        run: pnpm --filter @amar-elaka/api test:e2e
+
   build:
     name: Build + browser e2e
     needs: changes
@@ -275,7 +378,7 @@ jobs:
 
   ci-ok:
     name: CI OK
-    needs: [changes, quality, integration, search, build, mobile]
+    needs: [changes, quality, integration, api-e2e, search, build, mobile]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5

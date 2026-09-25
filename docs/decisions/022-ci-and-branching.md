@@ -170,11 +170,15 @@ tree, turned up two bugs that had been invisible locally:
 After the fixes, every job's sequence passes from a clean copy, except `integration`, which needs
 Postgres and was checked with `actionlint` only.
 
+## Update (2026-09-25): API e2e in CI
+
+The `api-e2e` job now runs `apps/api/test/*.e2e-spec.ts` against Postgres, Redis and Meilisearch
+service containers plus a MinIO container started in a step (a service container can't take
+MinIO's `server /data` command). It applies migrations with `resetAndMigrate()` from
+`test/db/test-database.ts`, and `ci-ok` requires it.
+
 ## Not covered yet
 
 - **Formatting.** `pnpm format:check` fails on about 130 files that predate the Prettier setup.
   One commit that only reformats, then a `pnpm format:check` step in `quality`, closes this.
-- **The API's Jest e2e specs** (`apps/api/test/*.e2e-spec.ts`, including the RBAC role
-  edit/delete cases). They boot the whole app, so they need Redis, Meilisearch and MinIO service
-  containers as well as Postgres.
 - **Deploys.** CI proves a change is safe to merge. Shipping it to Coolify is separate.
