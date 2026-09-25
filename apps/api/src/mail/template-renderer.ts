@@ -28,6 +28,8 @@ function compile(template: string): Promise<string> {
   return pending;
 }
 
+const PLACEHOLDER = /\{\{\s*([A-Za-z0-9_]+)\s*\}\}/g;
+
 function escapeHtml(value: string): string {
   return value
     .replaceAll('&', '&amp;')
@@ -48,8 +50,9 @@ export async function renderMailTemplate(
   params: Record<string, string>,
 ): Promise<string> {
   const compiled = await compile(template);
-  return Object.entries(params).reduce(
-    (html, [key, value]) => html.replaceAll(`{{${key}}}`, escapeHtml(value)),
-    compiled,
+  // Whitespace inside the braces is optional (`{{body}}` and `{{ body }}` are
+  // the same placeholder), so reformatting a template can't silently break it.
+  return compiled.replace(PLACEHOLDER, (match, key: string) =>
+    Object.hasOwn(params, key) ? escapeHtml(params[key] ?? '') : match,
   );
 }

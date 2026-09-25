@@ -6,8 +6,13 @@ describe('renderMailTemplate', () => {
 
     expect(html).toContain('শিরোনাম');
     expect(html).toContain('বার্তা');
-    expect(html).not.toContain('{{heading}}');
-    expect(html).not.toContain('{{body}}');
+    expect(html).not.toMatch(/\{\{\s*(heading|body)\s*\}\}/);
+  });
+
+  it('leaves a placeholder with no matching param untouched', async () => {
+    const html = await renderMailTemplate('notice', { heading: 'শিরোনাম' });
+
+    expect(html).toMatch(/\{\{\s*body\s*\}\}/);
   });
 
   it('escapes HTML in interpolated values', async () => {
