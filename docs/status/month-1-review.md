@@ -19,8 +19,17 @@ Audited 2026-09-25 against the working tree (branch `main`, HEAD `95c59b7`). No 
 - `schema.md` reconciled with 0013–0023.
 - API unit tests: 485/485 pass.
 
-**Written but not run anywhere yet:** migrations 0022–0023 and their DB tests, the API e2e changes, the new CI job, and
-the mobile/Dart changes. There is no Postgres/docker/Flutter in this environment. The 0023 SQL and plpgsql bodies were
+**Found by the first real run of the DB and e2e suites** (local Postgres 16 + PostGIS, Redis, Meilisearch 1.8):
+
+- **Login and token refresh never worked.** 0013's auth functions hit "column reference is ambiguous" (fixed in 0024).
+- **Refresh-token theft detection never took effect.** The revocation was rolled back by its own RAISE (0024 + API).
+- **Tenant resolution never reached the guard** (Fastify raw request). Every tenant route returned 400.
+- **Google linking and email/password registration were silent no-ops** under RLS (0025).
+- Unit/db/search suites exited on import in CI without a .env (placeholder env).
+- Results after the fixes: DB 452/452, e2e 72/72 (all suites except media, which needs the Contabo CI bucket),
+  search 38/38, unit 489/489.
+
+**Still not run anywhere:** the media e2e suite (needs storage secrets) and mobile on a device. There is no Postgres/docker/Flutter in this environment. The 0023 SQL and plpgsql bodies were
 checked with the real Postgres parser (libpg_query) only. The first CI run (or `test:db` locally) is the real check.
 
 **Still open (needs a decision or later work):**
