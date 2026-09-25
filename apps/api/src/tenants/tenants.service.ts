@@ -139,7 +139,7 @@ export class TenantsService {
           )
           .orderBy(asc(emergencyContacts.sortOrder));
 
-        const radiusKm = await this.boundaryRadiusKm(tx, tenant.geoAreaId);
+        const radiusKm = await this.boundaryRadiusKm(tx, tenant.id);
 
         return {
           id: tenant.id,
@@ -171,36 +171,20 @@ export class TenantsService {
 
     return this.tenantDb.transaction(
       async (tx) => {
-        const covering = await tx.execute(sql`
+        // nearest_tenants() (0021): a tenant whose area contains the point
+        // wins; otherwise the smallest distance to a tenant's area — its
+        // polygon, or its centre + radius for radius-mode tenants.
+        const rows = await tx.execute(sql`
         select t.id, t.slug, t.name_bn, t.name_en,
           st_x(t.map_center::geometry) as lng, st_y(t.map_center::geometry) as lat,
           district.name_bn as district_name_bn, district.name_en as district_name_en
-        from public.tenants t
-        join public.geo_areas ga on ga.id = t.geo_area_id
-        left join public.geo_areas district
-          on district.id = any(ga.ancestor_ids) and district.adm_level = ${DISTRICT_ADM_LEVEL}
-        where t.status_code in ('active', 'past_due')
-          and ga.boundary is not null
-          and st_covers(ga.boundary, st_setsrid(st_makepoint(${lng}, ${lat}), 4326)::geography)
-        limit 1
-      `);
-        const [insideRow] = z.array(NearbyRow).parse([...covering]);
-        if (insideRow) return toSummary(insideRow);
-
-        const nearest = await tx.execute(sql`
-        select t.id, t.slug, t.name_bn, t.name_en,
-          st_x(t.map_center::geometry) as lng, st_y(t.map_center::geometry) as lat,
-          district.name_bn as district_name_bn, district.name_en as district_name_en
-        from public.tenants t
+        from public.nearest_tenants(public.geo_point(${lat}, ${lng}), ${maxRadiusMeters}, 1) n
+        join public.tenants t on t.id = n.tenant_id
         left join public.geo_areas ga on ga.id = t.geo_area_id
         left join public.geo_areas district
           on district.id = any(ga.ancestor_ids) and district.adm_level = ${DISTRICT_ADM_LEVEL}
-        where t.status_code in ('active', 'past_due')
-          and st_dwithin(t.map_center, st_setsrid(st_makepoint(${lng}, ${lat}), 4326)::geography, ${maxRadiusMeters})
-        order by st_distance(t.map_center, st_setsrid(st_makepoint(${lng}, ${lat}), 4326)::geography) asc
-        limit 1
       `);
-        const [nearestRow] = z.array(NearbyRow).parse([...nearest]);
+        const [nearestRow] = z.array(NearbyRow).parse([...rows]);
         if (!nearestRow) throw new NoTenantNearbyException();
         return toSummary(nearestRow);
       },
@@ -248,13 +232,28 @@ export class TenantsService {
     );
   }
 
+  /**
+   * How far the tenant reaches from its centre, in km: the service radius in
+   * radius mode; in polygon mode the geodesic distance from the centre to the
+   * farthest boundary vertex (display boundary — this is for map zoom, not
+   * ownership). Geography, so metres: a geometry in EPSG:4326 would measure
+   * degrees.
+   */
   private async boundaryRadiusKm(
     tx: DatabaseTransaction,
-    geoAreaId: string,
+    tenantId: string,
   ): Promise<number | null> {
     const rows = await tx.execute(sql`
-      select (st_minimumboundingradius(boundary::geometry)).radius as radius_m
-      from public.geo_areas where id = ${geoAreaId} and boundary is not null
+      select case
+        when t.boundary_mode = 'radius' then t.service_radius_km::float8 * 1000
+        else (
+          select max(st_distance(t.map_center, (dp).geom::geography))
+          from st_dumppoints(coalesce(ga.boundary_simplified, ga.boundary)::geometry) dp
+        )
+      end as radius_m
+      from public.tenants t
+      left join public.geo_areas ga on ga.id = t.geo_area_id
+      where t.id = ${tenantId}::uuid
     `);
     const [row] = z.array(RadiusRow).parse([...rows]);
     // settings-exempt: metres-to-km, not a business threshold.

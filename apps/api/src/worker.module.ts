@@ -6,7 +6,9 @@ import { DatabaseModule } from './database/database.module';
 import { buildPinoHttpOptions } from './logging/pino-http-options';
 import { MailModule } from './mail/mail.module';
 import { MaintenanceModule } from './maintenance/maintenance.module';
+import { MediaWorkerModule } from './media/media-worker.module';
 import { QueueModule } from './queue/queue.module';
+import { SearchWorkerModule } from './search/indexing/search-worker.module';
 
 /**
  * The standalone worker process (worker.ts) — no HTTP listener, just enough
@@ -28,6 +30,8 @@ import { QueueModule } from './queue/queue.module';
     QueueModule,
     MailModule,
     MaintenanceModule,
+    MediaWorkerModule,
+    SearchWorkerModule,
   ],
 })
 export class WorkerModule {}

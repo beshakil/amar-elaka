@@ -36,3 +36,13 @@ export class MediaAssetNotFoundException extends DomainException {
     super('Media asset not found.');
   }
 }
+
+/** Object storage didn't answer in time or failed after retries (CLAUDE.md rule 5). */
+export class StorageUnavailableException extends DomainException {
+  readonly code = 'STORAGE_UNAVAILABLE';
+  readonly httpStatus = HttpStatus.SERVICE_UNAVAILABLE;
+
+  constructor(cause: unknown) {
+    super('File storage is temporarily unavailable. Please try again.', { cause });
+  }
+}

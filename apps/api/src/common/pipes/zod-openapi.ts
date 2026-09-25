@@ -3,6 +3,7 @@ import {
   ZodArray,
   ZodBoolean,
   ZodDefault,
+  ZodDiscriminatedUnion,
   ZodEffects,
   ZodEnum,
   ZodLiteral,
@@ -111,6 +112,10 @@ function buildSchema(schema: ZodTypeAny): SchemaObject {
   }
   if (schema instanceof ZodUnion) {
     const options = (schema as ZodUnion<[ZodTypeAny, ...ZodTypeAny[]]>).options;
+    return { oneOf: options.map((option) => describeZodField(option).schema) };
+  }
+  if (schema instanceof ZodDiscriminatedUnion) {
+    const options = (schema as ZodDiscriminatedUnion<string, ZodObjectAny[]>).options;
     return { oneOf: options.map((option) => describeZodField(option).schema) };
   }
   if (schema instanceof ZodRecord) {

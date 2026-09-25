@@ -1,13 +1,40 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { DeleteObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import {
+  DeleteObjectCommand,
+  DeleteObjectsCommand,
+  GetObjectCommand,
+  HeadObjectCommand,
+  PutObjectCommand,
+  S3Client,
+} from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { APP_CONFIG } from '../config/config.module';
 import type { Env } from '../config/env.schema';
-import { StorageMisconfiguredException } from './storage.exceptions';
-import type { PresignedUpload, StorageBucket, StorageService } from './storage.ports';
+import { StorageMisconfiguredException, StorageUnavailableException } from './storage.exceptions';
+import type {
+  PresignedUpload,
+  StorageBucket,
+  StorageService,
+  StoredObjectInfo,
+} from './storage.ports';
 
 // settings-exempt: presigned-URL validity window, an infra/security tuning value, not a business rule
 const UPLOAD_URL_TTL_SECONDS = 300;
+// settings-exempt: client retry/timeout tuning for object storage (CLAUDE.md rule 5), not a business rule
+const S3_MAX_ATTEMPTS = 3;
+// settings-exempt: see above
+const S3_CONNECTION_TIMEOUT_MS = 5_000;
+// settings-exempt: see above; long enough to move a large original on a slow link
+const S3_REQUEST_TIMEOUT_MS = 60_000;
+// settings-exempt: S3 DeleteObjects accepts at most 1000 keys per request (protocol limit)
+const S3_DELETE_BATCH = 1000;
+// settings-exempt: HTTP status code, a protocol constant
+const HTTP_NOT_FOUND = 404;
+
+function isNotFound(error: unknown): boolean {
+  const meta = error as { $metadata?: { httpStatusCode?: number }; name?: string } | undefined;
+  return meta?.$metadata?.httpStatusCode === HTTP_NOT_FOUND || meta?.name === 'NotFound';
+}
 
 type StorageEnv = Pick<
   Env,
@@ -53,6 +80,12 @@ export class S3StorageService implements StorageService {
       endpoint: this.endpoint,
       region: required(env.S3_REGION, 'S3_REGION'),
       forcePathStyle: this.forcePathStyle,
+      // Timeouts and retries on every call (the SDK retries with backoff).
+      maxAttempts: S3_MAX_ATTEMPTS,
+      requestHandler: {
+        connectionTimeout: S3_CONNECTION_TIMEOUT_MS,
+        requestTimeout: S3_REQUEST_TIMEOUT_MS,
+      },
       credentials: {
         accessKeyId: required(env.S3_ACCESS_KEY_ID, 'S3_ACCESS_KEY_ID'),
         secretAccessKey: required(env.S3_SECRET_ACCESS_KEY, 'S3_SECRET_ACCESS_KEY'),
@@ -86,7 +119,83 @@ export class S3StorageService implements StorageService {
   }
 
   async delete(bucket: StorageBucket, key: string): Promise<void> {
-    await this.client.send(new DeleteObjectCommand({ Bucket: this.buckets[bucket], Key: key }));
+    await this.call(() =>
+      this.client.send(new DeleteObjectCommand({ Bucket: this.buckets[bucket], Key: key })),
+    );
+  }
+
+  async deleteMany(bucket: StorageBucket, keys: readonly string[]): Promise<void> {
+    for (let start = 0; start < keys.length; start += S3_DELETE_BATCH) {
+      const batch = keys.slice(start, start + S3_DELETE_BATCH);
+      await this.call(() =>
+        this.client.send(
+          new DeleteObjectsCommand({
+            Bucket: this.buckets[bucket],
+            Delete: { Objects: batch.map((Key) => ({ Key })), Quiet: true },
+          }),
+        ),
+      );
+    }
+  }
+
+  async head(bucket: StorageBucket, key: string): Promise<StoredObjectInfo | undefined> {
+    try {
+      const result = await this.client.send(
+        new HeadObjectCommand({ Bucket: this.buckets[bucket], Key: key }),
+      );
+      return { byteSize: result.ContentLength ?? 0, contentType: result.ContentType };
+    } catch (error) {
+      if (isNotFound(error)) return undefined;
+      throw new StorageUnavailableException(error);
+    }
+  }
+
+  async getObject(
+    bucket: StorageBucket,
+    key: string,
+    range?: { start: number; end: number },
+  ): Promise<Buffer> {
+    return this.call(async () => {
+      const result = await this.client.send(
+        new GetObjectCommand({
+          Bucket: this.buckets[bucket],
+          Key: key,
+          ...(range ? { Range: `bytes=${range.start}-${range.end}` } : {}),
+        }),
+      );
+      if (!result.Body) return Buffer.alloc(0);
+      return Buffer.from(await result.Body.transformToByteArray());
+    });
+  }
+
+  async putObject(
+    bucket: StorageBucket,
+    key: string,
+    body: Buffer,
+    contentType: string,
+    cacheControl?: string,
+  ): Promise<void> {
+    await this.call(() =>
+      this.client.send(
+        new PutObjectCommand({
+          Bucket: this.buckets[bucket],
+          Key: key,
+          Body: body,
+          ContentType: contentType,
+          ContentLength: body.length,
+          ...(cacheControl ? { CacheControl: cacheControl } : {}),
+        }),
+      ),
+    );
+  }
+
+  /** Every storage failure surfaces as one typed error; the SDK has already retried. */
+  private async call<T>(work: () => Promise<T>): Promise<T> {
+    try {
+      return await work();
+    } catch (error) {
+      throw new StorageUnavailableException(error);
+    }
   }
 
   getPublicUrl(bucket: StorageBucket, key: string): string {

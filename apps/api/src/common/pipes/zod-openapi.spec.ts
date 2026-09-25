@@ -91,6 +91,23 @@ describe('describeZodField', () => {
     });
   });
 
+  it('describes a discriminated union as oneOf its member objects', () => {
+    const { schema } = describeZodField(
+      z.discriminatedUnion('kind', [
+        z.object({ kind: z.literal('a'), n: z.number() }),
+        z.object({ kind: z.literal('b') }),
+      ]),
+    );
+    expect(schema.oneOf).toEqual([
+      {
+        type: 'object',
+        properties: { kind: { type: 'string', enum: ['a'] }, n: { type: 'number' } },
+        required: ['kind', 'n'],
+      },
+      { type: 'object', properties: { kind: { type: 'string', enum: ['b'] } }, required: ['kind'] },
+    ]);
+  });
+
   it('describes a record as an object with typed additional properties', () => {
     expect(describeZodField(z.record(z.boolean())).schema).toEqual({
       type: 'object',

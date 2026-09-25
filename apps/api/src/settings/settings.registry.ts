@@ -68,6 +68,7 @@ export const SETTING_DEFINITIONS = {
   lead_event_retention_months: wholeNumber,
   export_link_validity_days: wholeNumber,
   landmark_default_radius_km: decimal,
+  place_reverify_after_days: wholeNumber,
   blood_donation_interval_days: wholeNumber,
   agent_cash_max_hold_hours: wholeNumber,
 
@@ -86,8 +87,37 @@ export const SETTING_DEFINITIONS = {
   // Tenant resolution (tenants/nearby)
   tenant_nearby_max_radius_km: decimal,
 
-  // Storage (apps/api/src/storage)
+  // Storage and media pipeline (apps/api/src/storage, apps/api/src/media)
   media_max_upload_bytes: wholeNumber,
+  media_uploads_per_hour: wholeNumber,
+  media_uploads_per_day: wholeNumber,
+  media_upload_bytes_per_day: wholeNumber,
+  media_max_input_pixels: wholeNumber,
+  media_variant_thumb_px: wholeNumber,
+  media_variant_card_px: wholeNumber,
+  media_variant_full_px: wholeNumber,
+  media_image_quality: wholeNumber,
+
+  // Search (ADR 025, migration 0020)
+  search_default_radius_km: wholeNumber,
+  search_max_radius_km: wholeNumber,
+  search_page_size_default: wholeNumber,
+  search_page_size_max: wholeNumber,
+  search_max_total_hits: wholeNumber,
+  search_facet_values_max: wholeNumber,
+  search_suggest_limit: wholeNumber,
+  search_suggest_min_chars: wholeNumber,
+  search_typo_one_typo_min_chars: wholeNumber,
+  search_typo_two_typos_min_chars: wholeNumber,
+  search_outbox_max_attempts: wholeNumber,
+
+  // Locations & geocoding (ADR 026, migration 0021)
+  geocode_cache_days: wholeNumber,
+  geocode_results_max: wholeNumber,
+  geocode_autocomplete_min_chars: wholeNumber,
+  geocode_reverse_cache_decimals: wholeNumber,
+  map_viewport_max_areas: wholeNumber,
+  tenant_service_radius_max_km: decimal,
 } as const satisfies Record<string, z.ZodTypeAny>;
 
 export type SettingKey = keyof typeof SETTING_DEFINITIONS;

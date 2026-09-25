@@ -18,11 +18,16 @@
     "test:cov": "jest --coverage",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "test:db": "jest --config ./test/jest-db.json --runInBand",
+    "test:search": "jest --config ./test/jest-search.json --runInBand",
     "test:rls": "jest --config ./test/jest-db.json --runInBand --testPathPattern=rls-tenant-isolation",
     "db:new": "drizzle-kit generate --custom --name",
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "tsx src/database/seed/seed.ts",
-    "db:reset": "tsx src/database/seed/reset.ts && tsx src/database/seed/seed.ts"
+    "db:reset": "tsx src/database/seed/reset.ts && tsx src/database/seed/seed.ts",
+    "fixtures:export": "tsx src/database/seed/export-client-fixtures.ts",
+    "geo:import": "tsx src/locations/geo-import/geo-import.ts",
+    "search:synonyms": "tsx src/search/synonyms/export-synonyms.ts && prettier --write src/search/synonyms/search-synonyms.generated.ts",
+    "search:reindex": "nest build && node dist/search/cli/reindex.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1138.0",
@@ -51,6 +56,7 @@
     "postgres": "^3.4.9",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
+    "sharp": "^0.35.4",
     "zod": "^3.23.8"
   },
   "devDependencies": {

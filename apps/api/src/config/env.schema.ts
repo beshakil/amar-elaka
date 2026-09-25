@@ -47,6 +47,21 @@ export const EnvSchema = z
     // Meilisearch
     MEILI_HOST: z.string().url(),
     MEILI_MASTER_KEY: z.string().min(1),
+    // Prepended to every index name (posts, stores, places), so several
+    // environments or test runs can share one Meilisearch without collisions.
+    MEILI_INDEX_PREFIX: z
+      .string()
+      .regex(/^[a-z0-9_]*$/)
+      .default(''),
+    // Transport tuning for search calls (CLAUDE.md rule 5), not business rules.
+    MEILI_TIMEOUT_MS: z.coerce.number().int().positive().default(1_500),
+
+    // Geocoding (Barikoi). Without a key, geocoding degrades to coordinates and
+    // our own area data — it never fails the request (src/locations/geocoding).
+    BARIKOI_API_KEY: z.preprocess((v) => (v === '' ? undefined : v), z.string().min(1).optional()),
+    BARIKOI_BASE_URL: z.string().url().default('https://barikoi.xyz'),
+    // Transport tuning (CLAUDE.md rule 5), not a business rule.
+    GEOCODING_TIMEOUT_MS: z.coerce.number().int().positive().default(3_000),
 
     // Object storage — S3_* fields only matter when STORAGE_DRIVER=s3 (see
     // the superRefine below), so they're optional here.

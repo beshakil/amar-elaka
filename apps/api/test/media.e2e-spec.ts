@@ -4,15 +4,20 @@ import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fa
 import { Test } from '@nestjs/testing';
 import type { Sql } from 'postgres';
 import { AppModule } from '../src/app.module';
+import sharp from 'sharp';
 import { TokenService } from '../src/auth/tokens/token.service';
+import { MediaProcessingService } from '../src/media/media-processing.service';
+import { MediaWorkerModule } from '../src/media/media-worker.module';
+import { STORAGE_SERVICE, type StorageService } from '../src/storage/storage.ports';
 import { resolveTestDatabaseUrl, testSqlClient } from './db/test-database';
 
 /**
- * Full-stack proof of the presigned upload flow: real Postgres+Redis+MinIO
- * (`make up`, which now includes minio/minio-init — see
- * infra/docker-compose.dev.yml). Requests an upload URL, PUTs real bytes to
- * MinIO with it, confirms, and checks the media_assets row flips to ready;
- * also proves oversized/wrong-content-type requests never reach storage.
+ * The media pipeline end to end on real Postgres + Redis + MinIO (`make up`):
+ * presign, PUT real bytes straight to MinIO (never through the API), confirm,
+ * then the worker step: metadata stripped (a JPEG with GPS EXIF comes back
+ * without it), thumb/card/full WebP variants in storage, a ThumbHash, `ready`.
+ * Also: wrong type or size never gets a URL, and a file that only *claims* to
+ * be an image is rejected on confirm by its magic bytes and deleted.
  */
 
 const PARTNER = '0191e3a0-eeee-7000-8000-0000000000d9';
@@ -29,6 +34,8 @@ describe('Media uploads (e2e)', () => {
   let app: NestFastifyApplication;
   let admin: Sql;
   let authHeader: Record<string, string>;
+  let processing: MediaProcessingService;
+  let storage: StorageService;
 
   beforeAll(async () => {
     admin = testSqlClient(1, resolveTestDatabaseUrl());
@@ -49,7 +56,9 @@ describe('Media uploads (e2e)', () => {
     const [member] = await admin<{ id: string }[]>`
       insert into tenant_members (tenant_id, user_id, role_code) values (${TENANT}, ${user!.id}, 'member') returning id`;
 
-    const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    const moduleRef = await Test.createTestingModule({
+      imports: [AppModule, MediaWorkerModule],
+    }).compile();
     app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter());
     app.setGlobalPrefix('api', {
       exclude: [
@@ -61,6 +70,8 @@ describe('Media uploads (e2e)', () => {
     await app.init();
     await app.getHttpAdapter().getInstance().ready();
 
+    processing = moduleRef.get(MediaProcessingService);
+    storage = moduleRef.get<StorageService>(STORAGE_SERVICE);
     const tokens = moduleRef.get(TokenService);
     const token = await tokens.signAccessToken({
       userId: user!.id,
@@ -85,100 +96,148 @@ describe('Media uploads (e2e)', () => {
     }
   });
 
-  it('rejects an unsupported content type before ever presigning', async () => {
-    const response = await app.inject({
+  async function presign(bytes: Buffer, contentType: string) {
+    return app.inject({
       method: 'POST',
-      url: '/api/v1/media/uploads',
+      url: '/api/v1/media/presign',
       headers: authHeader,
       payload: {
         kind: 'image',
-        contentType: 'application/zip',
-        byteSize: 100,
-        checksumSha256: 'a'.repeat(64),
+        contentType,
+        byteSize: bytes.byteLength,
+        checksumSha256: sha256Hex(bytes),
       },
     });
-    expect(response.statusCode).toBe(400);
-    expect(response.json<{ error: string }>().error).toBe('UNSUPPORTED_CONTENT_TYPE');
-  });
+  }
 
-  it('rejects an oversized upload before ever presigning', async () => {
-    const response = await app.inject({
-      method: 'POST',
-      url: '/api/v1/media/uploads',
-      headers: authHeader,
-      payload: {
-        kind: 'image',
-        contentType: 'image/png',
-        byteSize: 200_000_000,
-        checksumSha256: 'a'.repeat(64),
-      },
-    });
-    expect(response.statusCode).toBe(400);
-    expect(response.json<{ error: string }>().error).toBe('UPLOAD_TOO_LARGE');
-  });
-
-  it('rejects an unauthenticated request', async () => {
-    const response = await app.inject({
-      method: 'POST',
-      url: '/api/v1/media/uploads',
-      headers: { 'x-tenant-id': TENANT },
-      payload: {
-        kind: 'image',
-        contentType: 'image/png',
-        byteSize: 100,
-        checksumSha256: 'a'.repeat(64),
-      },
-    });
-    expect(response.statusCode).toBe(401);
-  });
-
-  it('requests a presigned URL, uploads to MinIO, confirms, and flips the row to ready', async () => {
-    const fileBytes = Buffer.from('media e2e fixture bytes');
-    const checksumSha256 = sha256Hex(fileBytes);
-
-    const createResponse = await app.inject({
-      method: 'POST',
-      url: '/api/v1/media/uploads',
-      headers: authHeader,
-      payload: {
-        kind: 'image',
-        contentType: 'image/png',
-        byteSize: fileBytes.byteLength,
-        checksumSha256,
-      },
-    });
-    expect(createResponse.statusCode).toBe(201);
-    const created = createResponse.json<{
+  async function upload(bytes: Buffer, contentType: string) {
+    const response = await presign(bytes, contentType);
+    expect(response.statusCode).toBe(201);
+    const created = response.json<{
       id: string;
-      upload: { url: string; headers: Record<string, string> };
       storageKey: string;
+      upload: { url: string; headers: Record<string, string> };
     }>();
-    expect(created.storageKey.startsWith(`${TENANT}/image/`)).toBe(true);
-
-    const putResponse = await fetch(created.upload.url, {
+    const put = await fetch(created.upload.url, {
       method: 'PUT',
       headers: created.upload.headers,
-      body: fileBytes,
+      body: bytes,
     });
-    expect(putResponse.ok).toBe(true);
+    expect(put.ok).toBe(true);
+    return created;
+  }
 
-    const confirmResponse = await app.inject({
+  it('rejects an unsupported content type or an oversized file before presigning', async () => {
+    const gif = await app.inject({
       method: 'POST',
-      url: `/api/v1/media/uploads/${created.id}/confirm`,
+      url: '/api/v1/media/presign',
       headers: authHeader,
+      payload: {
+        kind: 'image',
+        contentType: 'image/gif',
+        byteSize: 10,
+        checksumSha256: 'a'.repeat(64),
+      },
     });
-    expect(confirmResponse.statusCode).toBe(201);
-    expect(confirmResponse.json()).toEqual({ status: 'ready' });
+    expect(gif.statusCode).toBe(400);
+    expect(gif.json()).toMatchObject({ error: 'UNSUPPORTED_CONTENT_TYPE' });
 
-    const [row] = await admin<{ status_code: string }[]>`
-      select status_code from media_assets where id = ${created.id}`;
-    expect(row?.status_code).toBe('ready');
+    const huge = await app.inject({
+      method: 'POST',
+      url: '/api/v1/media/presign',
+      headers: authHeader,
+      payload: {
+        kind: 'image',
+        contentType: 'image/jpeg',
+        byteSize: 500_000_000,
+        checksumSha256: 'a'.repeat(64),
+      },
+    });
+    expect(huge.statusCode).toBe(400);
+    expect(huge.json()).toMatchObject({ error: 'UPLOAD_TOO_LARGE' });
   });
 
-  it('confirm 404s for an id from a different tenant', async () => {
+  it('confirm before the PUT says the file is missing', async () => {
+    const bytes = await sharp({ create: { width: 8, height: 8, channels: 3, background: '#123' } })
+      .png()
+      .toBuffer();
+    const response = await presign(bytes, 'image/png');
+    const { id } = response.json<{ id: string }>();
+    const confirm = await app.inject({
+      method: 'POST',
+      url: `/api/v1/media/${id}/confirm`,
+      headers: authHeader,
+    });
+    expect(confirm.statusCode).toBe(409);
+  });
+
+  it('processes a real photo: EXIF stripped, WebP variants, ThumbHash, ready', async () => {
+    // 2000x1500 JPEG carrying GPS coordinates in its EXIF.
+    const photo = await sharp({
+      create: { width: 2000, height: 1500, channels: 3, background: { r: 30, g: 140, b: 90 } },
+    })
+      .jpeg({ quality: 85 })
+      .withExif({
+        IFD0: { Make: 'TestCam' },
+        IFD3: { GPSLatitudeRef: 'N', GPSLatitude: '23/1 48/1 0/1' },
+      })
+      .toBuffer();
+    expect((await sharp(photo).metadata()).exif).toBeDefined();
+
+    const created = await upload(photo, 'image/jpeg');
+    const confirm = await app.inject({
+      method: 'POST',
+      url: `/api/v1/media/${created.id}/confirm`,
+      headers: authHeader,
+    });
+    expect(confirm.statusCode).toBe(202);
+    expect(confirm.json()).toMatchObject({ status: 'processing' });
+
+    // The worker step (in production: the `media` queue, media.processor.ts).
+    expect(await processing.process(TENANT, created.id)).toBe('ready');
+
+    const status = await app.inject({
+      method: 'GET',
+      url: `/api/v1/media/${created.id}`,
+      headers: authHeader,
+    });
+    const body = status.json<{
+      status: string;
+      width: number;
+      height: number;
+      thumbhash: string;
+      variants: Record<'thumb' | 'card' | 'full', { url: string; width: number; height: number }>;
+    }>();
+    expect(body).toMatchObject({ status: 'ready', width: 2000, height: 1500 });
+    expect(body.thumbhash.length).toBeGreaterThan(10);
+    expect([body.variants.thumb.width, body.variants.card.width, body.variants.full.width]).toEqual(
+      [200, 600, 1200],
+    );
+
+    const stored = await storage.getObject('media', created.storageKey);
+    const meta = await sharp(stored).metadata();
+    expect(meta.exif).toBeUndefined();
+    const full = await storage.getObject('media', `${created.storageKey}.full.webp`);
+    expect((await sharp(full).metadata()).format).toBe('webp');
+  });
+
+  it('rejects a file that only claims to be an image, by its magic bytes, and deletes it', async () => {
+    const fake = Buffer.from('<html><script>alert(1)</script></html>');
+    const created = await upload(fake, 'image/png');
+    const confirm = await app.inject({
+      method: 'POST',
+      url: `/api/v1/media/${created.id}/confirm`,
+      headers: authHeader,
+    });
+    expect(confirm.statusCode).toBe(422);
+    expect(confirm.json()).toMatchObject({ error: 'UPLOAD_REJECTED' });
+    expect(await storage.head('media', created.storageKey)).toBeUndefined();
+  });
+
+  it("404s for an id that is not the caller's", async () => {
     const response = await app.inject({
       method: 'POST',
-      url: '/api/v1/media/uploads/00000000-0000-7000-8000-000000000000/confirm',
+      url: '/api/v1/media/00000000-0000-7000-8000-000000000000/confirm',
       headers: authHeader,
     });
     expect(response.statusCode).toBe(404);

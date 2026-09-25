@@ -35,6 +35,31 @@ const INFRASTRUCTURE_PATHS: ReadonlyArray<{ prefix: string; reason: string }> = 
       'just has to say the same thing in TypeScript for the drift test.',
   },
   {
+    prefix: 'media/thumbhash.ts',
+    reason:
+      'Port of the published ThumbHash encoder (evanw/thumbhash): DCT sizes, quantisation ' +
+      'scales and header bit layout are the format itself, not tunable business values.',
+  },
+  {
+    prefix: 'search/text/',
+    reason:
+      'Bengali text handling: Unicode code points (U+0980 block, digits, zero-width marks) ' +
+      'and transliteration tables are facts of the script and its encoding, not tunable ' +
+      'business values.',
+  },
+  {
+    prefix: 'locations/geo/',
+    reason:
+      "Geodesy: WGS84 ellipsoid constants and the coefficients of Vincenty's formula are " +
+      'facts of the reference ellipsoid and the method, not tunable business values.',
+  },
+  {
+    prefix: 'locations/geo-import/',
+    reason:
+      'Offline import tooling (`geo:import`, run by an operator or db:seed, never at request ' +
+      'time): batch sizes, ADR 003 simplification tolerances, pcode string offsets.',
+  },
+  {
     prefix: 'database/seed/',
     reason:
       'Dev-only fixture data (db:seed) — row counts, fake price ranges, blood-group indices ' +
