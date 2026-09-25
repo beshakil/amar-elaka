@@ -71,6 +71,8 @@ export const SETTING_DEFINITIONS = {
   place_reverify_after_days: wholeNumber,
   blood_donation_interval_days: wholeNumber,
   agent_cash_max_hold_hours: wholeNumber,
+  // Read by the agent_visits_lock_after_edit_window trigger (0012), not by TS.
+  agent_visit_edit_window_hours: wholeNumber,
 
   // Auth: phone OTP & password policy (Week 2 auth module)
   otp_code_length: wholeNumber,

@@ -155,6 +155,13 @@
       "when": 1790294640367,
       "tag": "0021_location_system",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1790316276940,
+      "tag": "0022_settings_parity",
+      "breakpoints": true
     }
   ]
 }
