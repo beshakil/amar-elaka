@@ -6,7 +6,6 @@ import { sqlStateOf } from '../common/utils/sql-state';
 import {
   RefreshTokenExpiredException,
   RefreshTokenInvalidException,
-  RefreshTokenReusedException,
 } from './exceptions/auth.exceptions';
 import type { DeviceInput } from './dto/device.schema';
 
@@ -84,6 +83,34 @@ export class AuthRepository {
     return row && { userId: row.user_id, blacklistSeverity: row.blacklist_severity };
   }
 
+  /**
+   * Links a Google account to the signed-in user (app.user_id) — a SECURITY
+   * DEFINER write, because RLS gives users no UPDATE on their own row (0025).
+   * False when no live user matched.
+   */
+  async linkGoogle(tx: DatabaseTransaction, googleId: string): Promise<boolean> {
+    const rows = await tx.execute(sql`select public.auth_link_google(${googleId}) as changed`);
+    return z
+      .array(z.object({ changed: z.boolean() }))
+      .length(1)
+      .parse([...rows])[0]!.changed;
+  }
+
+  /** Sets the signed-in user's email + password hash (0025); false when no live user matched. */
+  async setEmailCredential(
+    tx: DatabaseTransaction,
+    email: string,
+    passwordHash: string,
+  ): Promise<boolean> {
+    const rows = await tx.execute(
+      sql`select public.auth_set_email_credential(${email}, ${passwordHash}) as changed`,
+    );
+    return z
+      .array(z.object({ changed: z.boolean() }))
+      .length(1)
+      .parse([...rows])[0]!.changed;
+  }
+
   async getCredentialByEmail(
     tx: DatabaseTransaction,
     email: string,
@@ -136,7 +163,10 @@ export class AuthRepository {
       createdIp: string | undefined;
       userAgent: string | undefined;
     },
-  ): Promise<{ userId: string; memberId: string; roleCode: string; deviceId: string }> {
+  ): Promise<
+    | { kind: 'rotated'; userId: string; memberId: string; roleCode: string; deviceId: string }
+    | { kind: 'reused' }
+  > {
     try {
       const rows = await tx.execute(sql`
         select * from public.auth_rotate_refresh_token(
@@ -144,11 +174,16 @@ export class AuthRepository {
           ${params.tenantId}, ${params.createdIp ?? null}::inet, ${params.userAgent ?? null}
         )
       `);
+      // No row = the old token had already been rotated: the function revoked
+      // the whole family (0024). The caller must let this transaction commit
+      // so the revocation sticks, then reject the request.
       const [row] = z
         .array(ROTATE_ROW)
-        .nonempty()
+        .max(1)
         .parse([...rows]);
+      if (!row) return { kind: 'reused' };
       return {
+        kind: 'rotated',
         userId: row.user_id,
         memberId: row.member_id,
         roleCode: row.role_code,
@@ -157,7 +192,6 @@ export class AuthRepository {
     } catch (error) {
       const sqlState = sqlStateOf(error);
       if (sqlState === 'AE001') throw new RefreshTokenInvalidException();
-      if (sqlState === 'AE002') throw new RefreshTokenReusedException();
       if (sqlState === 'AE003') throw new RefreshTokenExpiredException();
       throw error;
     }

@@ -1,4 +1,4 @@
-import type { Sql } from 'postgres';
+import type { Sql, TransactionSql } from 'postgres';
 import {
   resolveTestAppDatabaseUrl,
   resolveTestDatabaseUrl,
@@ -150,7 +150,7 @@ describe('Auth SECURITY DEFINER functions (0013_auth_credentials.sql)', () => {
         insert into blacklist_entries
           (phone_e164, reason_code, severity_code, status_code, summary, recommended_by_user_id, reviewed_by_user_id, evidence_refs)
         values (
-          ${BLACKLISTED_PHONE}, 'fraud', 'banned', 'active', 'db-spec fixture',
+          ${BLACKLISTED_PHONE}, 'identity_fraud', 'banned', 'active', 'db-spec fixture',
           (select id from users where phone_e164 = ${PHONE}),
           (select id from users where phone_e164 = ${PHONE}),
           '["fixture-evidence"]'::jsonb
@@ -210,16 +210,15 @@ describe('Auth SECURITY DEFINER functions (0013_auth_credentials.sql)', () => {
       );
       expect(rotated?.user_id).toEqual(expect.any(String));
 
-      const error = await callAsAnon(
+      // Reuse returns no row (and no error, which would roll the revocation back;
+      // 0024) — the API turns that into REFRESH_TOKEN_REUSED after committing.
+      const reused = await callAsAnon<FnRow>(
         app,
         `select * from public.auth_rotate_refresh_token(
           '${tokenHash}', 'irrelevant', (now() + interval '60 days')::timestamptz, '${TENANT}', '127.0.0.1'::inet, 'jest'
         )`,
-      ).then(
-        () => undefined,
-        (caught: unknown) => caught as { code?: string },
       );
-      expect(error?.code).toBe('AE002');
+      expect(reused).toHaveLength(0);
 
       // Reuse revokes the WHOLE family — the legitimate new token is dead too.
       const [row] = await admin<{ revoked_at: string | null }[]>`
@@ -290,6 +289,58 @@ describe('Auth SECURITY DEFINER functions (0013_auth_credentials.sql)', () => {
         `select * from public.auth_get_credential_by_email('nobody@example.com')`,
       );
       expect(none).toHaveLength(0);
+    });
+  });
+
+  describe('self credential writes (0025): auth_link_google, auth_set_email_credential', () => {
+    const asUser = <T>(userId: string, work: (tx: TransactionSql) => Promise<T>) =>
+      app.begin(async (tx) => {
+        await tx`select set_config('app.user_id', ${userId}, true)`;
+        await tx`select set_config('app.role', 'member', true)`;
+        return work(tx);
+      }) as Promise<T>;
+    const userId = async () =>
+      (await admin<{ id: string }[]>`select id from users where phone_e164 = ${PHONE}`)[0]!.id;
+
+    it('RLS alone gives a user no UPDATE on their own row — the bug 0025 fixes', async () => {
+      const id = await userId();
+      const result = await asUser(
+        id,
+        (tx) => tx`update users set google_id = 'direct' where id = ${id}`,
+      );
+      expect(result.count).toBe(0);
+    });
+
+    it('links Google and sets an email credential for the signed-in user only', async () => {
+      const id = await userId();
+      const [linked] = await asUser(
+        id,
+        (tx) => tx<{ changed: boolean }[]>`
+        select public.auth_link_google('google-db-spec') as changed`,
+      );
+      expect(linked?.changed).toBe(true);
+      const [credential] = await asUser(
+        id,
+        (tx) => tx<{ changed: boolean }[]>`
+        select public.auth_set_email_credential('DB-Spec2@Example.com', 'hash-x') as changed`,
+      );
+      expect(credential?.changed).toBe(true);
+
+      const [row] = await admin<{ google_id: string; email: string; password_hash: string }[]>`
+        select google_id, email, password_hash from users where id = ${id}`;
+      expect(row).toEqual({
+        google_id: 'google-db-spec',
+        email: 'db-spec2@example.com',
+        password_hash: 'hash-x',
+      });
+    });
+
+    it('changes nothing without a signed-in user', async () => {
+      const [row] = await callAsAnon<FnRow & { changed?: boolean }>(
+        app,
+        `select public.auth_link_google('google-anon') as changed`,
+      );
+      expect(row?.changed).toBe(false);
     });
   });
 });

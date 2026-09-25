@@ -17,7 +17,9 @@ import {
   GoogleAccountAlreadyLinkedException,
   GoogleAccountNotLinkedException,
   InvalidCredentialsException,
+  RefreshTokenReusedException,
   TenantRequiredException,
+  UnauthenticatedException,
   WeakPasswordException,
 } from './exceptions/auth.exceptions';
 import { GoogleTokenVerifierService } from './google/google-token-verifier.service';
@@ -83,10 +85,9 @@ export class AuthService {
     if (currentUserId) {
       await this.tenantDb.transaction(async (tx) => {
         try {
-          await tx
-            .update(users)
-            .set({ googleId: identity.googleId })
-            .where(and(eq(users.id, currentUserId), isNull(users.deletedAt)));
+          if (!(await this.repo.linkGoogle(tx, identity.googleId))) {
+            throw new UnauthenticatedException();
+          }
         } catch (error) {
           if (sqlStateOf(error) === UNIQUE_VIOLATION)
             throw new GoogleAccountAlreadyLinkedException();
@@ -117,10 +118,9 @@ export class AuthService {
     const passwordHash = await this.password.hash(password);
     await this.tenantDb.transaction(async (tx) => {
       try {
-        await tx
-          .update(users)
-          .set({ email: email.toLowerCase(), passwordHash })
-          .where(and(eq(users.id, userId), isNull(users.deletedAt)));
+        if (!(await this.repo.setEmailCredential(tx, email, passwordHash))) {
+          throw new UnauthenticatedException();
+        }
       } catch (error) {
         if (sqlStateOf(error) === UNIQUE_VIOLATION) throw new EmailAlreadyRegisteredException();
         throw error;
@@ -158,23 +158,27 @@ export class AuthService {
     const next = this.tokens.generateOpaqueToken();
     const newExpiresAt = this.tokens.refreshTokenExpiresAt();
 
-    return this.tenantDb.transaction(async (tx) => {
-      const rotated = await this.repo.rotateRefreshToken(tx, {
+    const rotated = await this.tenantDb.transaction((tx) =>
+      this.repo.rotateRefreshToken(tx, {
         oldTokenHash,
         newTokenHash: next.tokenHash,
         newExpiresAt,
         tenantId,
         createdIp: ip,
         userAgent,
-      });
-      const accessToken = await this.tokens.signAccessToken({
-        userId: rotated.userId,
-        tenantId,
-        memberId: rotated.memberId,
-        role: rotated.roleCode as AppRole,
-      });
-      return { accessToken, refreshToken: next.token };
+      }),
+    );
+    // Thrown only after the transaction committed: on reuse the database has
+    // just revoked the whole token family, and throwing inside would undo it.
+    if (rotated.kind === 'reused') throw new RefreshTokenReusedException();
+
+    const accessToken = await this.tokens.signAccessToken({
+      userId: rotated.userId,
+      tenantId,
+      memberId: rotated.memberId,
+      role: rotated.roleCode as AppRole,
     });
+    return { accessToken, refreshToken: next.token };
   }
 
   async logout(refreshToken: string): Promise<void> {
