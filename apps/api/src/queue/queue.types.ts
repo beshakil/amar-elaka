@@ -4,6 +4,8 @@ export const QUEUE_MAINTENANCE = 'maintenance';
 export const QUEUE_MEDIA = 'media';
 /** Search index upkeep (outbox relay, sweeper, settings): one queue, one processor (search/indexing/search.processor.ts). */
 export const QUEUE_SEARCH = 'search';
+/** Post upkeep (the live → expired sweep): one queue, one processor (posts/posts.processor.ts). */
+export const QUEUE_POSTS = 'posts';
 
 /** BullMQ has no built-in dead-letter concept — a job that exhausts its retries is relayed onto `<queue>-dlq` instead (queue/dlq.util.ts). */
 export function deadLetterQueueName(queueName: string): string {
@@ -19,6 +21,7 @@ export const JOB_RELAY_SEARCH_OUTBOX = 'relay-search-outbox';
 export const JOB_SWEEP_SEARCH_INDEX = 'sweep-search-index';
 export const JOB_PURGE_SEARCH_OUTBOX = 'purge-search-outbox';
 export const JOB_APPLY_SEARCH_SETTINGS = 'apply-search-settings';
+export const JOB_EXPIRE_POSTS = 'expire-posts';
 
 export interface SendEmailJob {
   to: string;

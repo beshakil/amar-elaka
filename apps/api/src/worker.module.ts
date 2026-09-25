@@ -7,6 +7,7 @@ import { buildPinoHttpOptions } from './logging/pino-http-options';
 import { MailModule } from './mail/mail.module';
 import { MaintenanceModule } from './maintenance/maintenance.module';
 import { MediaWorkerModule } from './media/media-worker.module';
+import { PostsWorkerModule } from './posts/posts-worker.module';
 import { QueueModule } from './queue/queue.module';
 import { SearchWorkerModule } from './search/indexing/search-worker.module';
 
@@ -31,6 +32,7 @@ import { SearchWorkerModule } from './search/indexing/search-worker.module';
     MailModule,
     MaintenanceModule,
     MediaWorkerModule,
+    PostsWorkerModule,
     SearchWorkerModule,
   ],
 })

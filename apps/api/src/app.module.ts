@@ -17,6 +17,7 @@ import { AuditLogInterceptor } from './rbac/audit-log.interceptor';
 import { RbacModule } from './rbac/rbac.module';
 import { SettingsModule } from './settings/settings.module';
 import { MediaModule } from './media/media.module';
+import { PostsModule } from './posts/posts.module';
 import { LocationsModule } from './locations/locations.module';
 import { SearchModule } from './search/search.module';
 import { TenantsModule } from './tenants/tenants.module';
@@ -38,6 +39,7 @@ import { TenantsModule } from './tenants/tenants.module';
     QueueModule,
     MailModule,
     MediaModule,
+    PostsModule,
     SearchModule,
     LocationsModule,
   ],
