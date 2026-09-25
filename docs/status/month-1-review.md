@@ -2,6 +2,36 @@
 
 Audited 2026-09-25 against the working tree (branch `main`, HEAD `95c59b7`). No code was changed.
 
+## Follow-up (same day, branch `feat/week-4-foundation`)
+
+**Done:**
+
+- Week 4 work committed in six area commits.
+- Email placeholders now interpolate (`{{ body }}` and `{{body}}` both work).
+- `profile_display_name_max_length` is seeded (0022, default 60, bounds 10–200).
+  `agent_visit_edit_window_hours` is registered. A new unit test fails whenever the registry and the seeded rows diverge.
+- `POST /auth/otp/request` returns `resendAfterSeconds`, and the mobile resend timer uses it instead of 30 s.
+- `resolve_owning_tenant()` and `discover_nearby()` added (0023), with `cross-tenant-discovery.db-spec.ts`.
+- Search and suggest always filter by radius. Without a viewer location they centre on the tenant's map centre, and those
+  hits have no distance.
+- CI runs the API e2e suites (Postgres, Redis, Meilisearch, MinIO) and `pnpm format:check`.
+- Web tenant resolution retries once.
+- `schema.md` reconciled with 0013–0023.
+- API unit tests: 485/485 pass.
+
+**Written but not run anywhere yet:** migrations 0022–0023 and their DB tests, the API e2e changes, the new CI job, and
+the mobile/Dart changes. There is no Postgres/docker/Flutter in this environment. The 0023 SQL and plpgsql bodies were
+checked with the real Postgres parser (libpg_query) only. The first CI run (or `test:db` locally) is the real check.
+
+**Still open (needs a decision or later work):**
+
+- Docker in WSL and `TEST_*` URLs in `.env`, so DB, e2e and search tests can run locally.
+- The SMS gateway provider, Google OAuth client IDs, the Android application ID and release signing, and brand colours.
+- `post_max_photos` and client image sizes from settings: do this with the post form. Today these numbers are only used by
+  dev previews.
+- `scrub_post`, `reveal_contact_phone`, `user_is_visible`, `neighbour_landmarks`: build these with posts and moderation.
+- The degraded (Meilisearch-down) search fallback is still current-tenant only.
+
 ## TL;DR
 
 The code that exists is careful and mostly well tested. But the foundation is less verified
