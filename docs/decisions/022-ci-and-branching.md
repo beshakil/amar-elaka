@@ -173,8 +173,8 @@ Postgres and was checked with `actionlint` only.
 ## Update (2026-09-25): API e2e in CI
 
 The `api-e2e` job now runs `apps/api/test/*.e2e-spec.ts` against Postgres, Redis and Meilisearch
-service containers plus a MinIO container started in a step (a service container can't take
-MinIO's `server /data` command). It applies migrations with `resetAndMigrate()` from
+service containers, and real object storage in dedicated `*-ci` buckets from repository secrets
+(ADR 027; the job fails loudly if they are missing, then runs `storage:check`). It applies migrations with `resetAndMigrate()` from
 `test/db/test-database.ts`, and `ci-ok` requires it. `quality` now also runs `pnpm format:check`
 (the pre-Prettier files have since been formatted by lint-staged).
 

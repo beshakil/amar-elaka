@@ -24,7 +24,7 @@ photos per post. The pipeline must:
    hour and per day, bytes per day). The limits come from `platform_settings`; the counts are kept in Redis and rolled
    back when a request is refused. It then records a `pending_upload` row and returns a presigned PUT URL. The signature covers Content-Type
    and Content-Length, so storage refuses a different type or size.
-2. The client PUTs the bytes **straight to storage** (S3/R2/MinIO).
+2. The client PUTs the bytes **straight to storage** (any S3-compatible provider; ADR 027).
 3. `POST /media/:id/confirm` does the following:
    - HEAD the object: it must exist, and its size must equal the declared size.
    - Range-GET only the first 16 bytes and match them against the allowed **magic bytes**: JPEG `FF D8 FF`, the PNG
@@ -88,8 +88,8 @@ the same treatment.
 
 ## Consequences
 
-- **Production R2 needs a CORS rule** allowing `PUT` from the web origins, with the `Content-Type` header. MinIO in
-  development allows everything.
+- **The media bucket needs a CORS rule** allowing `PUT` from the web origins, with the `Content-Type` header (ADR 027
+  has the rule; `storage:check --origin …` verifies it).
 - The avatar upload in the mobile app now calls `/media/presign` and `/media/:id/confirm`. The old `/media` routes are
   gone.
 - Adds `sharp` (API), `flutter_image_compress` and `path_provider` (mobile).

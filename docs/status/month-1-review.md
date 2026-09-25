@@ -14,7 +14,7 @@ Audited 2026-09-25 against the working tree (branch `main`, HEAD `95c59b7`). No 
 - `resolve_owning_tenant()` and `discover_nearby()` added (0023), with `cross-tenant-discovery.db-spec.ts`.
 - Search and suggest always filter by radius. Without a viewer location they centre on the tenant's map centre, and those
   hits have no distance.
-- CI runs the API e2e suites (Postgres, Redis, Meilisearch, MinIO) and `pnpm format:check`.
+- CI runs the API e2e suites (Postgres, Redis, Meilisearch, real object storage) and `pnpm format:check`.
 - Web tenant resolution retries once.
 - `schema.md` reconciled with 0013–0023.
 - API unit tests: 485/485 pass.

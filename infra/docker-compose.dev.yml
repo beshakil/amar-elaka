@@ -70,45 +70,12 @@ services:
     environment:
       ADMINER_DEFAULT_SERVER: postgres
 
-  minio:
-    image: minio/minio:latest
-    container_name: ae-minio
-    restart: unless-stopped
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: ae_dev_minio
-      MINIO_ROOT_PASSWORD: ae_dev_minio_secret_change_me
-    ports:
-      - '9000:9000'
-      - '9001:9001'
-    volumes:
-      - miniodata:/data
-    healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # One-shot: creates the media/documents buckets (see StorageService,
-  # apps/api/src/storage) so they exist on first `make up`, and makes the
-  # media bucket anonymously readable — it serves public post photos/avatars,
-  # unlike the private documents bucket used for verification papers.
-  minio-init:
-    image: minio/mc:latest
-    container_name: ae-minio-init
-    depends_on:
-      minio:
-        condition: service_healthy
-    entrypoint: >
-      sh -c "
-        mc alias set local http://minio:9000 ae_dev_minio ae_dev_minio_secret_change_me &&
-        mc mb --ignore-existing local/amar-elaka-media-dev &&
-        mc mb --ignore-existing local/amar-elaka-documents-dev &&
-        mc anonymous set download local/amar-elaka-media-dev
-      "
+  # No local object storage: MinIO's images are gone from Docker Hub, and dev
+  # talks to real Contabo Object Storage in its own *-dev buckets (ADR 027).
+  # Configure S3_* / STORAGE_PUBLIC_URL in .env, then run
+  # `pnpm --filter @amar-elaka/api storage:check`.
 
 volumes:
   pgdata:
   redisdata:
   meilidata:
-  miniodata:

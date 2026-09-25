@@ -12,8 +12,8 @@ import { STORAGE_SERVICE, type StorageService } from '../src/storage/storage.por
 import { resolveTestDatabaseUrl, testSqlClient } from './db/test-database';
 
 /**
- * The media pipeline end to end on real Postgres + Redis + MinIO (`make up`):
- * presign, PUT real bytes straight to MinIO (never through the API), confirm,
+ * The media pipeline end to end on real Postgres + Redis + object storage (ADR 027):
+ * presign, PUT real bytes straight to storage (never through the API), confirm,
  * then the worker step: metadata stripped (a JPEG with GPS EXIF comes back
  * without it), thumb/card/full WebP variants in storage, a ThumbHash, `ready`.
  * Also: wrong type or size never gets a URL, and a file that only *claims* to
