@@ -55,8 +55,10 @@ export const mediaAssets = pgTable('media_assets', {
   durationMs: integer('duration_ms'),
   checksumSha256: text('checksum_sha256').notNull(),
   blurhash: text('blurhash'),
+  // ThumbHash placeholder (base64), written by the media worker (0019).
+  thumbhash: text('thumbhash'),
   variants: jsonb('variants')
-    .$type<Record<string, string>>()
+    .$type<Record<string, unknown>>()
     .notNull()
     .default(sql`'{}'::jsonb`),
   statusCode: text('status_code')

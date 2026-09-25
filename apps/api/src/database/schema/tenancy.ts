@@ -45,6 +45,9 @@ export const tenants = pgTable('tenants', {
   defaultLocale: text('default_locale').notNull().default('bn'),
   timezone: text('timezone').notNull().default('Asia/Dhaka'),
   mapCenter: geographyPoint('map_center').notNull(),
+  /** 'polygon' (geo area boundary) or 'radius' (map_center + service_radius_km), 0021. */
+  boundaryMode: text('boundary_mode').notNull().default('polygon'),
+  serviceRadiusKm: numeric('service_radius_km', { precision: 6, scale: 2 }),
   launchedAt: timestamptz('launched_at'),
   pastDueSince: timestamptz('past_due_since'),
   suspendedAt: timestamptz('suspended_at'),

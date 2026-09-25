@@ -120,6 +120,41 @@
       "when": 1790160308289,
       "tag": "0016_media_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1790265863083,
+      "tag": "0017_category_engine",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1790267668341,
+      "tag": "0018_category_versioning",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1790276530032,
+      "tag": "0019_media_pipeline",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1790282322333,
+      "tag": "0020_search_infrastructure",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1790294640367,
+      "tag": "0021_location_system",
+      "breakpoints": true
     }
   ]
 }

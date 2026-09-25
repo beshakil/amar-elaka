@@ -8,9 +8,11 @@
  *   ├─ Dhaka Division ─ Dhaka District ─ Mirpur Thana ─ Mirpur-10, Mirpur-11
  *   └─ Mymensingh Division ─ Mymensingh District ─ Trishal Upazila ─ Trishal Sadar, Amirabari
  *
- * Coordinates are real-ish (approximately correct location and extent) —
- * simple bounding-box rectangles, not authoritative GADM/HDX boundaries
- * (§13.27 notes real boundary data as a later import job).
+ * Real areas (with a pcode) are loaded from the HDX COD-AB reference by the
+ * geo import (Trishal with its real boundary, from the pilot fixture); their
+ * bbox here only says where seed content goes. Mirpur is a metro thana, which
+ * COD-AB doesn't have: it's a dev scaffold under Dhaka North City
+ * Corporation, and the Mirpur tenant uses a centre + radius boundary.
  */
 
 export interface GeoAreaDef {
@@ -21,13 +23,20 @@ export interface GeoAreaDef {
   nameEn: string;
   nameBn?: string;
   bbsCode: string | null;
-  /** [minLon, minLat, maxLon, maxLat] */
+  /** [minLon, minLat, maxLon, maxLat] — where seed content is placed. */
   bbox: [number, number, number, number];
+  /**
+   * COD-AB pcode when the area is real: its row comes from the reference
+   * import (infra/geo/reference, ADR 026). Without one, the area is a dev
+   * scaffold for something the open data lacks (metro thanas, city wards).
+   */
+  pcode?: string;
 }
 
 export const GEO_AREAS: GeoAreaDef[] = [
   {
     slug: 'bangladesh',
+    pcode: 'BD',
     parentSlug: null,
     admLevel: 0,
     levelCode: 'country',
@@ -40,6 +49,7 @@ export const GEO_AREAS: GeoAreaDef[] = [
   // ---- Mirpur branch (urban) ----------------------------------------------
   {
     slug: 'dhaka-division',
+    pcode: 'BD30',
     parentSlug: 'bangladesh',
     admLevel: 1,
     levelCode: 'division',
@@ -50,6 +60,7 @@ export const GEO_AREAS: GeoAreaDef[] = [
   },
   {
     slug: 'dhaka-district',
+    pcode: 'BD3026',
     parentSlug: 'dhaka-division',
     admLevel: 2,
     levelCode: 'district',
@@ -59,8 +70,19 @@ export const GEO_AREAS: GeoAreaDef[] = [
     bbox: [90.25, 23.6, 90.55, 24.05],
   },
   {
-    slug: 'mirpur-thana',
+    slug: 'dhaka-north-cc',
+    pcode: 'BD30262500',
     parentSlug: 'dhaka-district',
+    admLevel: 3,
+    levelCode: 'city_corporation',
+    nameEn: 'Dhaka North City Corporation',
+    nameBn: 'ঢাকা উত্তর সিটি কর্পোরেশন',
+    bbsCode: null,
+    bbox: [90.33, 23.74, 90.47, 23.9],
+  },
+  {
+    slug: 'mirpur-thana',
+    parentSlug: 'dhaka-north-cc',
     admLevel: 3,
     levelCode: 'metro_thana',
     nameEn: 'Mirpur Thana',
@@ -92,6 +114,7 @@ export const GEO_AREAS: GeoAreaDef[] = [
   // ---- Trishal branch (rural) -----------------------------------------------
   {
     slug: 'mymensingh-division',
+    pcode: 'BD45',
     parentSlug: 'bangladesh',
     admLevel: 1,
     levelCode: 'division',
@@ -102,6 +125,7 @@ export const GEO_AREAS: GeoAreaDef[] = [
   },
   {
     slug: 'mymensingh-district',
+    pcode: 'BD4561',
     parentSlug: 'mymensingh-division',
     admLevel: 2,
     levelCode: 'district',
@@ -112,6 +136,7 @@ export const GEO_AREAS: GeoAreaDef[] = [
   },
   {
     slug: 'trishal-upazila',
+    pcode: 'BD45610094',
     parentSlug: 'mymensingh-district',
     admLevel: 3,
     levelCode: 'upazila',
@@ -122,6 +147,7 @@ export const GEO_AREAS: GeoAreaDef[] = [
   },
   {
     slug: 'trishal-sadar',
+    pcode: 'BD45619485',
     parentSlug: 'trishal-upazila',
     admLevel: 4,
     levelCode: 'union',
@@ -132,6 +158,7 @@ export const GEO_AREAS: GeoAreaDef[] = [
   },
   {
     slug: 'amirabari',
+    pcode: 'BD45619413',
     parentSlug: 'trishal-upazila',
     admLevel: 4,
     levelCode: 'union',
@@ -145,21 +172,6 @@ export const GEO_AREAS: GeoAreaDef[] = [
 export function centroidOf(bbox: [number, number, number, number]): [number, number] {
   const [minLon, minLat, maxLon, maxLat] = bbox;
   return [(minLon + maxLon) / 2, (minLat + maxLat) / 2];
-}
-
-/** WKT MultiPolygon for a rectangular boundary from a bbox (matches geo_areas.boundary's type). */
-export function bboxMultiPolygonWkt(bbox: [number, number, number, number]): string {
-  const [minLon, minLat, maxLon, maxLat] = bbox;
-  const ring = [
-    [minLon, minLat],
-    [maxLon, minLat],
-    [maxLon, maxLat],
-    [minLon, maxLat],
-    [minLon, minLat],
-  ]
-    .map(([lon, lat]) => `${lon} ${lat}`)
-    .join(', ');
-  return `MULTIPOLYGON(((${ring})))`;
 }
 
 /** A random point inside a bbox (posts/places/stores coordinates). */

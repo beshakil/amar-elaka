@@ -17,7 +17,14 @@ import {
   softDeleteColumns,
   timestamptz,
 } from './columns';
-import { categoryKinds, geoAreaLevels, moderationModes, schemaStatuses } from './enums';
+import {
+  categoryKinds,
+  categoryModules,
+  geoAreaLevels,
+  moderationModes,
+  monetizationModes,
+  schemaStatuses,
+} from './enums';
 import { users } from './identity';
 import { tenants } from './tenancy';
 
@@ -37,6 +44,8 @@ export const geoAreas = pgTable('geo_areas', {
     .references(() => geoAreaLevels.code, { onDelete: 'restrict' }),
   bbsCodeGeocode11: text('bbs_code_geocode11'),
   bbsCodeGeocode15: text('bbs_code_geocode15'),
+  /** HDX COD-AB pcode (BD, BD30, BD3026, BD30260014 …), the import key (0021). */
+  codPcode: text('cod_pcode'),
   nameEn: text('name_en').notNull(),
   nameBn: text('name_bn'),
   // Materialised path, root first. Maintained by trigger.
@@ -100,6 +109,16 @@ export const categories = pgTable('categories', {
     { onDelete: 'restrict' },
   ),
   isActive: boolean('is_active').notNull().default(true),
+  // Set exactly when kindCode = 'module' (0017, CHECK).
+  moduleCode: text('module_code').references(() => categoryModules.code, {
+    onDelete: 'restrict',
+  }),
+  // NULL = the post_expiry_days_default setting. Always NULL for place/module.
+  defaultPostExpiryDays: integer('default_post_expiry_days'),
+  monetizationModeCode: text('monetization_mode_code')
+    .notNull()
+    .default('free')
+    .references(() => monetizationModes.code, { onDelete: 'restrict' }),
   ...softDeleteColumns(),
 });
 
@@ -123,6 +142,15 @@ export const categoryFieldSchemas = pgTable('category_field_schemas', {
     .array()
     .notNull()
     .default(sql`'{}'::text[]`),
+  searchableFields: text('searchable_fields')
+    .array()
+    .notNull()
+    .default(sql`'{}'::text[]`),
+  // What the admin wrote, before parent fields are merged in (0018).
+  authoredDefinition: jsonb('authored_definition')
+    .$type<Record<string, unknown>>()
+    .notNull()
+    .default(sql`'{}'::jsonb`),
   statusCode: text('status_code')
     .notNull()
     .default('draft')
@@ -149,5 +177,7 @@ export const tenantCategories = pgTable('tenant_categories', {
   moderationModeCode: text('moderation_mode_code').references(() => moderationModes.code, {
     onDelete: 'restrict',
   }),
+  // NULL = categories.default_post_expiry_days.
+  postExpiryDays: integer('post_expiry_days'),
   ...auditColumns(),
 });

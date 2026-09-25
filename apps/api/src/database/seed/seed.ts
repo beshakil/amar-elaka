@@ -1,19 +1,30 @@
 import postgres, { type TransactionSql } from 'postgres';
 import { loadDotenv } from '../../config/load-dotenv';
-import { CATEGORIES, toJsonSchema } from './data/categories';
+import {
+  importBoundaries,
+  importReference,
+  PILOT_BOUNDARIES_PATH,
+  readBoundaries,
+  readReference,
+  reparentPointsByContainment,
+} from '../../locations/geo-import/geo-import';
+import {
+  checkPublishable,
+  compileFieldsValidator,
+  validationContextAt,
+  type FieldSchema,
+  type FieldValues,
+} from '../../categories/field-schema';
+import { CATEGORIES, type CategoryDef } from './data/categories';
+import { authoredDefinitionOf, definitionOf } from './data/category-dsl';
+import { sampleFields } from './data/category-samples';
 import {
   BAZAR_COMMODITIES,
   COMMUNITY_MEMBER_NAMES,
   NAMED_USERS,
   TENANT_SLUGS,
 } from './data/fixtures';
-import {
-  bboxMultiPolygonWkt,
-  centroidOf,
-  GEO_AREAS,
-  randomPointIn,
-  type GeoAreaDef,
-} from './data/geo';
+import { centroidOf, GEO_AREAS, randomPointIn, type GeoAreaDef } from './data/geo';
 import { intBetween, pick, rngFor, seedId } from './ids';
 
 /**
@@ -89,17 +100,29 @@ async function seedPartner(tx: TransactionSql): Promise<string> {
 // ---------------------------------------------------------------------------
 
 async function seedGeoAreas(tx: TransactionSql): Promise<Map<string, string>> {
-  const idBySlug = new Map<string, string>();
-  for (const area of GEO_AREAS) idBySlug.set(area.slug, seedId(`geo-area:${area.slug}`));
+  // The real hierarchy (all of Bangladesh, by pcode) plus the pilot district's
+  // boundaries — the same code path as `geo:import` (ADR 026).
+  const idByPcode = await importReference(tx, readReference());
+  const boundaries = await importBoundaries(tx, readBoundaries(PILOT_BOUNDARIES_PATH));
+  await reparentPointsByContainment(tx);
+  console.log(`geo_areas: ${idByPcode.size} from the COD-AB reference, ${boundaries} boundaries`);
 
-  // Inserted one admin level at a time (country, then division, ...) so the
-  // ancestor_ids-maintaining trigger always sees an already-committed
-  // parent row, regardless of intra-statement visibility.
-  const levels = [...new Set(GEO_AREAS.map((a) => a.admLevel))].sort((a, b) => a - b);
-  let count = 0;
-  for (const level of levels) {
-    const batch = GEO_AREAS.filter((a) => a.admLevel === level);
-    const rows = batch.map((area) => rowFor(area, idBySlug));
+  const idBySlug = new Map<string, string>();
+  for (const area of GEO_AREAS) {
+    idBySlug.set(
+      area.slug,
+      area.pcode ? idByPcode.get(area.pcode)! : seedId(`geo-area:${area.slug}`),
+    );
+  }
+
+  // Dev scaffolds for what the open data lacks (the Mirpur metro thana and its
+  // wards): no polygon — Mirpur's tenant is centre + radius — and marked
+  // verified so a tenant may use the thana.
+  const scaffolds = GEO_AREAS.filter((a) => a.pcode === undefined);
+  for (const level of [...new Set(scaffolds.map((a) => a.admLevel))].sort((a, b) => a - b)) {
+    const rows = scaffolds
+      .filter((a) => a.admLevel === level)
+      .map((area) => scaffoldRow(area, idBySlug));
     await tx`
       insert into geo_areas ${tx(
         rows,
@@ -111,17 +134,17 @@ async function seedGeoAreas(tx: TransactionSql): Promise<Map<string, string>> {
         'name_en',
         'name_bn',
         'centroid',
-        'boundary',
+        'needs_manual_review',
+        'manually_verified_at',
         'source_release',
       )}
       on conflict (id) do nothing`;
-    count += rows.length;
   }
-  console.log(`geo_areas: ${count}`);
+  console.log(`geo_areas: ${scaffolds.length} dev scaffolds`);
   return idBySlug;
 }
 
-function rowFor(area: GeoAreaDef, idBySlug: Map<string, string>) {
+function scaffoldRow(area: GeoAreaDef, idBySlug: Map<string, string>): Record<string, unknown> {
   const [lon, lat] = centroidOf(area.bbox);
   return {
     id: idBySlug.get(area.slug),
@@ -132,14 +155,17 @@ function rowFor(area: GeoAreaDef, idBySlug: Map<string, string>) {
     name_en: area.nameEn,
     name_bn: area.nameBn ?? null,
     centroid: `SRID=4326;POINT(${lon} ${lat})`,
-    boundary: `SRID=4326;${bboxMultiPolygonWkt(area.bbox)}`,
-    source_release: 'seed-v1',
+    needs_manual_review: true,
+    manually_verified_at: new Date(),
+    source_release: 'dev-scaffold',
   };
 }
 
 // ---------------------------------------------------------------------------
 // Tenants
 // ---------------------------------------------------------------------------
+
+const MIRPUR_SERVICE_RADIUS_KM = 4;
 
 async function seedTenants(
   tx: TransactionSql,
@@ -156,12 +182,16 @@ async function seedTenants(
   const mirpurGeoAreaId = geoAreaIdBySlug.get('mirpur-thana')!;
   const trishalGeoAreaId = geoAreaIdBySlug.get('trishal-upazila')!;
   await tx`
-    insert into tenants (id, partner_id, geo_area_id, slug, name_bn, name_en, status_code, map_center, launched_at)
+    insert into tenants
+      (id, partner_id, geo_area_id, slug, name_bn, name_en, status_code, map_center, launched_at,
+       boundary_mode, service_radius_km)
     values
+      -- A metro thana has no polygon in the open data: centre + radius (ADR 026).
       (${mirpurId}, ${partnerId}, ${mirpurGeoAreaId}, ${TENANT_SLUGS.mirpur}, 'মিরপুর', 'Mirpur',
-        'active', ${`SRID=4326;POINT(${mirpurLon} ${mirpurLat})`}, now()),
+        'active', ${`SRID=4326;POINT(${mirpurLon} ${mirpurLat})`}, now(), 'radius', ${MIRPUR_SERVICE_RADIUS_KM}),
+      -- A real upazila: its COD-AB boundary.
       (${trishalId}, ${partnerId}, ${trishalGeoAreaId}, ${TENANT_SLUGS.trishal}, 'ত্রিশাল', 'Trishal',
-        'active', ${`SRID=4326;POINT(${trishalLon} ${trishalLat})`}, now())
+        'active', ${`SRID=4326;POINT(${trishalLon} ${trishalLat})`}, now(), 'polygon', null)
     on conflict (id) do nothing`;
 
   console.log('tenants: 2');
@@ -278,52 +308,42 @@ async function seedCategories(
   const idBySlug = new Map<string, string>();
   for (const c of CATEGORIES) idBySlug.set(c.slug, seedId(`category:${c.slug}`));
 
-  const categoryRows = CATEGORIES.map((c, i) => ({
-    id: idBySlug.get(c.slug),
-    kind_code: c.kind,
-    slug: c.slug,
-    name_bn: c.nameBn,
-    name_en: c.nameEn,
-    default_sort_order: (i + 1) * 10,
-    default_post_cost_credits: c.costCredits,
-    default_moderation_mode_code: c.moderationMode,
-  }));
-  await tx`
-    insert into categories
-      ${tx(categoryRows, 'id', 'kind_code', 'slug', 'name_bn', 'name_en', 'default_sort_order', 'default_post_cost_credits', 'default_moderation_mode_code')}
-    on conflict (id) do nothing`;
+  // One row at a time, in array order: a child's parent must exist first
+  // (categories_validate_parent() sets depth from it).
+  for (const [i, c] of CATEGORIES.entries()) {
+    await tx`
+      insert into categories
+        (id, parent_id, kind_code, module_code, slug, name_bn, name_en, icon_key, default_sort_order,
+         default_post_cost_credits, default_moderation_mode_code, default_post_expiry_days,
+         monetization_mode_code, is_active)
+      values
+        (${idBySlug.get(c.slug)!}, ${c.parent ? idBySlug.get(c.parent)! : null}, ${c.kind},
+         ${c.moduleCode ?? null}, ${c.slug}, ${c.nameBn}, ${c.nameEn}, ${c.icon}, ${(i + 1) * 10},
+         ${c.costCredits}, ${c.moderationMode}, ${c.expiryDays}, ${c.monetizationMode},
+         ${c.phase1})
+      on conflict (id) do nothing`;
+  }
 
-  const schemaRows = CATEGORIES.map((c) => ({
-    id: seedId(`category-field-schema:${c.slug}:1`),
-    category_id: idBySlug.get(c.slug),
-    version: 1,
-    json_schema: JSON.stringify(toJsonSchema(c)),
-    filterable_fields: c.filterableFields,
-    analytics_fields: c.analyticsFields,
-    status_code: 'published',
-    published_by_user_id: platformAdminUserId,
-  }));
-  await tx`
-    insert into category_field_schemas
-      (id, category_id, version, json_schema, filterable_fields, analytics_fields, status_code, published_at, published_by_user_id)
-    values ${tx(
-      schemaRows.map((r) => [
-        r.id,
-        r.category_id,
-        r.version,
-        // JSON.parse's result is always valid JSON, but its type is too generic
-        // (`any`) for postgres.js's recursive JSONValue to structurally verify.
-        tx.json(JSON.parse(r.json_schema) as never),
-        r.filterable_fields,
-        r.analytics_fields,
-        r.status_code,
-        tx`now()`,
-        r.published_by_user_id,
-      ]) as never,
-    )}
-    on conflict (id) do nothing`;
+  // Module tiles have no custom-field schema (0017 rejects one).
+  const withSchema = CATEGORIES.filter((c) => c.kind !== 'module');
+  for (const c of withSchema) {
+    const definition = definitionOf(c, CATEGORIES);
+    // Same checks a platform admin's publish goes through; throws on any violation.
+    const { jsonSchema, uiSchema } = checkPublishable(definition);
+    // What an admin would have authored: own fields only (re-flattened when a parent publishes).
+    await tx`
+      insert into category_field_schemas
+        (id, category_id, version, json_schema, ui_schema, filterable_fields, searchable_fields,
+         analytics_fields, authored_definition, status_code, published_at, published_by_user_id)
+      values
+        (${fieldSchemaId(c.slug)}, ${idBySlug.get(c.slug)!}, 1,
+         ${tx.json(jsonSchema as never)}, ${tx.json(uiSchema as never)},
+         ${definition.filterableFields}, ${definition.searchableFields}, ${definition.analyticsFields},
+         ${tx.json(authoredDefinitionOf(c) as never)}, 'published', now(), ${platformAdminUserId})
+      on conflict (id) do nothing`;
+  }
 
-  console.log(`categories: ${categoryRows.length}, category_field_schemas: ${schemaRows.length}`);
+  console.log(`categories: ${CATEGORIES.length}, category_field_schemas: ${withSchema.length}`);
   return idBySlug;
 }
 
@@ -332,8 +352,11 @@ function fieldSchemaId(slug: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// Tenant categories (enable every category for both tenants)
+// Tenant categories (enable the active, phase-1 categories for both tenants)
 // ---------------------------------------------------------------------------
+
+/** Provisioning inserts tenant_categories rows only for active categories (categories.md §2). */
+const ACTIVE_CATEGORIES = CATEGORIES.filter((c) => c.phase1);
 
 async function seedTenantCategories(
   tx: TransactionSql,
@@ -343,7 +366,7 @@ async function seedTenantCategories(
   const rows: Record<string, unknown>[] = [];
   for (const [tenantSlug, tenantId] of tenantIds) {
     let sortOrder = 0;
-    for (const c of CATEGORIES) {
+    for (const c of ACTIVE_CATEGORIES) {
       sortOrder += 10;
       rows.push({
         id: seedId(`tenant-category:${tenantSlug}:${c.slug}`),
@@ -356,6 +379,14 @@ async function seedTenantCategories(
   }
   await tx`insert into tenant_categories ${tx(rows, 'id', 'tenant_id', 'category_id', 'is_enabled', 'sort_order')} on conflict (id) do nothing`;
   console.log(`tenant_categories: ${rows.length}`);
+}
+
+/** Valid sample `fields` for a category, checked by the same validator the API uses. */
+function buildFields(category: CategoryDef, label: string, rand: () => number): FieldValues {
+  const schema: FieldSchema = definitionOf(category, CATEGORIES).jsonSchema;
+  const context = validationContextAt(new Date(), 'Asia/Dhaka');
+  const fields = sampleFields(schema, context, rand, label);
+  return compileFieldsValidator(schema, context).parse(fields);
 }
 
 // ---------------------------------------------------------------------------
@@ -478,7 +509,9 @@ async function seedPosts(
   categoryIds: Map<string, string>,
   geoAreaIdBySlug: Map<string, string>,
 ): Promise<void> {
-  const postableCategories = CATEGORIES.filter((c) => c.kind !== 'place');
+  const postableCategories = ACTIVE_CATEGORIES.filter(
+    (c) => c.kind !== 'place' && c.kind !== 'module',
+  );
   const POST_COUNT = 30;
   const rows: unknown[][] = [];
 
@@ -542,33 +575,24 @@ async function seedPosts(
 }
 
 function buildPostContent(
-  category: (typeof CATEGORIES)[number],
+  category: CategoryDef,
   index: number,
   rand: () => number,
 ): {
   title: string;
-  fields: Record<string, string | number | boolean | string[]>;
+  fields: FieldValues;
   priceTypeCode: string;
 } {
-  const fields: Record<string, string | number | boolean | string[]> = {};
-  for (const [name, def] of Object.entries(category.fields)) {
-    if (def.type === 'boolean') {
-      fields[name] = rand() > 0.5;
-    } else if (def.type === 'integer') {
-      fields[name] = name === 'year' ? intBetween(2005, 2024, rand) : intBetween(1, 20, rand);
-    } else if (def.type === 'number') {
-      fields[name] = name === 'price' ? intBetween(500, 500000, rand) : intBetween(1, 5000, rand);
-    } else if (def.enum) {
-      fields[name] = pick(def.enum, rand);
-    } else if (def.type === 'array') {
-      fields[name] = [];
-    } else {
-      fields[name] = `${category.nameEn} ${name} ${index}`;
-    }
-  }
   const title = `${category.nameEn} #${index + 1}`;
+  const fields = buildFields(category, title, rand);
   const priceTypeCode =
-    category.kind === 'job' ? 'on_request' : rand() > 0.7 ? 'negotiable' : 'fixed';
+    fields.price === undefined
+      ? 'on_request'
+      : category.slug === 'to-let'
+        ? 'per_month'
+        : rand() > 0.7
+          ? 'negotiable'
+          : 'fixed';
   return { title, fields, priceTypeCode };
 }
 
@@ -583,7 +607,7 @@ async function seedPlaces(
   categoryIds: Map<string, string>,
   geoAreaIdBySlug: Map<string, string>,
 ): Promise<void> {
-  const placeCategories = CATEGORIES.filter((c) => c.kind === 'place');
+  const placeCategories = ACTIVE_CATEGORIES.filter((c) => c.kind === 'place');
   const PLACE_COUNT = 20;
   const rows: unknown[][] = [];
 
@@ -604,12 +628,7 @@ async function seedPlaces(
     const name = `${category.nameEn} ${i + 1}`;
     const slug = `${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
     const createdBy = isMirpur ? memberIds.mirpur.tenantAdmin : memberIds.trishal.seller;
-    const fields: Record<string, string | number | boolean | string[]> = {};
-    for (const [fname, def] of Object.entries(category.fields)) {
-      if (def.type === 'boolean') fields[fname] = rand() > 0.5;
-      else if (def.enum) fields[fname] = pick(def.enum, rand);
-      else if (def.type === 'array') fields[fname] = [];
-    }
+    const fields = buildFields(category, name, rand);
 
     rows.push([
       seedId(`place:${slug}-${i}`),

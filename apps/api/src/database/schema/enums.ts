@@ -29,6 +29,12 @@ export const geoAreaLevels = pgTable('geo_area_levels', enumTableColumns());
 export const categoryKinds = pgTable('category_kinds', enumTableColumns());
 export const schemaStatuses = pgTable('schema_statuses', enumTableColumns());
 
+// Enum table added by migration 0017 (docs/specs/categories.md C2).
+export const categoryModules = pgTable('category_modules', enumTableColumns());
+
+// Enum table added by migration 0018.
+export const monetizationModes = pgTable('monetization_modes', enumTableColumns());
+
 // Enum tables added by migration 0005 (§12).
 export const mediaKinds = pgTable('media_kinds', enumTableColumns());
 export const mediaVisibilities = pgTable('media_visibilities', enumTableColumns());

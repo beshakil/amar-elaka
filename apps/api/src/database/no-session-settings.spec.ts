@@ -24,7 +24,12 @@ const WRAPPER_FILE = 'database/tenant-db.ts';
  * there's no shared pool for a session-level app.* setting to leak across,
  * which is the only risk this test guards against.
  */
-const EXEMPT_DIR_PREFIXES = ['database/seed/'];
+const EXEMPT_DIR_PREFIXES = [
+  'database/seed/',
+  // `geo:import` — the same kind of standalone script (also run by db:seed and
+  // the DB tests), not imported by any API module.
+  'locations/geo-import/',
+];
 
 interface Violation {
   file: string;
