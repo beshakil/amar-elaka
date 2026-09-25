@@ -24,8 +24,8 @@
     "@amar-elaka/config": "workspace:*",
     "husky": "^9.1.7",
     "lint-staged": "^15.2.10",
-    "prettier": "^3.3.3",
-    "turbo": "^2.3.3"
+    "prettier": "^3.9.8",
+    "turbo": "^2.11.2"
   },
   "lint-staged": {
     "*": "prettier --write --ignore-unknown"
