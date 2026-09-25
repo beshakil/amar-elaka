@@ -10,7 +10,11 @@ import {
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { APP_CONFIG } from '../config/config.module';
 import type { Env } from '../config/env.schema';
-import { StorageMisconfiguredException, StorageUnavailableException } from './storage.exceptions';
+import {
+  PrivateBucketException,
+  StorageMisconfiguredException,
+  StorageUnavailableException,
+} from './storage.exceptions';
 import type {
   PresignedUpload,
   StorageBucket,
@@ -46,6 +50,7 @@ type StorageEnv = Pick<
   | 'S3_ACCESS_KEY_ID'
   | 'S3_SECRET_ACCESS_KEY'
   | 'S3_FORCE_PATH_STYLE'
+  | 'STORAGE_PUBLIC_URL'
 >;
 
 function required(value: string | undefined, key: string): string {
@@ -54,32 +59,30 @@ function required(value: string | undefined, key: string): string {
 }
 
 /**
- * Same code path against MinIO (dev) and R2/S3 (prod) — only S3_ENDPOINT and
- * credentials differ. env.schema.ts's superRefine already requires every
- * S3_* field below whenever STORAGE_DRIVER=s3; `required()` is a defensive
- * typed-error boundary, not the primary validation.
- *
- * LocalStorageService (STORAGE_DRIVER=local) is out of scope for this task —
- * nothing in the codebase currently reads STORAGE_LOCAL_PATH/STORAGE_PUBLIC_URL.
+ * One code path for every S3-compatible provider (ADR 027): Contabo Object
+ * Storage now, Backblaze B2 later — only the S3_* settings and
+ * STORAGE_PUBLIC_URL differ. The database stores object keys, never URLs, so
+ * switching provider is a copy of the objects plus an env change.
+ * env.schema.ts's superRefine already requires every S3_* field below
+ * whenever STORAGE_DRIVER=s3; `required()` is a defensive typed-error
+ * boundary, not the primary validation.
  */
 @Injectable()
 export class S3StorageService implements StorageService {
   private readonly client: S3Client;
   private readonly buckets: Record<StorageBucket, string>;
-  private readonly endpoint: string;
-  private readonly forcePathStyle: boolean;
+  private readonly publicBaseUrl: string;
 
   constructor(@Inject(APP_CONFIG) env: StorageEnv) {
-    this.endpoint = required(env.S3_ENDPOINT, 'S3_ENDPOINT');
-    this.forcePathStyle = env.S3_FORCE_PATH_STYLE;
+    this.publicBaseUrl = required(env.STORAGE_PUBLIC_URL, 'STORAGE_PUBLIC_URL').replace(/\/+$/, '');
     this.buckets = {
       media: required(env.S3_BUCKET_MEDIA, 'S3_BUCKET_MEDIA'),
       documents: required(env.S3_BUCKET_DOCUMENTS, 'S3_BUCKET_DOCUMENTS'),
     };
     this.client = new S3Client({
-      endpoint: this.endpoint,
+      endpoint: required(env.S3_ENDPOINT, 'S3_ENDPOINT'),
       region: required(env.S3_REGION, 'S3_REGION'),
-      forcePathStyle: this.forcePathStyle,
+      forcePathStyle: env.S3_FORCE_PATH_STYLE,
       // Timeouts and retries on every call (the SDK retries with backoff).
       maxAttempts: S3_MAX_ATTEMPTS,
       requestHandler: {
@@ -198,12 +201,15 @@ export class S3StorageService implements StorageService {
     }
   }
 
+  /**
+   * STORAGE_PUBLIC_URL is the public address of the media bucket, whatever
+   * the provider calls it: Contabo's public-sharing link
+   * (https://<region>.contabostorage.com/<account-hash>:<bucket>), B2's
+   * https://fNNN.backblazeb2.com/file/<bucket>, or a CDN in front of either.
+   * The documents bucket is private and has no public URL at all.
+   */
   getPublicUrl(bucket: StorageBucket, key: string): string {
-    const bucketName = this.buckets[bucket];
-    if (this.forcePathStyle) {
-      return `${this.endpoint}/${bucketName}/${key}`;
-    }
-    const endpointUrl = new URL(this.endpoint);
-    return `${endpointUrl.protocol}//${bucketName}.${endpointUrl.host}/${key}`;
+    if (bucket !== 'media') throw new PrivateBucketException(bucket);
+    return `${this.publicBaseUrl}/${key}`;
   }
 }

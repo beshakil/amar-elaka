@@ -14,7 +14,7 @@ jest.mock('@aws-sdk/s3-request-presigner', () => ({
 }));
 
 import { S3StorageService } from './s3-storage.service';
-import { StorageMisconfiguredException } from './storage.exceptions';
+import { PrivateBucketException, StorageMisconfiguredException } from './storage.exceptions';
 
 const BASE_ENV = {
   STORAGE_DRIVER: 's3' as const,
@@ -25,6 +25,8 @@ const BASE_ENV = {
   S3_ACCESS_KEY_ID: 'key',
   S3_SECRET_ACCESS_KEY: 'secret',
   S3_FORCE_PATH_STYLE: true,
+  // Contabo's public-sharing link shape: region host, then <account-hash>:<bucket>.
+  STORAGE_PUBLIC_URL: 'https://eu2.contabostorage.com/abc123:media-bucket/',
 };
 
 describe('S3StorageService', () => {
@@ -45,17 +47,24 @@ describe('S3StorageService', () => {
     });
   });
 
-  it('builds a path-style public URL', () => {
-    const service = new S3StorageService(BASE_ENV);
-    expect(service.getPublicUrl('media', 'tenant/image/id')).toBe(
-      'http://localhost:9000/media-bucket/tenant/image/id',
+  it('builds public media URLs from STORAGE_PUBLIC_URL, whatever the provider', () => {
+    const contabo = new S3StorageService(BASE_ENV);
+    expect(contabo.getPublicUrl('media', 'tenant/image/id.webp')).toBe(
+      'https://eu2.contabostorage.com/abc123:media-bucket/tenant/image/id.webp',
+    );
+    const b2 = new S3StorageService({
+      ...BASE_ENV,
+      STORAGE_PUBLIC_URL: 'https://f003.backblazeb2.com/file/media-bucket',
+    });
+    expect(b2.getPublicUrl('media', 'tenant/image/id.webp')).toBe(
+      'https://f003.backblazeb2.com/file/media-bucket/tenant/image/id.webp',
     );
   });
 
-  it('builds a virtual-hosted-style URL when path-style is disabled', () => {
-    const service = new S3StorageService({ ...BASE_ENV, S3_FORCE_PATH_STYLE: false });
-    expect(service.getPublicUrl('documents', 'tenant/doc/id')).toBe(
-      'http://docs-bucket.localhost:9000/tenant/doc/id',
+  it('never builds a public URL for the private documents bucket', () => {
+    const service = new S3StorageService(BASE_ENV);
+    expect(() => service.getPublicUrl('documents', 'tenant/doc/id')).toThrow(
+      PrivateBucketException,
     );
   });
 

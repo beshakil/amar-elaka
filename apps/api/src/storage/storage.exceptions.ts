@@ -10,6 +10,16 @@ export class StorageMisconfiguredException extends DomainException {
   }
 }
 
+/** A caller asked for a public URL of an object in the private documents bucket. */
+export class PrivateBucketException extends DomainException {
+  readonly code = 'STORAGE_PRIVATE_BUCKET';
+  readonly httpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
+
+  constructor(bucket: string) {
+    super(`The ${bucket} bucket is private; its objects have no public URL.`);
+  }
+}
+
 export class UnsupportedContentTypeException extends DomainException {
   readonly code = 'UNSUPPORTED_CONTENT_TYPE';
   readonly httpStatus = HttpStatus.BAD_REQUEST;
