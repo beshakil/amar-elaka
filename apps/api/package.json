@@ -39,7 +39,7 @@
     "@nestjs/jwt": "^10.2.0",
     "@nestjs/platform-fastify": "^10.4.15",
     "@nestjs/swagger": "^8.1.0",
-    "@nestjs/terminus": "^10.2.3",
+    "@nestjs/terminus": "^12.1.0",
     "argon2": "^0.45.1",
     "bullmq": "^6.3.8",
     "drizzle-orm": "^0.45.2",
