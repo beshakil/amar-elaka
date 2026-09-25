@@ -70,10 +70,9 @@ services:
     environment:
       ADMINER_DEFAULT_SERVER: postgres
 
-  # No local object storage: MinIO's images are gone from Docker Hub, and dev
-  # talks to real Contabo Object Storage in its own *-dev buckets (ADR 027).
-  # Configure S3_* / STORAGE_PUBLIC_URL in .env, then run
-  # `pnpm --filter @amar-elaka/api storage:check`.
+  # No object-storage container: dev uses STORAGE_DRIVER=local (ADR 028) —
+  # uploads land in apps/api/storage/uploads and the API serves them at
+  # /media. Check with `pnpm --filter @amar-elaka/api storage:check`.
 
 volumes:
   pgdata:

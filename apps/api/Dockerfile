@@ -37,8 +37,16 @@ COPY --from=builder --chown=nestjs:nodejs /app/apps/api/package.json ./apps/api/
 COPY --from=builder --chown=nestjs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nestjs:nodejs /app/apps/api/node_modules ./apps/api/node_modules
 
+# STORAGE_DRIVER=local (ADR 028) keeps uploads here. Mount a persistent
+# volume at /app/storage (Coolify: Persistent Storage) and mount the SAME
+# volume into the worker container (same image, CMD node apps/api/dist/worker.js):
+# the API writes originals, the worker reads them and writes the variants.
+# Without a volume, every redeploy would delete every uploaded photo.
+RUN mkdir -p /app/storage && chown nestjs:nodejs /app/storage
+
 USER nestjs
 ENV NODE_ENV=production
+ENV STORAGE_LOCAL_PATH=/app/storage
 EXPOSE 3000
 
 ENTRYPOINT ["dumb-init", "--"]

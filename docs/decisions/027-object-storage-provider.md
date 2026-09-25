@@ -1,6 +1,7 @@
 # ADR 027 — Object storage: Contabo Object Storage now, Backblaze B2 later
 
-**Status:** Accepted (2026-09-25). Supersedes the "MinIO local, R2 prod" line in CLAUDE.md and ADR 024.
+**Status:** Accepted (2026-09-25), **amended by ADR 028**: launch runs on the local driver (a Coolify volume on the VPS);
+this ADR is the plan for when media moves to object storage. Supersedes the "MinIO local, R2 prod" line in ADR 024.
 
 ## Context
 

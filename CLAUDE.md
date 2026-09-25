@@ -12,7 +12,8 @@ thana/upazila, operated by a local partner. Built as SaaS from day one.
 - DB: PostgreSQL 16 + PostGIS, Drizzle ORM, raw SQL migrations
 - Cache/Queue: Redis + BullMQ
 - Search: Meilisearch
-- Storage: S3-compatible — Contabo Object Storage now, Backblaze B2 later (ADR 027); no local MinIO
+- Storage: one StorageService, two drivers — `local` (disk; dev + launch on a Coolify volume, ADR 028) and `s3`
+  (Contabo Object Storage / Backblaze B2 later, ADR 027)
 - Web: Next.js 15 App Router (apps/web = public, apps/admin = dashboards)
 - Mobile: Flutter (Riverpod + go_router + Drift)
 - Deploy: Docker + Coolify on Contabo VPS
