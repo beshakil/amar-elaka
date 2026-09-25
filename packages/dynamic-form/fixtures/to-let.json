@@ -1,0 +1,398 @@
+{
+  "slug": "to-let",
+  "name": {
+    "bn": "টু-লেট / বাসা ভাড়া",
+    "en": "To-Let / House Rent"
+  },
+  "fieldSchema": {
+    "jsonSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "property_type": {
+          "x-field-type": "select",
+          "type": "string",
+          "enum": [
+            "flat",
+            "house",
+            "sublet",
+            "room",
+            "mess_seat",
+            "shop",
+            "office",
+            "garage",
+            "warehouse"
+          ]
+        },
+        "tenant_type": {
+          "x-field-type": "select",
+          "type": "string",
+          "enum": [
+            "family",
+            "bachelor_male",
+            "bachelor_female",
+            "any"
+          ],
+          "x-show-when": {
+            "field": "property_type",
+            "in": [
+              "flat",
+              "house",
+              "sublet",
+              "room",
+              "mess_seat"
+            ]
+          }
+        },
+        "bedrooms": {
+          "x-field-type": "number",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20,
+          "x-show-when": {
+            "field": "property_type",
+            "in": [
+              "flat",
+              "house",
+              "sublet"
+            ]
+          }
+        },
+        "bathrooms": {
+          "x-field-type": "number",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20
+        },
+        "balconies": {
+          "x-field-type": "number",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "floor": {
+          "x-field-type": "number",
+          "type": "integer",
+          "minimum": -2,
+          "maximum": 100
+        },
+        "total_floors": {
+          "x-field-type": "number",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "x-gte-field": "floor"
+        },
+        "area": {
+          "x-field-type": "number",
+          "type": "number",
+          "minimum": 50,
+          "maximum": 100000
+        },
+        "price": {
+          "x-field-type": "money",
+          "type": "string",
+          "x-money-min": "100.00",
+          "x-money-max": "10000000.00"
+        },
+        "advance_months": {
+          "x-field-type": "number",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 12
+        },
+        "advance_amount": {
+          "x-field-type": "money",
+          "type": "string",
+          "x-money-min": "0.00",
+          "x-money-max": "100000000.00"
+        },
+        "service_charge": {
+          "x-field-type": "money",
+          "type": "string",
+          "x-money-min": "0.00",
+          "x-money-max": "1000000.00"
+        },
+        "utility_bills_included": {
+          "x-field-type": "bool",
+          "type": "boolean"
+        },
+        "available_from": {
+          "x-field-type": "date",
+          "type": "string",
+          "format": "date",
+          "x-not-before-today": true
+        },
+        "furnishing": {
+          "x-field-type": "select",
+          "type": "string",
+          "enum": [
+            "unfurnished",
+            "semi_furnished",
+            "furnished"
+          ]
+        },
+        "gas_supply": {
+          "x-field-type": "select",
+          "type": "string",
+          "enum": [
+            "pipeline",
+            "cylinder",
+            "none"
+          ]
+        },
+        "water_24h": {
+          "x-field-type": "bool",
+          "type": "boolean"
+        },
+        "has_lift": {
+          "x-field-type": "bool",
+          "type": "boolean"
+        },
+        "has_generator": {
+          "x-field-type": "bool",
+          "type": "boolean"
+        },
+        "has_parking": {
+          "x-field-type": "bool",
+          "type": "boolean"
+        },
+        "has_security": {
+          "x-field-type": "bool",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "property_type",
+        "tenant_type",
+        "bedrooms",
+        "price",
+        "available_from"
+      ]
+    },
+    "uiSchema": {
+      "order": [
+        "property_type",
+        "tenant_type",
+        "bedrooms",
+        "bathrooms",
+        "balconies",
+        "floor",
+        "total_floors",
+        "area",
+        "price",
+        "advance_months",
+        "advance_amount",
+        "service_charge",
+        "utility_bills_included",
+        "available_from",
+        "furnishing",
+        "gas_supply",
+        "water_24h",
+        "has_lift",
+        "has_generator",
+        "has_parking",
+        "has_security"
+      ],
+      "card": [
+        "bedrooms",
+        "tenant_type",
+        "available_from"
+      ],
+      "labels": {
+        "property_type": {
+          "bn": "ধরন",
+          "en": "Property type"
+        },
+        "tenant_type": {
+          "bn": "কাদের জন্য",
+          "en": "Suitable for"
+        },
+        "bedrooms": {
+          "bn": "শোবার ঘর",
+          "en": "Bedrooms"
+        },
+        "bathrooms": {
+          "bn": "বাথরুম",
+          "en": "Bathrooms"
+        },
+        "balconies": {
+          "bn": "বারান্দা",
+          "en": "Balconies"
+        },
+        "floor": {
+          "bn": "তলা",
+          "en": "Floor"
+        },
+        "total_floors": {
+          "bn": "ভবনের মোট তলা",
+          "en": "Total floors"
+        },
+        "area": {
+          "bn": "আয়তন (বর্গফুট)",
+          "en": "Size (sq ft)"
+        },
+        "price": {
+          "bn": "মাসিক ভাড়া",
+          "en": "Monthly rent"
+        },
+        "advance_months": {
+          "bn": "অগ্রিম (মাস)",
+          "en": "Advance (months)"
+        },
+        "advance_amount": {
+          "bn": "অগ্রিম (টাকা)",
+          "en": "Advance amount"
+        },
+        "service_charge": {
+          "bn": "সার্ভিস চার্জ (মাসিক)",
+          "en": "Service charge (monthly)"
+        },
+        "utility_bills_included": {
+          "bn": "বিল ভাড়ার মধ্যে",
+          "en": "Utility bills included"
+        },
+        "available_from": {
+          "bn": "কবে থেকে",
+          "en": "Available from"
+        },
+        "furnishing": {
+          "bn": "আসবাব",
+          "en": "Furnishing"
+        },
+        "gas_supply": {
+          "bn": "গ্যাস",
+          "en": "Gas"
+        },
+        "water_24h": {
+          "bn": "২৪ ঘণ্টা পানি",
+          "en": "24-hour water"
+        },
+        "has_lift": {
+          "bn": "লিফট",
+          "en": "Lift"
+        },
+        "has_generator": {
+          "bn": "জেনারেটর ব্যাকআপ",
+          "en": "Generator backup"
+        },
+        "has_parking": {
+          "bn": "পার্কিং",
+          "en": "Parking"
+        },
+        "has_security": {
+          "bn": "দারোয়ান/সিসিটিভি",
+          "en": "Guard or CCTV"
+        }
+      },
+      "options": {
+        "property_type": {
+          "flat": {
+            "bn": "ফ্ল্যাট",
+            "en": "Flat"
+          },
+          "house": {
+            "bn": "পুরো বাড়ি",
+            "en": "Whole house"
+          },
+          "sublet": {
+            "bn": "সাবলেট",
+            "en": "Sublet"
+          },
+          "room": {
+            "bn": "রুম",
+            "en": "Room"
+          },
+          "mess_seat": {
+            "bn": "মেস সিট",
+            "en": "Mess seat"
+          },
+          "shop": {
+            "bn": "দোকান",
+            "en": "Shop"
+          },
+          "office": {
+            "bn": "অফিস",
+            "en": "Office"
+          },
+          "garage": {
+            "bn": "গ্যারেজ",
+            "en": "Garage"
+          },
+          "warehouse": {
+            "bn": "গুদাম",
+            "en": "Warehouse"
+          }
+        },
+        "tenant_type": {
+          "family": {
+            "bn": "পরিবার",
+            "en": "Family"
+          },
+          "bachelor_male": {
+            "bn": "ব্যাচেলর (ছেলে)",
+            "en": "Bachelor (male)"
+          },
+          "bachelor_female": {
+            "bn": "ব্যাচেলর (মেয়ে)",
+            "en": "Bachelor (female)"
+          },
+          "any": {
+            "bn": "যে কেউ",
+            "en": "Anyone"
+          }
+        },
+        "furnishing": {
+          "unfurnished": {
+            "bn": "আসবাব ছাড়া",
+            "en": "Unfurnished"
+          },
+          "semi_furnished": {
+            "bn": "আংশিক",
+            "en": "Semi-furnished"
+          },
+          "furnished": {
+            "bn": "আসবাবসহ",
+            "en": "Furnished"
+          }
+        },
+        "gas_supply": {
+          "pipeline": {
+            "bn": "লাইনের গ্যাস",
+            "en": "Pipeline gas"
+          },
+          "cylinder": {
+            "bn": "সিলিন্ডার",
+            "en": "Cylinder"
+          },
+          "none": {
+            "bn": "নেই",
+            "en": "None"
+          }
+        }
+      }
+    },
+    "filterableFields": [
+      "property_type",
+      "tenant_type",
+      "bedrooms",
+      "bathrooms",
+      "floor",
+      "area",
+      "price",
+      "advance_months",
+      "utility_bills_included",
+      "available_from",
+      "furnishing",
+      "gas_supply",
+      "water_24h",
+      "has_lift",
+      "has_generator",
+      "has_parking",
+      "has_security"
+    ],
+    "searchableFields": [
+      "property_type"
+    ]
+  }
+}

@@ -8,6 +8,8 @@ const nextConfig: NextConfig = {
   // Deployed as a container image (Coolify/Docker), not on a serverless platform.
   output: 'standalone',
   typedRoutes: true,
+  // Workspace package shipped as TypeScript source (packages/dynamic-form).
+  transpilePackages: ['@amar-elaka/dynamic-form'],
   // Dashboards are behind a login and must never be indexed.
   headers: () =>
     Promise.resolve([

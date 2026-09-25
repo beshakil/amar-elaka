@@ -1,0 +1,58 @@
+{
+  "dynamicForm": {
+    "errors": {
+      "required": "Please fill this in.",
+      "requiredChoice": "Please choose one.",
+      "requiredDate": "Please choose a date.",
+      "invalid": "Please enter a valid value.",
+      "invalidNumber": "Enter a valid number.",
+      "invalidInteger": "Enter a whole number, without decimals.",
+      "invalidMoney": "Enter a valid amount, like 15,000.",
+      "invalidDate": "Enter a valid date.",
+      "invalidPhone": "Enter a valid mobile number, like 01711000000.",
+      "invalidUrl": "Enter a link starting with https://.",
+      "invalidFormat": "Enter it in the correct format.",
+      "tooLong": "Use at most {max} characters.",
+      "rangeBetween": "Must be between {min} and {max}.",
+      "rangeMin": "Must be at least {min}.",
+      "rangeMax": "Can't be more than {max}.",
+      "rangeAbove": "Must be more than {min}.",
+      "notAnOption": "Choose from the list.",
+      "duplicateOption": "The same option can't be chosen twice.",
+      "beforeToday": "Choose today or a later date.",
+      "lessThanField": "Can't be less than {other}.",
+      "notApplicable": "This doesn't apply here.",
+      "notInSchema": "This isn't a field of this category.",
+      "minAboveMax": "The minimum can't be more than the maximum."
+    },
+    "ui": {
+      "choose": "Choose",
+      "yes": "Yes",
+      "no": "No",
+      "required": "required",
+      "optional": "optional",
+      "submit": "Submit",
+      "errorSummary": "{count, plural, one {# field needs fixing.} other {# fields need fixing.}}",
+      "characterCount": "{count}/{max}",
+      "phoneHint": "e.g. 01711000000",
+      "moneyHint": "Bengali or English digits are fine",
+      "min": "Min",
+      "max": "Max",
+      "rangeLabel": "{label}: {bound}",
+      "clearFilters": "Clear all filters",
+      "applyFilters": "Show results",
+      "activeFilters": "{count, plural, =0 {No filters} one {# filter on} other {# filters on}}",
+      "noFilterableFields": "Nothing to filter by in this category."
+    },
+    "preview": {
+      "title": "Dynamic form preview",
+      "description": "The form and filters generated from a category's field schema. Below: exactly what would be sent to the API on submit or when filters change.",
+      "categories": "Categories",
+      "form": "{name}: post form",
+      "filters": "Filters",
+      "submitted": "What goes to the API (fields)",
+      "apiFilters": "API filters and URL",
+      "nothingYet": "Nothing yet."
+    }
+  }
+}

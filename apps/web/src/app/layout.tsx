@@ -9,10 +9,12 @@ import { readThemePreference } from '@/lib/theme';
 import { currentOrigin, tenantConfigForChrome } from '@/lib/tenant';
 import './globals.css';
 
-// The only namespaces a client component here reads (theme-toggle, error). The
+// The only namespaces a client component here reads (theme-toggle, error, the
+// shared category form/filter renderer in packages/dynamic-form, and the photo
+// uploader). The
 // provider serializes what it is given into every page's payload, so passing
 // the whole catalog would ship all of the site's copy on every request.
-const CLIENT_NAMESPACES = ['theme', 'error'];
+const CLIENT_NAMESPACES = ['theme', 'error', 'dynamicForm', 'mediaUploader'];
 
 export async function generateMetadata(): Promise<Metadata> {
   const [tenant, origin, t] = await Promise.all([

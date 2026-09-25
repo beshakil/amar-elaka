@@ -1,0 +1,41 @@
+{
+  "name": "@amar-elaka/dynamic-form",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./react": "./src/react/index.ts",
+    "./messages/bn.json": "./messages/bn.json",
+    "./messages/en.json": "./messages/en.json",
+    "./fixtures/*": "./fixtures/*"
+  },
+  "scripts": {
+    "lint": "eslint \"src/**/*.{ts,tsx}\"",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^5.9.1",
+    "clsx": "^2.1.1",
+    "react-hook-form": "^7.88.0",
+    "tailwind-merge": "^3.7.0",
+    "zod": "^3.23.8"
+  },
+  "peerDependencies": {
+    "next-intl": "^4.14.6",
+    "react": "^19.3.0"
+  },
+  "devDependencies": {
+    "@amar-elaka/config": "workspace:*",
+    "@types/node": "^22.10.2",
+    "@types/react": "^19.3.0",
+    "eslint": "^9.17.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "next-intl": "^4.14.6",
+    "react": "^19.3.0",
+    "typescript": "^5.7.2",
+    "vitest": "^4.1.11"
+  }
+}

@@ -16,6 +16,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@amar-elaka/dynamic-form": "workspace:*",
     "@amar-elaka/shared-types": "workspace:*",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

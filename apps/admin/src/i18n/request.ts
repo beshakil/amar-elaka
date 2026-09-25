@@ -9,5 +9,9 @@ export const defaultLocale = 'bn';
 
 export default getRequestConfig(async () => ({
   locale: defaultLocale,
-  messages: (await import('../messages/bn.json')).default,
+  messages: {
+    ...(await import('../messages/bn.json')).default,
+    // `dynamicForm.*`: the shared category form/filter renderer's own strings.
+    ...(await import('@amar-elaka/dynamic-form/messages/bn.json')).default,
+  },
 }));

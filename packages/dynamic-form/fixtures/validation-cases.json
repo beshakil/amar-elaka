@@ -1,0 +1,487 @@
+{
+  "context": {
+    "today": "2026-09-24",
+    "currentYear": 2026
+  },
+  "cases": [
+    {
+      "category": "to-let",
+      "name": "a complete flat listing",
+      "values": {
+        "property_type": "flat",
+        "tenant_type": "family",
+        "bedrooms": 3,
+        "bathrooms": 2,
+        "floor": 4,
+        "total_floors": 6,
+        "area": 1250,
+        "price": "15000.00",
+        "advance_months": 2,
+        "available_from": "2026-10-01",
+        "gas_supply": "pipeline",
+        "has_lift": true
+      },
+      "issues": []
+    },
+    {
+      "category": "to-let",
+      "name": "nothing filled in",
+      "values": {},
+      "issues": [
+        {
+          "field": "available_from",
+          "code": "field.required"
+        },
+        {
+          "field": "price",
+          "code": "field.required"
+        },
+        {
+          "field": "property_type",
+          "code": "field.required"
+        }
+      ]
+    },
+    {
+      "category": "to-let",
+      "name": "a flat without its conditional required fields",
+      "values": {
+        "property_type": "flat",
+        "price": "9000.00",
+        "available_from": "2026-09-24"
+      },
+      "issues": [
+        {
+          "field": "bedrooms",
+          "code": "field.required"
+        },
+        {
+          "field": "tenant_type",
+          "code": "field.required"
+        }
+      ]
+    },
+    {
+      "category": "to-let",
+      "name": "a shop needs no bedrooms, and must not send them",
+      "values": {
+        "property_type": "shop",
+        "price": "9000.00",
+        "available_from": "2026-09-30",
+        "bedrooms": 1
+      },
+      "issues": [
+        {
+          "field": "bedrooms",
+          "code": "field.not_applicable"
+        }
+      ]
+    },
+    {
+      "category": "to-let",
+      "name": "wrong types",
+      "values": {
+        "property_type": "flat",
+        "tenant_type": "family",
+        "bedrooms": "two",
+        "bathrooms": 2,
+        "floor": 4,
+        "total_floors": 6,
+        "area": 1250,
+        "price": 15000,
+        "advance_months": 1.5,
+        "available_from": "2026-10-01",
+        "gas_supply": "pipeline",
+        "has_lift": "yes"
+      },
+      "issues": [
+        {
+          "field": "advance_months",
+          "code": "field.invalid"
+        },
+        {
+          "field": "bedrooms",
+          "code": "field.invalid"
+        },
+        {
+          "field": "has_lift",
+          "code": "field.invalid"
+        },
+        {
+          "field": "price",
+          "code": "field.invalid"
+        }
+      ]
+    },
+    {
+      "category": "to-let",
+      "name": "out of range",
+      "values": {
+        "property_type": "flat",
+        "tenant_type": "family",
+        "bedrooms": 21,
+        "bathrooms": 2,
+        "floor": -3,
+        "total_floors": 6,
+        "area": 100001,
+        "price": "99.99",
+        "advance_months": 2,
+        "available_from": "2026-10-01",
+        "gas_supply": "pipeline",
+        "has_lift": true
+      },
+      "issues": [
+        {
+          "field": "area",
+          "code": "field.out_of_range"
+        },
+        {
+          "field": "bedrooms",
+          "code": "field.out_of_range"
+        },
+        {
+          "field": "floor",
+          "code": "field.out_of_range"
+        },
+        {
+          "field": "price",
+          "code": "field.out_of_range"
+        }
+      ]
+    },
+    {
+      "category": "to-let",
+      "name": "not an option, and an unknown key",
+      "values": {
+        "property_type": "flat",
+        "tenant_type": "family",
+        "bedrooms": 3,
+        "bathrooms": 2,
+        "floor": 4,
+        "total_floors": 6,
+        "area": 1250,
+        "price": "15000.00",
+        "advance_months": 2,
+        "available_from": "2026-10-01",
+        "gas_supply": "solar",
+        "has_lift": true,
+        "furnishing": "luxury",
+        "gym": true
+      },
+      "issues": [
+        {
+          "field": "furnishing",
+          "code": "field.not_an_option"
+        },
+        {
+          "field": "gas_supply",
+          "code": "field.not_an_option"
+        },
+        {
+          "field": "gym",
+          "code": "field.not_in_schema"
+        }
+      ]
+    },
+    {
+      "category": "to-let",
+      "name": "a date in the past",
+      "values": {
+        "property_type": "flat",
+        "tenant_type": "family",
+        "bedrooms": 3,
+        "bathrooms": 2,
+        "floor": 4,
+        "total_floors": 6,
+        "area": 1250,
+        "price": "15000.00",
+        "advance_months": 2,
+        "available_from": "2026-09-23",
+        "gas_supply": "pipeline",
+        "has_lift": true
+      },
+      "issues": [
+        {
+          "field": "available_from",
+          "code": "field.before_today"
+        }
+      ]
+    },
+    {
+      "category": "to-let",
+      "name": "an impossible calendar day",
+      "values": {
+        "property_type": "flat",
+        "tenant_type": "family",
+        "bedrooms": 3,
+        "bathrooms": 2,
+        "floor": 4,
+        "total_floors": 6,
+        "area": 1250,
+        "price": "15000.00",
+        "advance_months": 2,
+        "available_from": "2026-02-30",
+        "gas_supply": "pipeline",
+        "has_lift": true
+      },
+      "issues": [
+        {
+          "field": "available_from",
+          "code": "field.invalid"
+        }
+      ]
+    },
+    {
+      "category": "to-let",
+      "name": "total floors below the floor",
+      "values": {
+        "property_type": "flat",
+        "tenant_type": "family",
+        "bedrooms": 3,
+        "bathrooms": 2,
+        "floor": 7,
+        "total_floors": 6,
+        "area": 1250,
+        "price": "15000.00",
+        "advance_months": 2,
+        "available_from": "2026-10-01",
+        "gas_supply": "pipeline",
+        "has_lift": true
+      },
+      "issues": [
+        {
+          "field": "total_floors",
+          "code": "field.less_than_field"
+        }
+      ]
+    },
+    {
+      "category": "to-let",
+      "name": "malformed amounts",
+      "values": {
+        "property_type": "flat",
+        "tenant_type": "family",
+        "bedrooms": 3,
+        "bathrooms": 2,
+        "floor": 4,
+        "total_floors": 6,
+        "area": 1250,
+        "price": "15,000",
+        "advance_months": 2,
+        "available_from": "2026-10-01",
+        "gas_supply": "pipeline",
+        "has_lift": true,
+        "advance_amount": "1e5",
+        "service_charge": "500.5"
+      },
+      "issues": [
+        {
+          "field": "advance_amount",
+          "code": "field.invalid"
+        },
+        {
+          "field": "price",
+          "code": "field.invalid"
+        },
+        {
+          "field": "service_charge",
+          "code": "field.invalid"
+        }
+      ]
+    },
+    {
+      "category": "rent-a-car",
+      "name": "a complete microbus listing",
+      "values": {
+        "vehicle_type": "microbus",
+        "seats": 11,
+        "ac": true,
+        "driver_option": "with_driver",
+        "price": "6500.00",
+        "rate_per_hour": "800.00",
+        "driver_allowance_included": false,
+        "trip_types": [
+          "local",
+          "airport"
+        ],
+        "model_year": 2019
+      },
+      "issues": []
+    },
+    {
+      "category": "rent-a-car",
+      "name": "nothing filled in",
+      "values": {},
+      "issues": [
+        {
+          "field": "ac",
+          "code": "field.required"
+        },
+        {
+          "field": "driver_option",
+          "code": "field.required"
+        },
+        {
+          "field": "price",
+          "code": "field.required"
+        },
+        {
+          "field": "seats",
+          "code": "field.required"
+        },
+        {
+          "field": "vehicle_type",
+          "code": "field.required"
+        }
+      ]
+    },
+    {
+      "category": "rent-a-car",
+      "name": "self-drive hides the driver allowance",
+      "values": {
+        "vehicle_type": "microbus",
+        "seats": 11,
+        "ac": true,
+        "driver_option": "self_drive",
+        "price": "6500.00",
+        "rate_per_hour": "800.00",
+        "driver_allowance_included": true,
+        "trip_types": [
+          "local",
+          "airport"
+        ],
+        "model_year": 2019
+      },
+      "issues": [
+        {
+          "field": "driver_allowance_included",
+          "code": "field.not_applicable"
+        }
+      ]
+    },
+    {
+      "category": "rent-a-car",
+      "name": "model year beyond next year, and too few seats",
+      "values": {
+        "vehicle_type": "microbus",
+        "seats": 0,
+        "ac": true,
+        "driver_option": "with_driver",
+        "price": "6500.00",
+        "rate_per_hour": "800.00",
+        "driver_allowance_included": false,
+        "trip_types": [
+          "local",
+          "airport"
+        ],
+        "model_year": 2028
+      },
+      "issues": [
+        {
+          "field": "model_year",
+          "code": "field.out_of_range"
+        },
+        {
+          "field": "seats",
+          "code": "field.out_of_range"
+        }
+      ]
+    },
+    {
+      "category": "rent-a-car",
+      "name": "multiselect: duplicate and unknown options",
+      "values": {
+        "vehicle_type": "microbus",
+        "seats": 11,
+        "ac": true,
+        "driver_option": "with_driver",
+        "price": "6500.00",
+        "rate_per_hour": "800.00",
+        "driver_allowance_included": false,
+        "trip_types": [
+          "local",
+          "local"
+        ],
+        "model_year": 2019
+      },
+      "issues": [
+        {
+          "field": "trip_types",
+          "code": "field.duplicate_option"
+        }
+      ]
+    },
+    {
+      "category": "rent-a-car",
+      "name": "multiselect: unknown option",
+      "values": {
+        "vehicle_type": "microbus",
+        "seats": 11,
+        "ac": true,
+        "driver_option": "with_driver",
+        "price": "6500.00",
+        "rate_per_hour": "800.00",
+        "driver_allowance_included": false,
+        "trip_types": [
+          "moon"
+        ],
+        "model_year": 2019
+      },
+      "issues": [
+        {
+          "field": "trip_types.0",
+          "code": "field.not_an_option"
+        }
+      ]
+    },
+    {
+      "category": "rent-a-car",
+      "name": "hourly rate below its minimum",
+      "values": {
+        "vehicle_type": "microbus",
+        "seats": 11,
+        "ac": true,
+        "driver_option": "with_driver",
+        "price": "6500.00",
+        "rate_per_hour": "5.00",
+        "driver_allowance_included": false,
+        "trip_types": [
+          "local",
+          "airport"
+        ],
+        "model_year": 2019
+      },
+      "issues": [
+        {
+          "field": "rate_per_hour",
+          "code": "field.out_of_range"
+        }
+      ]
+    },
+    {
+      "category": "rent-a-car",
+      "name": "text too long",
+      "values": {
+        "vehicle_type": "microbus",
+        "seats": 11,
+        "ac": true,
+        "driver_option": "with_driver",
+        "price": "6500.00",
+        "rate_per_hour": "800.00",
+        "driver_allowance_included": false,
+        "trip_types": [
+          "local",
+          "airport"
+        ],
+        "model_year": 2019,
+        "brand": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      },
+      "issues": [
+        {
+          "field": "brand",
+          "code": "field.too_long"
+        }
+      ]
+    }
+  ]
+}

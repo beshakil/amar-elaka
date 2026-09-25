@@ -1,0 +1,58 @@
+{
+  "dynamicForm": {
+    "errors": {
+      "required": "এই ঘরটি পূরণ করুন।",
+      "requiredChoice": "একটি বেছে নিন।",
+      "requiredDate": "একটি তারিখ বেছে নিন।",
+      "invalid": "সঠিক তথ্য দিন।",
+      "invalidNumber": "সঠিক সংখ্যা লিখুন।",
+      "invalidInteger": "দশমিক ছাড়া পূর্ণ সংখ্যা লিখুন।",
+      "invalidMoney": "সঠিক টাকার অঙ্ক লিখুন, যেমন ১৫,০০০।",
+      "invalidDate": "সঠিক তারিখ দিন।",
+      "invalidPhone": "সঠিক মোবাইল নম্বর দিন, যেমন ০১৭১১০০০০০০।",
+      "invalidUrl": "https:// দিয়ে শুরু হওয়া লিংক দিন।",
+      "invalidFormat": "সঠিক ফরম্যাটে লিখুন।",
+      "tooLong": "সর্বোচ্চ {max}টি অক্ষর লেখা যাবে।",
+      "rangeBetween": "{min} থেকে {max}-এর মধ্যে হতে হবে।",
+      "rangeMin": "কমপক্ষে {min} হতে হবে।",
+      "rangeMax": "{max}-এর বেশি হতে পারবে না।",
+      "rangeAbove": "{min}-এর বেশি হতে হবে।",
+      "notAnOption": "তালিকা থেকে বেছে নিন।",
+      "duplicateOption": "একই অপশন দুবার বেছে নেওয়া যাবে না।",
+      "beforeToday": "আজ বা এর পরের কোনো তারিখ দিন।",
+      "lessThanField": "{other}-এর চেয়ে কম হতে পারবে না।",
+      "notApplicable": "এই তথ্যটি এখানে প্রযোজ্য নয়।",
+      "notInSchema": "এই তথ্যটি এই ক্যাটাগরিতে নেই।",
+      "minAboveMax": "সর্বনিম্ন মান সর্বোচ্চের চেয়ে বেশি হতে পারবে না।"
+    },
+    "ui": {
+      "choose": "বেছে নিন",
+      "yes": "হ্যাঁ",
+      "no": "না",
+      "required": "আবশ্যক",
+      "optional": "ঐচ্ছিক",
+      "submit": "জমা দিন",
+      "errorSummary": "{count, plural, other {#টি ঘর ঠিক করতে হবে।}}",
+      "characterCount": "{count}/{max}",
+      "phoneHint": "যেমন ০১৭১১০০০০০০",
+      "moneyHint": "ইংরেজি বা বাংলা অঙ্কে লিখতে পারেন",
+      "min": "সর্বনিম্ন",
+      "max": "সর্বোচ্চ",
+      "rangeLabel": "{label}: {bound}",
+      "clearFilters": "সব ফিল্টার মুছুন",
+      "applyFilters": "ফলাফল দেখুন",
+      "activeFilters": "{count, plural, =0 {কোনো ফিল্টার নেই} other {#টি ফিল্টার চালু}}",
+      "noFilterableFields": "এই ক্যাটাগরিতে ফিল্টার করার মতো কিছু নেই।"
+    },
+    "preview": {
+      "title": "ডায়নামিক ফর্ম প্রিভিউ",
+      "description": "ক্যাটাগরির ফিল্ড স্কিমা থেকে তৈরি ফর্ম ও ফিল্টার। জমা দিলে বা ফিল্টার বদলালে API-তে ঠিক কী যাবে, তা নিচে দেখা যাবে।",
+      "categories": "ক্যাটাগরি",
+      "form": "{name}: পোস্টের ফর্ম",
+      "filters": "ফিল্টার",
+      "submitted": "API-তে যা যাবে (fields)",
+      "apiFilters": "API ফিল্টার ও URL",
+      "nothingYet": "এখনো কিছু নেই।"
+    }
+  }
+}

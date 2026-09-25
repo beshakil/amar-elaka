@@ -600,6 +600,437 @@
         ]
       }
     },
+    "/platform/categories": {
+      "get": {
+        "operationId": "PlatformCategoriesController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PlatformCategoryDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "PlatformCategories"
+        ]
+      },
+      "post": {
+        "operationId": "PlatformCategoriesController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCategoryDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformCategoryDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "PlatformCategories"
+        ]
+      }
+    },
+    "/platform/categories/{id}": {
+      "get": {
+        "operationId": "PlatformCategoriesController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformCategoryDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "PlatformCategories"
+        ]
+      },
+      "patch": {
+        "operationId": "PlatformCategoriesController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCategoryDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformCategoryDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "PlatformCategories"
+        ]
+      },
+      "delete": {
+        "operationId": "PlatformCategoriesController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Soft-deleted; existing posts keep their category."
+          }
+        },
+        "tags": [
+          "PlatformCategories"
+        ]
+      }
+    },
+    "/platform/categories/{id}/schemas": {
+      "get": {
+        "operationId": "PlatformCategoriesController_listVersions",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FieldSchemaVersionSummaryDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "PlatformCategories"
+        ]
+      }
+    },
+    "/platform/categories/{id}/schema-draft": {
+      "put": {
+        "operationId": "PlatformCategoriesController_saveDraft",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveFieldSchemaDraftDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FieldSchemaVersionDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "PlatformCategories"
+        ]
+      },
+      "delete": {
+        "operationId": "PlatformCategoriesController_discardDraft",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The open draft was discarded."
+          }
+        },
+        "tags": [
+          "PlatformCategories"
+        ]
+      }
+    },
+    "/platform/categories/{id}/schema-draft/publish": {
+      "post": {
+        "operationId": "PlatformCategoriesController_publish",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FieldSchemaVersionDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "PlatformCategories"
+        ]
+      }
+    },
+    "/platform/category-schemas/{schemaId}": {
+      "get": {
+        "operationId": "PlatformCategoriesController_getVersion",
+        "parameters": [
+          {
+            "name": "schemaId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FieldSchemaVersionDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "PlatformCategories"
+        ]
+      }
+    },
+    "/tenant/categories": {
+      "get": {
+        "operationId": "TenantCategoriesController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TenantCategorySettingDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "TenantCategories"
+        ]
+      }
+    },
+    "/tenant/categories/{id}": {
+      "patch": {
+        "operationId": "TenantCategoriesController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTenantCategoryDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Saved."
+          }
+        },
+        "tags": [
+          "TenantCategories"
+        ]
+      }
+    },
+    "/tenant/category-order": {
+      "put": {
+        "operationId": "TenantCategoriesController_reorder",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReorderTenantCategoriesDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Saved."
+          }
+        },
+        "tags": [
+          "TenantCategories"
+        ]
+      }
+    },
+    "/categories": {
+      "get": {
+        "operationId": "CategoriesController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CatalogCategoryDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Categories"
+        ]
+      }
+    },
+    "/categories/schemas/{schemaId}": {
+      "get": {
+        "operationId": "CategoriesController_getSchema",
+        "parameters": [
+          {
+            "name": "schemaId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FieldSchemaVersionDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Categories"
+        ]
+      }
+    },
     "/roles": {
       "post": {
         "operationId": "RolesController_create",
@@ -775,16 +1206,16 @@
         ]
       }
     },
-    "/media/uploads": {
+    "/media/presign": {
       "post": {
-        "operationId": "MediaController_create",
+        "operationId": "MediaController_presign",
         "parameters": [],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateUploadDto"
+                "$ref": "#/components/schemas/PresignMediaDto"
               }
             }
           }
@@ -795,7 +1226,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/PresignedMediaDto"
                 }
               }
             }
@@ -806,7 +1237,7 @@
         ]
       }
     },
-    "/media/uploads/{id}/confirm": {
+    "/media/{id}/confirm": {
       "post": {
         "operationId": "MediaController_confirm",
         "parameters": [
@@ -820,12 +1251,561 @@
           }
         ],
         "responses": {
-          "201": {
-            "description": ""
+          "202": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaStatusDto"
+                }
+              }
+            }
           }
         },
         "tags": [
           "Media"
+        ]
+      }
+    },
+    "/media/{id}": {
+      "get": {
+        "operationId": "MediaController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaStatusDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Media"
+        ]
+      }
+    },
+    "/search": {
+      "get": {
+        "operationId": "SearchController_find",
+        "parameters": [
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "name": "type",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "posts",
+                "stores",
+                "places"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "category",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "lat",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": -90,
+              "maximum": 90,
+              "type": "number"
+            }
+          },
+          {
+            "name": "lng",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": -180,
+              "maximum": 180,
+              "type": "number"
+            }
+          },
+          {
+            "name": "radius",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          {
+            "name": "filters",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 2000,
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "relevance",
+                "newest",
+                "nearest",
+                "price_asc",
+                "price_desc",
+                "rating"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Search"
+        ]
+      }
+    },
+    "/search/suggest": {
+      "get": {
+        "operationId": "SearchController_suggest",
+        "parameters": [
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "name": "lat",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": -90,
+              "maximum": 90,
+              "type": "number"
+            }
+          },
+          {
+            "name": "lng",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": -180,
+              "maximum": 180,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuggestResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Search"
+        ]
+      }
+    },
+    "/locations": {
+      "get": {
+        "operationId": "LocationsController_children",
+        "parameters": [
+          {
+            "name": "parentId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LocationAreaDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Locations"
+        ]
+      }
+    },
+    "/locations/viewport": {
+      "get": {
+        "operationId": "LocationsController_viewport",
+        "parameters": [
+          {
+            "name": "bbox",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "level",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "country",
+                "division",
+                "district",
+                "upazila",
+                "city_corporation"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ViewportResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Locations"
+        ]
+      }
+    },
+    "/locations/lookup": {
+      "get": {
+        "operationId": "LocationsController_lookup",
+        "parameters": [
+          {
+            "name": "lat",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "minimum": -90,
+              "maximum": 90,
+              "type": "number"
+            }
+          },
+          {
+            "name": "lng",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "minimum": -180,
+              "maximum": 180,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PointLookupDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Locations"
+        ]
+      }
+    },
+    "/locations/{id}": {
+      "get": {
+        "operationId": "LocationsController_detail",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocationDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Locations"
+        ]
+      }
+    },
+    "/geocode/forward": {
+      "get": {
+        "operationId": "GeocodingController_forward",
+        "parameters": [
+          {
+            "name": "q",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "name": "lat",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": -90,
+              "maximum": 90,
+              "type": "number"
+            }
+          },
+          {
+            "name": "lng",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": -180,
+              "maximum": 180,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GeocodeResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Geocoding"
+        ]
+      }
+    },
+    "/geocode/reverse": {
+      "get": {
+        "operationId": "GeocodingController_reverse",
+        "parameters": [
+          {
+            "name": "lat",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "minimum": -90,
+              "maximum": 90,
+              "type": "number"
+            }
+          },
+          {
+            "name": "lng",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "minimum": -180,
+              "maximum": 180,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReverseGeocodeResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Geocoding"
+        ]
+      }
+    },
+    "/geocode/autocomplete": {
+      "get": {
+        "operationId": "GeocodingController_autocomplete",
+        "parameters": [
+          {
+            "name": "q",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "name": "lat",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": -90,
+              "maximum": 90,
+              "type": "number"
+            }
+          },
+          {
+            "name": "lng",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": -180,
+              "maximum": 180,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GeocodeResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Geocoding"
+        ]
+      }
+    },
+    "/platform/tenants/{tenantId}/boundary": {
+      "put": {
+        "operationId": "PlatformTenantBoundaryController_setBoundary",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantBoundaryDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantBoundaryResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "PlatformTenantBoundary"
         ]
       }
     }
@@ -1381,6 +2361,664 @@
           "tenantId"
         ]
       },
+      "PlatformCategoryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "parentId": {
+            "type": "string",
+            "nullable": true
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "marketplace",
+              "service",
+              "job",
+              "rental",
+              "place",
+              "module"
+            ]
+          },
+          "moduleCode": {
+            "type": "string",
+            "enum": [
+              "emergency",
+              "blood",
+              "bazar"
+            ],
+            "nullable": true
+          },
+          "slug": {
+            "type": "string"
+          },
+          "nameBn": {
+            "type": "string"
+          },
+          "nameEn": {
+            "type": "string"
+          },
+          "descriptionBn": {
+            "type": "string",
+            "nullable": true
+          },
+          "descriptionEn": {
+            "type": "string",
+            "nullable": true
+          },
+          "iconKey": {
+            "type": "string",
+            "nullable": true
+          },
+          "depth": {
+            "type": "number"
+          },
+          "sortOrder": {
+            "type": "number"
+          },
+          "monetizationMode": {
+            "type": "string",
+            "enum": [
+              "per_listing",
+              "boost",
+              "subscription",
+              "lead_fee",
+              "free"
+            ]
+          },
+          "postCostCredits": {
+            "type": "number"
+          },
+          "postExpiryDays": {
+            "type": "number",
+            "nullable": true
+          },
+          "requiresApproval": {
+            "type": "boolean"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "publishedSchemaVersion": {
+            "type": "number",
+            "nullable": true
+          },
+          "hasDraft": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "parentId",
+          "kind",
+          "moduleCode",
+          "slug",
+          "nameBn",
+          "nameEn",
+          "descriptionBn",
+          "descriptionEn",
+          "iconKey",
+          "depth",
+          "sortOrder",
+          "monetizationMode",
+          "postCostCredits",
+          "postExpiryDays",
+          "requiresApproval",
+          "isActive",
+          "publishedSchemaVersion",
+          "hasDraft"
+        ]
+      },
+      "CreateCategoryDto": {
+        "type": "object",
+        "properties": {
+          "slug": {
+            "type": "string",
+            "maxLength": 80,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "marketplace",
+              "service",
+              "job",
+              "rental",
+              "place",
+              "module"
+            ]
+          },
+          "moduleCode": {
+            "type": "string",
+            "enum": [
+              "emergency",
+              "blood",
+              "bazar"
+            ],
+            "nullable": true
+          },
+          "parentId": {
+            "type": "string",
+            "nullable": true
+          },
+          "nameBn": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "nameEn": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "descriptionBn": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000,
+            "nullable": true
+          },
+          "descriptionEn": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000,
+            "nullable": true
+          },
+          "iconKey": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60,
+            "nullable": true
+          },
+          "sortOrder": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "monetizationMode": {
+            "type": "string",
+            "enum": [
+              "per_listing",
+              "boost",
+              "subscription",
+              "lead_fee",
+              "free"
+            ]
+          },
+          "postCostCredits": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "postExpiryDays": {
+            "type": "integer",
+            "minimum": 0,
+            "nullable": true
+          },
+          "requiresApproval": {
+            "type": "boolean"
+          },
+          "isActive": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "slug",
+          "kind",
+          "nameBn",
+          "nameEn"
+        ]
+      },
+      "UpdateCategoryDto": {
+        "type": "object",
+        "properties": {
+          "parentId": {
+            "type": "string",
+            "nullable": true
+          },
+          "nameBn": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "nameEn": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "descriptionBn": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000,
+            "nullable": true
+          },
+          "descriptionEn": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000,
+            "nullable": true
+          },
+          "iconKey": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60,
+            "nullable": true
+          },
+          "sortOrder": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "monetizationMode": {
+            "type": "string",
+            "enum": [
+              "per_listing",
+              "boost",
+              "subscription",
+              "lead_fee",
+              "free"
+            ]
+          },
+          "postCostCredits": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "postExpiryDays": {
+            "type": "integer",
+            "minimum": 0,
+            "nullable": true
+          },
+          "requiresApproval": {
+            "type": "boolean"
+          },
+          "isActive": {
+            "type": "boolean"
+          }
+        }
+      },
+      "FieldSchemaVersionSummaryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "published",
+              "retired"
+            ]
+          },
+          "publishedAt": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "status",
+          "publishedAt"
+        ]
+      },
+      "SaveFieldSchemaDraftDto": {
+        "type": "object",
+        "properties": {
+          "jsonSchema": {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "uiSchema": {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "filterableFields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "searchableFields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "analyticsFields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "jsonSchema",
+          "uiSchema",
+          "filterableFields",
+          "searchableFields",
+          "analyticsFields"
+        ]
+      },
+      "FieldSchemaVersionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "categoryId": {
+            "type": "string"
+          },
+          "version": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "published",
+              "retired"
+            ]
+          },
+          "jsonSchema": {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "uiSchema": {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "filterableFields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "searchableFields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "publishedAt": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "categoryId",
+          "version",
+          "status",
+          "jsonSchema",
+          "uiSchema",
+          "filterableFields",
+          "searchableFields",
+          "publishedAt"
+        ]
+      },
+      "TenantCategorySettingDto": {
+        "type": "object",
+        "properties": {
+          "categoryId": {
+            "type": "string"
+          },
+          "parentId": {
+            "type": "string",
+            "nullable": true
+          },
+          "slug": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "marketplace",
+              "service",
+              "job",
+              "rental",
+              "place",
+              "module"
+            ]
+          },
+          "nameBn": {
+            "type": "string"
+          },
+          "nameEn": {
+            "type": "string"
+          },
+          "isEnabled": {
+            "type": "boolean"
+          },
+          "sortOrder": {
+            "type": "number",
+            "nullable": true
+          },
+          "postCostCredits": {
+            "type": "number",
+            "nullable": true
+          },
+          "postExpiryDays": {
+            "type": "number",
+            "nullable": true
+          },
+          "requiresApproval": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "defaults": {
+            "type": "object",
+            "properties": {
+              "postCostCredits": {
+                "type": "number"
+              },
+              "postExpiryDays": {
+                "type": "number",
+                "nullable": true
+              },
+              "requiresApproval": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "postCostCredits",
+              "postExpiryDays",
+              "requiresApproval"
+            ]
+          }
+        },
+        "required": [
+          "categoryId",
+          "parentId",
+          "slug",
+          "kind",
+          "nameBn",
+          "nameEn",
+          "isEnabled",
+          "sortOrder",
+          "postCostCredits",
+          "postExpiryDays",
+          "requiresApproval",
+          "defaults"
+        ]
+      },
+      "UpdateTenantCategoryDto": {
+        "type": "object",
+        "properties": {
+          "isEnabled": {
+            "type": "boolean"
+          },
+          "postCostCredits": {
+            "type": "integer",
+            "minimum": 0,
+            "nullable": true
+          },
+          "postExpiryDays": {
+            "type": "integer",
+            "minimum": 0,
+            "nullable": true
+          },
+          "requiresApproval": {
+            "type": "boolean",
+            "nullable": true
+          }
+        }
+      },
+      "ReorderTenantCategoriesDto": {
+        "type": "object",
+        "properties": {
+          "categoryIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "categoryIds"
+        ]
+      },
+      "CatalogCategoryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "parentId": {
+            "type": "string",
+            "nullable": true
+          },
+          "slug": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "marketplace",
+              "service",
+              "job",
+              "rental",
+              "place",
+              "module"
+            ]
+          },
+          "moduleCode": {
+            "type": "string",
+            "enum": [
+              "emergency",
+              "blood",
+              "bazar"
+            ],
+            "nullable": true
+          },
+          "name": {
+            "type": "object",
+            "properties": {
+              "bn": {
+                "type": "string"
+              },
+              "en": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "bn",
+              "en"
+            ]
+          },
+          "description": {
+            "type": "object",
+            "properties": {
+              "bn": {
+                "type": "string",
+                "nullable": true
+              },
+              "en": {
+                "type": "string",
+                "nullable": true
+              }
+            },
+            "required": [
+              "bn",
+              "en"
+            ]
+          },
+          "iconKey": {
+            "type": "string",
+            "nullable": true
+          },
+          "postCostCredits": {
+            "type": "number"
+          },
+          "postExpiryDays": {
+            "type": "number",
+            "nullable": true
+          },
+          "requiresApproval": {
+            "type": "boolean"
+          },
+          "fieldSchema": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "version": {
+                "type": "number"
+              },
+              "jsonSchema": {
+                "type": "object",
+                "additionalProperties": {}
+              },
+              "uiSchema": {
+                "type": "object",
+                "additionalProperties": {}
+              },
+              "filterableFields": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "searchableFields": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "publishedAt": {
+                "type": "string",
+                "nullable": true
+              }
+            },
+            "required": [
+              "id",
+              "version",
+              "jsonSchema",
+              "uiSchema",
+              "filterableFields",
+              "searchableFields",
+              "publishedAt"
+            ],
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "parentId",
+          "slug",
+          "kind",
+          "moduleCode",
+          "name",
+          "description",
+          "iconKey",
+          "postCostCredits",
+          "postExpiryDays",
+          "requiresApproval",
+          "fieldSchema"
+        ]
+      },
       "CreateRoleDto": {
         "type": "object",
         "properties": {
@@ -1595,7 +3233,7 @@
           "grants"
         ]
       },
-      "CreateUploadDto": {
+      "PresignMediaDto": {
         "type": "object",
         "properties": {
           "kind": {
@@ -1624,6 +3262,1306 @@
           "contentType",
           "byteSize",
           "checksumSha256"
+        ]
+      },
+      "PresignedMediaDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "storageKey": {
+            "type": "string"
+          },
+          "upload": {
+            "type": "object",
+            "properties": {
+              "url": {
+                "type": "string"
+              },
+              "method": {
+                "type": "string",
+                "enum": [
+                  "PUT"
+                ]
+              },
+              "headers": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                }
+              },
+              "expiresInSeconds": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "url",
+              "method",
+              "headers",
+              "expiresInSeconds"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "storageKey",
+          "upload"
+        ]
+      },
+      "MediaStatusDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending_upload",
+              "processing",
+              "ready",
+              "rejected",
+              "quarantined"
+            ]
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "image",
+              "video",
+              "document"
+            ]
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "byteSize": {
+            "type": "number"
+          },
+          "width": {
+            "type": "number",
+            "nullable": true
+          },
+          "height": {
+            "type": "number",
+            "nullable": true
+          },
+          "thumbhash": {
+            "type": "string",
+            "nullable": true
+          },
+          "variants": {
+            "type": "object",
+            "properties": {
+              "thumb": {
+                "type": "object",
+                "properties": {
+                  "url": {
+                    "type": "string"
+                  },
+                  "width": {
+                    "type": "number"
+                  },
+                  "height": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "url",
+                  "width",
+                  "height"
+                ]
+              },
+              "card": {
+                "type": "object",
+                "properties": {
+                  "url": {
+                    "type": "string"
+                  },
+                  "width": {
+                    "type": "number"
+                  },
+                  "height": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "url",
+                  "width",
+                  "height"
+                ]
+              },
+              "full": {
+                "type": "object",
+                "properties": {
+                  "url": {
+                    "type": "string"
+                  },
+                  "width": {
+                    "type": "number"
+                  },
+                  "height": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "url",
+                  "width",
+                  "height"
+                ]
+              }
+            },
+            "required": [
+              "thumb",
+              "card",
+              "full"
+            ],
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "kind",
+          "mimeType",
+          "byteSize",
+          "width",
+          "height",
+          "thumbhash",
+          "variants"
+        ]
+      },
+      "SearchResponseDto": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string"
+          },
+          "hits": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "posts",
+                    "stores",
+                    "places"
+                  ]
+                },
+                "tenantId": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "object",
+                  "properties": {
+                    "bn": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "en": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "bn",
+                    "en"
+                  ]
+                },
+                "nameTranslit": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "category": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "slug": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "object",
+                      "properties": {
+                        "bn": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "en": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "bn",
+                        "en"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "slug",
+                    "name"
+                  ],
+                  "nullable": true
+                },
+                "area": {
+                  "type": "object",
+                  "properties": {
+                    "bn": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "en": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "bn",
+                    "en"
+                  ],
+                  "nullable": true
+                },
+                "location": {
+                  "type": "object",
+                  "properties": {
+                    "lat": {
+                      "type": "number"
+                    },
+                    "lng": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "lat",
+                    "lng"
+                  ],
+                  "nullable": true
+                },
+                "distanceMeters": {
+                  "type": "number",
+                  "nullable": true
+                },
+                "isBoosted": {
+                  "type": "boolean"
+                },
+                "publishedAt": {
+                  "type": "string"
+                },
+                "price": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "cardFields": {
+                  "type": "object",
+                  "additionalProperties": {}
+                },
+                "rating": {
+                  "type": "number",
+                  "nullable": true
+                },
+                "slug": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "cover": {
+                  "type": "object",
+                  "properties": {
+                    "thumbUrl": {
+                      "type": "string"
+                    },
+                    "thumbhash": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "thumbUrl",
+                    "thumbhash"
+                  ],
+                  "nullable": true
+                },
+                "isVerified": {
+                  "type": "boolean"
+                },
+                "isLandmark": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "id",
+                "type",
+                "tenantId",
+                "name",
+                "nameTranslit",
+                "description",
+                "category",
+                "area",
+                "location",
+                "distanceMeters",
+                "isBoosted",
+                "publishedAt",
+                "price",
+                "cardFields",
+                "rating",
+                "slug",
+                "cover",
+                "isVerified",
+                "isLandmark"
+              ]
+            }
+          },
+          "page": {
+            "type": "integer"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "totalHits": {
+            "type": "integer"
+          },
+          "facets": {
+            "type": "object",
+            "properties": {
+              "categories": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "slug": {
+                      "type": "string"
+                    },
+                    "count": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "slug",
+                    "count"
+                  ]
+                }
+              },
+              "fields": {
+                "type": "object",
+                "additionalProperties": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "values"
+                          ]
+                        },
+                        "values": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "value": {
+                                "type": "string"
+                              },
+                              "count": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "value",
+                              "count"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "values"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "range"
+                          ]
+                        },
+                        "min": {
+                          "oneOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "max": {
+                          "oneOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "string"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "min",
+                        "max"
+                      ]
+                    }
+                  ]
+                }
+              }
+            },
+            "required": [
+              "categories",
+              "fields"
+            ]
+          },
+          "degraded": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "query",
+          "hits",
+          "page",
+          "limit",
+          "totalHits",
+          "facets",
+          "degraded"
+        ]
+      },
+      "SuggestResponseDto": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string"
+          },
+          "suggestions": {
+            "type": "array",
+            "items": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "category"
+                      ]
+                    },
+                    "slug": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "object",
+                      "properties": {
+                        "bn": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "en": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "bn",
+                        "en"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "slug",
+                    "name"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "posts",
+                        "stores",
+                        "places"
+                      ]
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "object",
+                      "properties": {
+                        "bn": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "en": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "bn",
+                        "en"
+                      ]
+                    },
+                    "categorySlug": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "slug": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "id",
+                    "name",
+                    "categorySlug",
+                    "slug"
+                  ]
+                }
+              ]
+            }
+          },
+          "degraded": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "query",
+          "suggestions",
+          "degraded"
+        ]
+      },
+      "LocationAreaDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "parentId": {
+            "type": "string",
+            "nullable": true
+          },
+          "level": {
+            "type": "string"
+          },
+          "pcode": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "object",
+            "properties": {
+              "bn": {
+                "type": "string",
+                "nullable": true
+              },
+              "en": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "bn",
+              "en"
+            ]
+          },
+          "center": {
+            "type": "object",
+            "properties": {
+              "lat": {
+                "type": "number"
+              },
+              "lng": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "lat",
+              "lng"
+            ],
+            "nullable": true
+          },
+          "hasChildren": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "parentId",
+          "level",
+          "pcode",
+          "name",
+          "center",
+          "hasChildren"
+        ]
+      },
+      "ViewportResponseDto": {
+        "type": "object",
+        "properties": {
+          "level": {
+            "type": "string"
+          },
+          "areas": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "parentId": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "level": {
+                  "type": "string"
+                },
+                "pcode": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "name": {
+                  "type": "object",
+                  "properties": {
+                    "bn": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "en": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "bn",
+                    "en"
+                  ]
+                },
+                "center": {
+                  "type": "object",
+                  "properties": {
+                    "lat": {
+                      "type": "number"
+                    },
+                    "lng": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "lat",
+                    "lng"
+                  ],
+                  "nullable": true
+                },
+                "boundary": {
+                  "type": "object",
+                  "additionalProperties": {},
+                  "nullable": true
+                }
+              },
+              "required": [
+                "id",
+                "parentId",
+                "level",
+                "pcode",
+                "name",
+                "center",
+                "boundary"
+              ]
+            }
+          },
+          "truncated": {
+            "type": "boolean"
+          },
+          "attribution": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "level",
+          "areas",
+          "truncated",
+          "attribution"
+        ]
+      },
+      "PointLookupDto": {
+        "type": "object",
+        "properties": {
+          "location": {
+            "type": "object",
+            "properties": {
+              "lat": {
+                "type": "number"
+              },
+              "lng": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "lat",
+              "lng"
+            ]
+          },
+          "areas": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "parentId": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "level": {
+                  "type": "string"
+                },
+                "pcode": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "name": {
+                  "type": "object",
+                  "properties": {
+                    "bn": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "en": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "bn",
+                    "en"
+                  ]
+                },
+                "center": {
+                  "type": "object",
+                  "properties": {
+                    "lat": {
+                      "type": "number"
+                    },
+                    "lng": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "lat",
+                    "lng"
+                  ],
+                  "nullable": true
+                },
+                "hasChildren": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "id",
+                "parentId",
+                "level",
+                "pcode",
+                "name",
+                "center",
+                "hasChildren"
+              ]
+            }
+          },
+          "tenant": {
+            "type": "object",
+            "properties": {
+              "inside": {
+                "type": "boolean"
+              },
+              "distanceMeters": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "inside",
+              "distanceMeters"
+            ],
+            "nullable": true
+          }
+        },
+        "required": [
+          "location",
+          "areas",
+          "tenant"
+        ]
+      },
+      "LocationDetailDto": {
+        "type": "object",
+        "properties": {
+          "area": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "parentId": {
+                "type": "string",
+                "nullable": true
+              },
+              "level": {
+                "type": "string"
+              },
+              "pcode": {
+                "type": "string",
+                "nullable": true
+              },
+              "name": {
+                "type": "object",
+                "properties": {
+                  "bn": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "en": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "bn",
+                  "en"
+                ]
+              },
+              "center": {
+                "type": "object",
+                "properties": {
+                  "lat": {
+                    "type": "number"
+                  },
+                  "lng": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "lat",
+                  "lng"
+                ],
+                "nullable": true
+              },
+              "hasChildren": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "id",
+              "parentId",
+              "level",
+              "pcode",
+              "name",
+              "center",
+              "hasChildren"
+            ]
+          },
+          "path": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "parentId": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "level": {
+                  "type": "string"
+                },
+                "pcode": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "name": {
+                  "type": "object",
+                  "properties": {
+                    "bn": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "en": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "bn",
+                    "en"
+                  ]
+                },
+                "center": {
+                  "type": "object",
+                  "properties": {
+                    "lat": {
+                      "type": "number"
+                    },
+                    "lng": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "lat",
+                    "lng"
+                  ],
+                  "nullable": true
+                },
+                "hasChildren": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "id",
+                "parentId",
+                "level",
+                "pcode",
+                "name",
+                "center",
+                "hasChildren"
+              ]
+            }
+          }
+        },
+        "required": [
+          "area",
+          "path"
+        ]
+      },
+      "GeocodeResponseDto": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string"
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "label": {
+                  "type": "string"
+                },
+                "labelBn": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "location": {
+                  "type": "object",
+                  "properties": {
+                    "lat": {
+                      "type": "number"
+                    },
+                    "lng": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "lat",
+                    "lng"
+                  ]
+                },
+                "area": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "city": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "postCode": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "source": {
+                  "type": "string",
+                  "enum": [
+                    "provider",
+                    "local"
+                  ]
+                },
+                "distanceMeters": {
+                  "type": "number",
+                  "nullable": true
+                }
+              },
+              "required": [
+                "label",
+                "labelBn",
+                "location",
+                "area",
+                "city",
+                "postCode",
+                "source",
+                "distanceMeters"
+              ]
+            }
+          },
+          "degraded": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "query",
+          "results",
+          "degraded"
+        ]
+      },
+      "ReverseGeocodeResponseDto": {
+        "type": "object",
+        "properties": {
+          "location": {
+            "type": "object",
+            "properties": {
+              "lat": {
+                "type": "number"
+              },
+              "lng": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "lat",
+              "lng"
+            ]
+          },
+          "address": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "type": "string"
+              },
+              "labelBn": {
+                "type": "string",
+                "nullable": true
+              },
+              "location": {
+                "type": "object",
+                "properties": {
+                  "lat": {
+                    "type": "number"
+                  },
+                  "lng": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "lat",
+                  "lng"
+                ]
+              },
+              "area": {
+                "type": "string",
+                "nullable": true
+              },
+              "city": {
+                "type": "string",
+                "nullable": true
+              },
+              "postCode": {
+                "type": "string",
+                "nullable": true
+              },
+              "source": {
+                "type": "string",
+                "enum": [
+                  "provider",
+                  "local"
+                ]
+              },
+              "distanceMeters": {
+                "type": "number",
+                "nullable": true
+              }
+            },
+            "required": [
+              "label",
+              "labelBn",
+              "location",
+              "area",
+              "city",
+              "postCode",
+              "source",
+              "distanceMeters"
+            ],
+            "nullable": true
+          },
+          "areas": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "parentId": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "level": {
+                  "type": "string"
+                },
+                "pcode": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "name": {
+                  "type": "object",
+                  "properties": {
+                    "bn": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "en": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "bn",
+                    "en"
+                  ]
+                },
+                "center": {
+                  "type": "object",
+                  "properties": {
+                    "lat": {
+                      "type": "number"
+                    },
+                    "lng": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "lat",
+                    "lng"
+                  ],
+                  "nullable": true
+                },
+                "hasChildren": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "id",
+                "parentId",
+                "level",
+                "pcode",
+                "name",
+                "center",
+                "hasChildren"
+              ]
+            }
+          },
+          "degraded": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "location",
+          "address",
+          "areas",
+          "degraded"
+        ]
+      },
+      "TenantBoundaryDto": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "polygon",
+              "radius"
+            ]
+          },
+          "center": {
+            "type": "object",
+            "properties": {
+              "lat": {
+                "type": "number",
+                "minimum": -90,
+                "maximum": 90
+              },
+              "lng": {
+                "type": "number",
+                "minimum": -180,
+                "maximum": 180
+              }
+            },
+            "required": [
+              "lat",
+              "lng"
+            ]
+          },
+          "radiusKm": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "mode"
+        ]
+      },
+      "TenantBoundaryResponseDto": {
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": "string"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "polygon",
+              "radius"
+            ]
+          },
+          "center": {
+            "type": "object",
+            "properties": {
+              "lat": {
+                "type": "number"
+              },
+              "lng": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "lat",
+              "lng"
+            ]
+          },
+          "radiusKm": {
+            "type": "number",
+            "nullable": true
+          }
+        },
+        "required": [
+          "tenantId",
+          "mode",
+          "center",
+          "radiusKm"
         ]
       }
     }

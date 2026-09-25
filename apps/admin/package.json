@@ -16,6 +16,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@amar-elaka/dynamic-form": "workspace:*",
     "@amar-elaka/shared-types": "workspace:*",
     "@hookform/resolvers": "^5.9.1",
     "@tanstack/react-table": "^9.2.4",

@@ -1,0 +1,295 @@
+{
+  "slug": "rent-a-car",
+  "name": {
+    "bn": "গাড়ি ভাড়া",
+    "en": "Rent a Car"
+  },
+  "fieldSchema": {
+    "jsonSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "vehicle_type": {
+          "x-field-type": "select",
+          "type": "string",
+          "enum": [
+            "sedan",
+            "microbus",
+            "suv",
+            "pickup",
+            "coaster_bus",
+            "cng",
+            "motorcycle"
+          ]
+        },
+        "brand": {
+          "x-field-type": "text",
+          "type": "string",
+          "maxLength": 40,
+          "x-analytics-safe": true
+        },
+        "model": {
+          "x-field-type": "text",
+          "type": "string",
+          "maxLength": 80,
+          "x-analytics-safe": true
+        },
+        "model_year": {
+          "x-field-type": "number",
+          "type": "integer",
+          "minimum": 1970,
+          "x-max-current-year-offset": 1
+        },
+        "seats": {
+          "x-field-type": "number",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 60
+        },
+        "ac": {
+          "x-field-type": "bool",
+          "type": "boolean"
+        },
+        "driver_option": {
+          "x-field-type": "select",
+          "type": "string",
+          "enum": [
+            "with_driver",
+            "self_drive",
+            "both"
+          ]
+        },
+        "price": {
+          "x-field-type": "money",
+          "type": "string",
+          "x-money-min": "100.00",
+          "x-money-max": "1000000.00"
+        },
+        "rate_per_hour": {
+          "x-field-type": "money",
+          "type": "string",
+          "x-money-min": "10.00",
+          "x-money-max": "100000.00"
+        },
+        "min_hours": {
+          "x-field-type": "number",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 24
+        },
+        "fuel_included": {
+          "x-field-type": "bool",
+          "type": "boolean"
+        },
+        "driver_allowance_included": {
+          "x-field-type": "bool",
+          "type": "boolean",
+          "x-show-when": {
+            "field": "driver_option",
+            "in": [
+              "with_driver",
+              "both"
+            ]
+          }
+        },
+        "outstation_allowed": {
+          "x-field-type": "bool",
+          "type": "boolean"
+        },
+        "trip_types": {
+          "x-field-type": "multiselect",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "local",
+              "outstation",
+              "airport",
+              "wedding",
+              "tour",
+              "monthly"
+            ]
+          },
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "vehicle_type",
+        "seats",
+        "ac",
+        "driver_option",
+        "price"
+      ]
+    },
+    "uiSchema": {
+      "order": [
+        "vehicle_type",
+        "brand",
+        "model",
+        "model_year",
+        "seats",
+        "ac",
+        "driver_option",
+        "price",
+        "rate_per_hour",
+        "min_hours",
+        "fuel_included",
+        "driver_allowance_included",
+        "outstation_allowed",
+        "trip_types"
+      ],
+      "card": [
+        "vehicle_type",
+        "seats",
+        "ac"
+      ],
+      "labels": {
+        "vehicle_type": {
+          "bn": "গাড়ির ধরন",
+          "en": "Vehicle type"
+        },
+        "brand": {
+          "bn": "ব্র্যান্ড",
+          "en": "Make"
+        },
+        "model": {
+          "bn": "মডেল",
+          "en": "Model"
+        },
+        "model_year": {
+          "bn": "মডেল সাল",
+          "en": "Model year"
+        },
+        "seats": {
+          "bn": "আসন",
+          "en": "Seats"
+        },
+        "ac": {
+          "bn": "এসি",
+          "en": "AC"
+        },
+        "driver_option": {
+          "bn": "ড্রাইভার",
+          "en": "Driver"
+        },
+        "price": {
+          "bn": "প্রতিদিনের ভাড়া",
+          "en": "Per-day rate"
+        },
+        "rate_per_hour": {
+          "bn": "ঘণ্টাপ্রতি ভাড়া",
+          "en": "Per-hour rate"
+        },
+        "min_hours": {
+          "bn": "সর্বনিম্ন ঘণ্টা",
+          "en": "Minimum hours"
+        },
+        "fuel_included": {
+          "bn": "জ্বালানিসহ",
+          "en": "Fuel included"
+        },
+        "driver_allowance_included": {
+          "bn": "ড্রাইভারের খাবার/থাকা খরচসহ",
+          "en": "Driver allowance included"
+        },
+        "outstation_allowed": {
+          "bn": "জেলার বাইরে যায়",
+          "en": "Goes out of district"
+        },
+        "trip_types": {
+          "bn": "কী কাজে",
+          "en": "Trip types"
+        }
+      },
+      "options": {
+        "vehicle_type": {
+          "sedan": {
+            "bn": "প্রাইভেট কার",
+            "en": "Car"
+          },
+          "microbus": {
+            "bn": "মাইক্রোবাস (হায়েস/নোয়া)",
+            "en": "Microbus (Hiace / Noah)"
+          },
+          "suv": {
+            "bn": "এসইউভি/জিপ",
+            "en": "SUV / jeep"
+          },
+          "pickup": {
+            "bn": "পিকআপ",
+            "en": "Pickup"
+          },
+          "coaster_bus": {
+            "bn": "কোস্টার/বাস",
+            "en": "Coaster / bus"
+          },
+          "cng": {
+            "bn": "সিএনজি",
+            "en": "CNG"
+          },
+          "motorcycle": {
+            "bn": "মোটরসাইকেল",
+            "en": "Motorcycle"
+          }
+        },
+        "driver_option": {
+          "with_driver": {
+            "bn": "ড্রাইভারসহ",
+            "en": "With driver"
+          },
+          "self_drive": {
+            "bn": "ড্রাইভার ছাড়া",
+            "en": "Self-drive"
+          },
+          "both": {
+            "bn": "দুটোই",
+            "en": "Both"
+          }
+        },
+        "trip_types": {
+          "local": {
+            "bn": "শহরের ভেতরে",
+            "en": "Local"
+          },
+          "outstation": {
+            "bn": "দূরপাল্লা",
+            "en": "Outstation"
+          },
+          "airport": {
+            "bn": "এয়ারপোর্ট",
+            "en": "Airport"
+          },
+          "wedding": {
+            "bn": "বিয়ের গাড়ি",
+            "en": "Wedding"
+          },
+          "tour": {
+            "bn": "ট্যুর",
+            "en": "Tour"
+          },
+          "monthly": {
+            "bn": "মাসিক চুক্তি",
+            "en": "Monthly contract"
+          }
+        }
+      }
+    },
+    "filterableFields": [
+      "vehicle_type",
+      "model_year",
+      "seats",
+      "ac",
+      "driver_option",
+      "price",
+      "rate_per_hour",
+      "fuel_included",
+      "outstation_allowed",
+      "trip_types"
+    ],
+    "searchableFields": [
+      "vehicle_type",
+      "brand",
+      "model"
+    ]
+  }
+}
