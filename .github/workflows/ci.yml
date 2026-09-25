@@ -88,6 +88,7 @@ jobs:
           key: turbo-quality-${{ runner.os }}-${{ github.sha }}
           restore-keys: turbo-quality-${{ runner.os }}-
       - run: pnpm install --frozen-lockfile
+      - run: pnpm format:check
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
