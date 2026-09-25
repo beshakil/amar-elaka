@@ -146,6 +146,22 @@ export class SearchQueryRepository {
     return { id: root.id, ids: parsed.map((r) => r.id), definition };
   }
 
+  /**
+   * The tenant's map centre: where discovery is centred when the viewer shares
+   * no location (§13.26 — radius, never a tenant filter). Undefined when the
+   * tenant isn't visible to this request.
+   */
+  async tenantCenter(
+    tx: DatabaseTransaction,
+    tenantId: string,
+  ): Promise<{ lat: number; lng: number } | undefined> {
+    const rows = await tx.execute(sql`
+      select st_y(t.map_center::geometry) as lat, st_x(t.map_center::geometry) as lng
+      from public.tenants t
+      where t.id = ${tenantId}::uuid`);
+    return z.array(z.object({ lat: z.number(), lng: z.number() })).parse([...rows])[0];
+  }
+
   /** Active categories enabled in the current tenant, for suggestions. */
   async tenantCategories(
     tx: DatabaseTransaction,

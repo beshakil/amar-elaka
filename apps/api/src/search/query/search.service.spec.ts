@@ -133,8 +133,12 @@ class FakeEngine implements Partial<SearchEngine> {
   };
 }
 
+// The tenant's map centre: where discovery is centred without a viewer location.
+const CENTER = { lat: 23.81, lng: 90.41 };
+
 class FakeRepo implements Partial<SearchQueryRepository> {
   fallbackQueries: FallbackQuery[] = [];
+  tenantCenter = () => Promise.resolve(CENTER);
   resolveCategory = (_tx: DatabaseTransaction, slug: string) =>
     Promise.resolve(
       slug === 'to-let' ? toLet : slug === 'doctors' ? { ...toLet, definition: null } : undefined,
@@ -204,15 +208,16 @@ function setup() {
 const query = (input: Record<string, unknown>) => searchQuerySchema.parse(input);
 
 describe('SearchService.search', () => {
-  it('queries the tenant with the expanded query and maps hits for the API', async () => {
+  it("searches around the tenant's centre without a location, and maps hits for the API", async () => {
     const { service, engine } = setup();
     const response = await service.search(query({ q: 'ডাক্তার' }));
 
     expect(engine.requests[0]).toMatchObject({
       indexUid: 'test_posts',
       q: 'daktar ডাক্তার',
-      filter: [`tenant_id = "${TENANT}"`],
-      sort: [],
+      // §13.26: radius, never a tenant filter.
+      filter: ['_geoRadius(23.81, 90.41, 10000)'],
+      sort: ['_geoPoint(23.81, 90.41):asc'],
       facets: ['category_slug'],
       limit: 20,
       offset: 0,
@@ -223,7 +228,8 @@ describe('SearchService.search', () => {
       name: { bn: 'ডাক্তার রহিম', en: null },
       price: '12500.50',
       isBoosted: true,
-      distanceMeters: 420,
+      // Measured from the tenant's centre, not the viewer: meaningless to them.
+      distanceMeters: null,
       publishedAt: new Date(1_790_000_000_000).toISOString(),
       cover: { thumbUrl: 'https://cdn.test/t/image/k.thumb.webp', thumbhash: 'hash' },
       cardFields: { fee: '500.00' },
@@ -242,6 +248,9 @@ describe('SearchService.search', () => {
 
     await service.search(query({ q: 'doctor', lat: 23.8, lng: 90.4 }));
     expect(engine.requests[1]!.filter).toEqual(['_geoRadius(23.8, 90.4, 10000)']);
+
+    const located = await service.search(query({ q: 'doctor', lat: 23.8, lng: 90.4 }));
+    expect(located.hits[0]!.distanceMeters).toBe(420);
   });
 
   it('filters by category (with its children) and custom fields, and returns field facets', async () => {
@@ -257,7 +266,7 @@ describe('SearchService.search', () => {
       }),
     );
     expect(engine.requests[0]!.filter).toEqual([
-      `tenant_id = "${TENANT}"`,
+      '_geoRadius(23.81, 90.41, 10000)',
       'category_id IN ["c-to-let", "c-sublet"]',
       'fields.bedrooms >= 2',
       'fields.price < 2000000',

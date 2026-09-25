@@ -8,13 +8,9 @@ describe('filter builder', () => {
     ).toBe('fields.brand = "x\\" OR tenant_id != \\"y"');
   });
 
-  it('stays in the tenant without a location, and goes by radius with one (§13.26)', () => {
-    expect(
-      buildSearchFilter({ tenantId: 't1', geo: null, categoryIds: null, fieldFilters: [] }),
-    ).toEqual(['tenant_id = "t1"']);
+  it('always filters by radius, never by tenant (§13.26)', () => {
     expect(
       buildSearchFilter({
-        tenantId: 't1',
         geo: { lat: 23.8, lng: 90.4, radiusKm: 2.5 },
         categoryIds: ['c1', 'c2'],
         fieldFilters: [],

@@ -8,7 +8,7 @@ import {
   type FieldFilter,
 } from '../../categories/field-schema';
 import { TenantContext } from '../../database/tenant-context';
-import { TenantRequiredException } from '../../database/tenant.exceptions';
+import { TenantNotFoundException, TenantRequiredException } from '../../database/tenant.exceptions';
 import { TenantDb } from '../../database/tenant-db';
 import { SettingsService } from '../../settings/settings.service';
 import { STORAGE_SERVICE, type StorageService } from '../../storage/storage.ports';
@@ -71,7 +71,9 @@ interface Plan {
   tenantId: string;
   type: SearchType;
   q: string;
-  geo: GeoScope | null;
+  geo: GeoScope;
+  /** False when geo is the tenant's centre, not the viewer: distances then mean nothing to them. */
+  viewerLocated: boolean;
   category: ResolvedCategory | null;
   fieldFilters: FieldFilter[];
   page: number;
@@ -84,9 +86,11 @@ interface Plan {
  * GET /search and GET /search/suggest.
  *
  * Meilisearch answers normally. When it is unreachable (timeout, network,
- * 5xx), search keeps working from Postgres (`degraded: true`): the current
- * tenant only, substring matching expanded through the synonym dictionary,
- * no facets. After a failure the engine is skipped for a short cool-down so
+ * 5xx), search keeps working from Postgres (`degraded: true`): the same
+ * radius, but the current tenant's rows only (RLS; cross-tenant reads go
+ * through discover_nearby, 0023), substring matching expanded through the
+ * synonym dictionary, no facets. Without the viewer's location, "nearby" is
+ * measured from the tenant's map centre and hits carry no distance. After a failure the engine is skipped for a short cool-down so
  * an outage doesn't cost every request a timeout.
  */
 @Injectable()
@@ -116,7 +120,10 @@ export class SearchService {
     if (plan.limit === 0) return empty;
 
     const fromEngine = await this.tryEngine(() => this.searchEngine(plan));
-    return fromEngine ?? this.searchDatabase(plan);
+    const response = fromEngine ?? (await this.searchDatabase(plan));
+    return plan.viewerLocated
+      ? response
+      : { ...response, hits: response.hits.map((hit) => ({ ...hit, distanceMeters: null })) };
   }
 
   async suggest(query: SuggestQuery): Promise<SuggestResponse> {
@@ -133,17 +140,14 @@ export class SearchService {
       0,
       MAX_CATEGORY_SUGGESTIONS,
     );
-    const geo =
-      query.lat !== undefined && query.lng !== undefined
-        ? { lat: query.lat, lng: query.lng, radiusKm: defaultRadius }
-        : null;
+    const geo = { ...(await this.origin(tenantId, query)), radiusKm: defaultRadius };
     const perType = Math.max(1, limit - categories.length);
     const listings = await this.tryEngine(async () => {
       const results = await this.engine.multiSearch<SearchDocument>(
         SEARCH_TYPES.map((type) => ({
           indexUid: indexUid(this.prefix, type),
           q: this.terms.expandQuery(q),
-          filter: buildSearchFilter({ tenantId, geo, categoryIds: null, fieldFilters: [] }),
+          filter: buildSearchFilter({ geo, categoryIds: null, fieldFilters: [] }),
           sort: buildSort('relevance', geo),
           limit: perType,
           offset: 0,
@@ -168,6 +172,24 @@ export class SearchService {
       suggestions: [...categories, ...(listings ?? [])].slice(0, limit),
       degraded: listings === undefined,
     };
+  }
+
+  /**
+   * Where "nearby" is measured from: the viewer's location, or the tenant's
+   * map centre when they share none. Discovery is always a radius (§13.26).
+   */
+  private async origin(
+    tenantId: string,
+    query: { lat?: number | undefined; lng?: number | undefined },
+  ): Promise<{ lat: number; lng: number }> {
+    if (query.lat !== undefined && query.lng !== undefined) {
+      return { lat: query.lat, lng: query.lng };
+    }
+    const center = await this.tenantDb.transaction((tx) => this.repo.tenantCenter(tx, tenantId), {
+      accessMode: 'read only',
+    });
+    if (!center) throw new TenantNotFoundException();
+    return center;
   }
 
   private async plan(query: SearchQuery): Promise<Plan> {
@@ -199,14 +221,11 @@ export class SearchService {
       tenantId,
       type: query.type,
       q: query.q,
-      geo:
-        query.lat !== undefined && query.lng !== undefined
-          ? {
-              lat: query.lat,
-              lng: query.lng,
-              radiusKm: Math.min(query.radius ?? defaultRadius, maxRadius),
-            }
-          : null,
+      geo: {
+        ...(await this.origin(tenantId, query)),
+        radiusKm: Math.min(query.radius ?? defaultRadius, maxRadius),
+      },
+      viewerLocated: query.lat !== undefined && query.lng !== undefined,
       category: category ?? null,
       fieldFilters,
       page: query.page,
@@ -229,7 +248,6 @@ export class SearchService {
       indexUid: indexUid(this.prefix, plan.type),
       q: this.terms.expandQuery(plan.q),
       filter: buildSearchFilter({
-        tenantId: plan.tenantId,
         geo: plan.geo,
         categoryIds: plan.category?.ids ?? null,
         fieldFilters: plan.fieldFilters,
@@ -260,7 +278,7 @@ export class SearchService {
           categoryIds: plan.category?.ids ?? null,
           fieldFilters: plan.type === 'posts' ? plan.fieldFilters : [],
           geo: plan.geo,
-          nearestFirst: plan.geo !== null && (plan.sort === 'nearest' || plan.sort === 'relevance'),
+          nearestFirst: plan.sort === 'nearest' || plan.sort === 'relevance',
           limit: plan.limit,
           offset: plan.offset,
         }),

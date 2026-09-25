@@ -50,22 +50,18 @@ export function fieldFilterExpression(filter: FieldFilter): string {
 }
 
 /**
- * The boundary rule of §13.26: with a location, discovery is pure radius and
- * crosses tenants; without one, results stay in the request's tenant.
+ * The boundary rule of §13.26: discovery is always pure radius and crosses
+ * tenants — boundaries decide ownership, never visibility. There is no
+ * tenant-only filter; without the viewer's location the caller searches
+ * around the tenant's map centre instead.
  */
 export function buildSearchFilter(input: {
-  tenantId: string;
-  geo: GeoScope | null;
+  geo: GeoScope;
   categoryIds: readonly string[] | null;
   fieldFilters: readonly FieldFilter[];
 }): string[] {
-  const filters: string[] = [];
-  if (input.geo) {
-    const metres = Math.round(input.geo.radiusKm * METRES_PER_KM);
-    filters.push(`_geoRadius(${input.geo.lat}, ${input.geo.lng}, ${metres})`);
-  } else {
-    filters.push(`tenant_id = ${quote(input.tenantId)}`);
-  }
+  const metres = Math.round(input.geo.radiusKm * METRES_PER_KM);
+  const filters = [`_geoRadius(${input.geo.lat}, ${input.geo.lng}, ${metres})`];
   if (input.categoryIds !== null) filters.push(`category_id IN ${list(input.categoryIds)}`);
   for (const filter of input.fieldFilters) filters.push(fieldFilterExpression(filter));
   return filters;

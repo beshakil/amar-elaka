@@ -36,8 +36,9 @@ attribute. We do not create an index per tenant.
 - **Filtering by tenant is cheap.** Meilisearch applies filters as a bitmap before ranking, so a `tenant_id` filter costs
   almost nothing at our scale (up to millions of documents).
 - **Isolation still holds.** The index contains only public-state rows (live posts, active stores, published places) and
-  only public fields, never phone numbers. Without a location, the API always filters by the request's tenant. With a
-  location, it applies the radius alone, exactly as §13.26 specifies.
+  only public fields, never phone numbers. The API always applies a radius alone, exactly as §13.26 specifies: around the
+  viewer's location, or around the tenant's map centre when they share none (then hits carry no distance). _Changed
+  2026-09-25: it used to filter by the request's tenant without a location, which let the boundary decide visibility._
 
 We would revisit this only if a single tenant needed its own ranking or synonyms, or if the index outgrew one machine.
 
@@ -103,7 +104,8 @@ The ranking rules are:
   integer in poisha and dates as yyyymmdd, never as floats. Field filters reuse the category engine's `parseFieldFilters`,
   so search and the SQL fallback accept exactly the same filters.
 - **When Meilisearch is down**, `GET /search` answers from Postgres with `degraded: true`:
-  - it covers only the current tenant, because we never bypass RLS and cross-tenant reads need the index;
+  - it covers only the current tenant, because we never bypass RLS and cross-tenant reads need the index (feed and map
+    code should use `discover_nearby()`, migration 0023, which returns cross-tenant ids to read in each owner's context);
   - it uses substring matching, expanded through the dictionary and transliteration;
   - there are no facets.
 
