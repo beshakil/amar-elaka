@@ -257,6 +257,8 @@ describe('Search against a real Meilisearch', () => {
         ),
       tenantCategories: () =>
         Promise.resolve([{ slug: 'doctors', name_bn: 'ডাক্তার ও চেম্বার', name_en: 'Doctors' }]),
+      // Tenant A's map centre: where search is centred when the query has no location.
+      tenantCenter: () => Promise.resolve(MIRPUR),
     } as unknown as SearchQueryRepository;
     service = new SearchService(
       engine,
@@ -291,11 +293,15 @@ describe('Search against a real Meilisearch', () => {
       expect(ids(response)).toContain('doctor-bn');
     });
 
-    it('all four return the same listings: both doctors of this tenant, nothing else', async () => {
+    it('all four return the same listings: every doctor within the default radius, across the boundary', async () => {
       const results = await Promise.all(
         variants.map(async (q) => new Set(ids(await search({ q })))),
       );
-      for (const result of results) expect(result).toEqual(new Set(['doctor-bn', 'doctor-en']));
+      // §13.26: without a location, search is a radius around the tenant's centre, so
+      // the doctor 2.4 km away in tenant B is found too; Gazipur (22 km) is not.
+      for (const result of results) {
+        expect(result).toEqual(new Set(['doctor-bn', 'doctor-en', 'doctor-other-tenant']));
+      }
     });
 
     it.each(['ডাকতার', 'ডক্টর', 'daktor', 'doktor', 'DOCTOR', 'Dr', 'doctr'])(
@@ -346,8 +352,12 @@ describe('Search against a real Meilisearch', () => {
       2000,
     );
 
-    // Without a location, the other tenant's doctor stays out.
-    expect(ids(await search({ q: 'doctor' }))).not.toContain('doctor-other-tenant');
+    // Without a location it is still a radius (around tenant A's centre), so the
+    // other tenant's doctor is found — but no hit carries a distance, since the
+    // centre isn't where the viewer is.
+    const noLocation = await search({ q: 'doctor' });
+    expect(ids(noLocation)).toContain('doctor-other-tenant');
+    expect(noLocation.hits.every((h) => h.distanceMeters === null)).toBe(true);
 
     // A smaller radius leaves out the far rental.
     const rentals = await search({
@@ -360,7 +370,9 @@ describe('Search against a real Meilisearch', () => {
   });
 
   it('filters on custom fields and returns facets for the filter UI', async () => {
-    const all = await search({ category: 'to-let' });
+    // Wide enough to include the far house: this test is about field filters, not geo.
+    const wide = { lat: MIRPUR.lat, lng: MIRPUR.lng, radius: 50 };
+    const all = await search({ ...wide, category: 'to-let' });
     expect(new Set(ids(all))).toEqual(new Set(['basa', 'flat-en', 'house-far']));
     expect(all.facets.fields.property_type).toEqual({
       kind: 'values',
@@ -373,18 +385,20 @@ describe('Search against a real Meilisearch', () => {
     expect(all.facets.fields.bedrooms).toEqual({ kind: 'range', min: 2, max: 4 });
 
     const bigAndCheap = await search({
+      ...wide,
       category: 'to-let',
       filters: JSON.stringify({ bedrooms: { gte: 3 }, price: { lt: '30000' } }),
     });
     expect(ids(bigAndCheap)).toEqual(['flat-en']);
 
     const houses = await search({
+      ...wide,
       category: 'to-let',
       filters: JSON.stringify({ property_type: { in: ['house'] } }),
     });
     expect(ids(houses)).toEqual(['house-far']);
 
-    const cheapestFirst = await search({ category: 'to-let', sort: 'price_asc' });
+    const cheapestFirst = await search({ ...wide, category: 'to-let', sort: 'price_asc' });
     expect(cheapestFirst.hits.map((h) => h.price)).toEqual(['15000.00', '25000.00', '40000.00']);
   });
 
