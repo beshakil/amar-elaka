@@ -183,6 +183,13 @@
       "when": 1790330010553,
       "tag": "0025_auth_self_credential_writes",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1790341099655,
+      "tag": "0026_posts_module",
+      "breakpoints": true
     }
   ]
 }

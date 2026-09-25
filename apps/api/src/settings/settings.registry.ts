@@ -12,6 +12,7 @@ const wholeNumber = z.number().int().nonnegative();
 const decimal = z.number().nonnegative();
 // Money is a JSON string with exactly two decimals, never a JSON number (§0.2).
 const money = z.string().regex(/^\d+\.\d{2}$/);
+const textArray = z.array(z.string());
 
 export const SETTING_DEFINITIONS = {
   // Tenant lifecycle (§13.30)
@@ -85,6 +86,17 @@ export const SETTING_DEFINITIONS = {
 
   // Profile
   profile_display_name_max_length: wholeNumber,
+
+  // Posts module (migration 0026)
+  post_max_media: wholeNumber,
+  post_max_active_per_user: wholeNumber,
+  post_max_per_day_per_user: wholeNumber,
+  post_rereview_fields: textArray,
+  post_title_max_length: wholeNumber,
+  post_description_max_length: wholeNumber,
+  post_idempotency_ttl_hours: wholeNumber,
+  post_list_page_size_default: wholeNumber,
+  post_list_page_size_max: wholeNumber,
 
   // Tenant resolution (tenants/nearby)
   tenant_nearby_max_radius_km: decimal,
