@@ -21,7 +21,7 @@ import {
   WeakPasswordException,
 } from './exceptions/auth.exceptions';
 import { GoogleTokenVerifierService } from './google/google-token-verifier.service';
-import { OtpService } from './otp/otp.service';
+import { OtpService, type OtpSent } from './otp/otp.service';
 import { PasswordService } from './password/password.service';
 import { TokenService } from './tokens/token.service';
 import type { MeResult, SessionTokens } from './dto/auth-responses.dto';
@@ -41,7 +41,7 @@ export class AuthService {
     private readonly settings: SettingsService,
   ) {}
 
-  requestOtp(phone: string, ip: string): Promise<void> {
+  requestOtp(phone: string, ip: string): Promise<OtpSent> {
     return this.otp.requestOtp(phone, ip);
   }
 

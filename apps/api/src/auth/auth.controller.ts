@@ -48,9 +48,9 @@ export class AuthController {
   async requestOtp(
     @Body() body: OtpRequestDto,
     @Req() request: FastifyRequest,
-  ): Promise<{ status: 'otp_sent' }> {
-    await this.auth.requestOtp(body.phone, request.ip);
-    return { status: 'otp_sent' };
+  ): Promise<{ status: 'otp_sent'; resendAfterSeconds: number }> {
+    const { resendAfterSeconds } = await this.auth.requestOtp(body.phone, request.ip);
+    return { status: 'otp_sent', resendAfterSeconds };
   }
 
   // Allowlisted like otp/request (tenant-agnostic per the resolution spec),

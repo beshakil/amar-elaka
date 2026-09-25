@@ -31,6 +31,12 @@ export class MeResultDto extends createZodDto(meResultSchema) {}
 /** `POST /auth/google` while signed in links the account instead of signing in. */
 export class GoogleLinkedDto extends createZodDto(z.object({ linked: z.literal(true) })) {}
 
-export class OtpSentDto extends createZodDto(z.object({ status: z.literal('otp_sent') })) {}
+export class OtpSentDto extends createZodDto(
+  z.object({
+    status: z.literal('otp_sent'),
+    /** Seconds until this phone may request another OTP (otp_resend_cooldown_seconds). */
+    resendAfterSeconds: z.number().int().nonnegative(),
+  }),
+) {}
 export class EmailLinkedDto extends createZodDto(z.object({ status: z.literal('linked') })) {}
 export class LoggedOutDto extends createZodDto(z.object({ status: z.literal('logged_out') })) {}

@@ -4,6 +4,7 @@ export 'src/auth/email_register_request.dart';
 export 'src/auth/google_auth_request.dart';
 export 'src/auth/me_result.dart';
 export 'src/auth/otp_request_body.dart';
+export 'src/auth/otp_sent.dart';
 export 'src/auth/otp_verify_body.dart';
 export 'src/auth/refresh_request_body.dart';
 export 'src/auth/session_tokens.dart';

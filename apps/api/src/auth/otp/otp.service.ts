@@ -31,6 +31,10 @@ function ipDailyKey(ip: string): string {
   return `otp:daily:ip:${ip}`;
 }
 
+export interface OtpSent {
+  resendAfterSeconds: number;
+}
+
 @Injectable()
 export class OtpService {
   constructor(
@@ -46,8 +50,11 @@ export class OtpService {
    * check has already consumed the earlier ones' quota — a deliberate
    * trade-off: it only ever makes the limiter stricter, never lets more
    * OTPs through than configured.
+   *
+   * Returns the cooldown so clients can time their resend button from the
+   * setting instead of hardcoding it.
    */
-  async requestOtp(phone: string, ip: string): Promise<void> {
+  async requestOtp(phone: string, ip: string): Promise<OtpSent> {
     const cooldownSeconds = await this.settings.get('otp_resend_cooldown_seconds');
     if (!(await this.store.trySetCooldown(cooldownKey(phone), cooldownSeconds))) {
       throw new OtpCooldownException();
@@ -74,6 +81,7 @@ export class OtpService {
 
     await this.store.createOtp(otpKey(phone), this.hashCode(phone, code), ttlSeconds);
     await this.sms.send(phone, otpMessage(code));
+    return { resendAfterSeconds: cooldownSeconds };
   }
 
   /** Single-use: the OTP record is deleted on both success and exhausted-attempts failure. */

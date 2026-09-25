@@ -1839,10 +1839,15 @@
             "enum": [
               "otp_sent"
             ]
+          },
+          "resendAfterSeconds": {
+            "type": "integer",
+            "minimum": 0
           }
         },
         "required": [
-          "status"
+          "status",
+          "resendAfterSeconds"
         ]
       },
       "OtpVerifyDto": {

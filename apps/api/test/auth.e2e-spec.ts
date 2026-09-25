@@ -117,6 +117,9 @@ describe('Auth module (e2e)', () => {
       payload: { phone },
     });
     expect(response.statusCode).toBe(202);
+    const body = response.json<{ status: string; resendAfterSeconds: number }>();
+    expect(body.status).toBe('otp_sent');
+    expect(body.resendAfterSeconds).toBeGreaterThan(0);
     return sms.lastCodeFor(phone);
   }
 

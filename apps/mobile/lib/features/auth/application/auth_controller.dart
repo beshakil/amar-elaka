@@ -72,7 +72,7 @@ class AuthController extends _$AuthController {
     await cache.save(me);
   }
 
-  Future<void> requestOtp(String phone) =>
+  Future<Duration> requestOtp(String phone) =>
       ref.read(authRepositoryProvider).requestOtp(phone);
 
   Future<void> verifyOtp({required String phone, required String code}) async {

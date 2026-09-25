@@ -102,7 +102,9 @@ const IP = '203.0.113.7';
 describe('OtpService', () => {
   it('sends an OTP and lets it verify', async () => {
     const { otp, sms } = await setup();
-    await otp.requestOtp(PHONE, IP);
+    await expect(otp.requestOtp(PHONE, IP)).resolves.toEqual({
+      resendAfterSeconds: 60,
+    });
     expect(sms.sent).toHaveLength(1);
 
     const [sent] = sms.sent;

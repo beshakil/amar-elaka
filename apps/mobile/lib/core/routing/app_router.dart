@@ -74,7 +74,7 @@ GoRouter appRouter(Ref ref) {
       GoRoute(
         path: RoutePaths.otpVerify,
         builder: (context, state) =>
-            OtpVerifyScreen(phone: state.extra! as String),
+            OtpVerifyScreen(args: state.extra! as OtpVerifyArgs),
       ),
       GoRoute(
         path: RoutePaths.emailLogin,

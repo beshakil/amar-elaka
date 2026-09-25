@@ -23,13 +23,16 @@ class AuthRepository {
   final Dio _dio;
   final SecureSessionStorage _storage;
 
-  Future<void> requestOtp(String phone) async {
+  /// Returns how long until the server accepts another request for [phone].
+  Future<Duration> requestOtp(String phone) async {
     try {
-      await _dio.post<void>(
+      final response = await _dio.post<Map<String, dynamic>>(
         '/auth/otp/request',
         data: OtpRequestBody(phone: phone).toJson(),
         options: _noAuth,
       );
+      final sent = OtpSent.fromJson(response.data!);
+      return Duration(seconds: sent.resendAfterSeconds);
     } on DioException catch (e) {
       throw mapDioException(e);
     }

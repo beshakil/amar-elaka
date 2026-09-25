@@ -12,6 +12,7 @@ import '../../../l10n/app_localizations.dart';
 import '../application/auth_controller.dart';
 import '../domain/bd_phone.dart';
 import 'bd_phone_formatter.dart';
+import 'otp_verify_screen.dart';
 
 /// Primary entry point for new and returning users: phone number → OTP.
 /// `POST /auth/email/register` needs an existing session (it links a
@@ -49,8 +50,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _errorText = null;
     });
     try {
-      await ref.read(authControllerProvider.notifier).requestOtp(phone);
-      if (mounted) context.push(RoutePaths.otpVerify, extra: phone);
+      final resendAfter = await ref
+          .read(authControllerProvider.notifier)
+          .requestOtp(phone);
+      if (mounted) {
+        context.push(
+          RoutePaths.otpVerify,
+          extra: OtpVerifyArgs(phone: phone, resendAfter: resendAfter),
+        );
+      }
     } on AppException catch (e) {
       setState(
         () => _errorText = describeAuthError(e, AppLocalizations.of(context)!),

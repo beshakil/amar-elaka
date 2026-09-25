@@ -14,15 +14,21 @@ import '../../../l10n/app_localizations.dart';
 import '../application/auth_controller.dart';
 
 const _codeLength = 6;
-// UI cosmetic (how long the resend button stays disabled) — not the
-// backend's real `otp_resend_cooldown_seconds` platform setting, which the
-// server enforces regardless of what this shows.
-const _resendCooldown = Duration(seconds: 30);
 
-class OtpVerifyScreen extends ConsumerStatefulWidget {
-  const OtpVerifyScreen({required this.phone, super.key});
+/// Route arguments for [OtpVerifyScreen]: the phone the code went to, and how
+/// long the server says to wait before resending (`otp_resend_cooldown_seconds`,
+/// returned by `POST /auth/otp/request`).
+class OtpVerifyArgs {
+  const OtpVerifyArgs({required this.phone, required this.resendAfter});
 
   final String phone;
+  final Duration resendAfter;
+}
+
+class OtpVerifyScreen extends ConsumerStatefulWidget {
+  const OtpVerifyScreen({required this.args, super.key});
+
+  final OtpVerifyArgs args;
 
   @override
   ConsumerState<OtpVerifyScreen> createState() => _OtpVerifyScreenState();
@@ -33,12 +39,12 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
   bool _isResending = false;
   String? _errorText;
   Timer? _resendTimer;
-  int _resendSecondsLeft = _resendCooldown.inSeconds;
+  late int _resendSecondsLeft = widget.args.resendAfter.inSeconds;
 
   @override
   void initState() {
     super.initState();
-    _startResendTimer();
+    _startResendTimer(widget.args.resendAfter);
   }
 
   @override
@@ -47,8 +53,8 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
     super.dispose();
   }
 
-  void _startResendTimer() {
-    setState(() => _resendSecondsLeft = _resendCooldown.inSeconds);
+  void _startResendTimer(Duration cooldown) {
+    setState(() => _resendSecondsLeft = cooldown.inSeconds);
     _resendTimer?.cancel();
     _resendTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_resendSecondsLeft <= 1) {
@@ -68,7 +74,7 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
     try {
       await ref
           .read(authControllerProvider.notifier)
-          .verifyOtp(phone: widget.phone, code: code);
+          .verifyOtp(phone: widget.args.phone, code: code);
       // Every fresh sign-in lands here so a returning user can confirm their
       // existing name/photo are still right — not signup-only. The screen
       // itself offers "not now" for anyone who doesn't need to change anything.
@@ -88,8 +94,10 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
   Future<void> _resend() async {
     setState(() => _isResending = true);
     try {
-      await ref.read(authControllerProvider.notifier).requestOtp(widget.phone);
-      if (mounted) _startResendTimer();
+      final resendAfter = await ref
+          .read(authControllerProvider.notifier)
+          .requestOtp(widget.args.phone);
+      if (mounted) _startResendTimer(resendAfter);
     } on AppException catch (e) {
       if (mounted) {
         setState(
@@ -114,7 +122,7 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                l10n.otpVerifyDescription(widget.phone),
+                l10n.otpVerifyDescription(widget.args.phone),
                 style: Theme.of(context).textTheme.bodyLarge,
               ),
               const SizedBox(height: AppSpacing.lg),
