@@ -396,7 +396,7 @@ erDiagram
 ### 1.2 Table inventory
 
 G = GLOBAL (no `tenant_id`), G/t? = GLOBAL with a **nullable** `tenant_id` (only `payments`,
-`audit_logs`), T = TENANT-SCOPED (`tenant_id` NOT NULL + RLS).
+`audit_logs`, `roles`), T = TENANT-SCOPED (`tenant_id` NOT NULL + RLS).
 
 | §    | Table                          | Scope | §     | Table                           | Scope |
 | ---- | ------------------------------ | ----- | ----- | ------------------------------- | ----- |
@@ -460,6 +460,8 @@ G = GLOBAL (no `tenant_id`), G/t? = GLOBAL with a **nullable** `tenant_id` (only
 | 11.9 | `legal_holds`                  | G     | 7.12  | `platform_share_rate_backfills` | T     |
 | 2.17 | `platform_counters`            | G     | 11.10 | `agent_cash_remittances`        | T     |
 | 2.18 | `vat_rates`                    | G     |       |                                 |       |
+| 2.19 | `roles`                        | G/t?  |       |                                 |       |
+| 2.20 | `role_permissions`             | G     |       |                                 |       |
 
 That's 114 entity tables plus the 130 enum tables in §12.
 
@@ -537,6 +539,7 @@ One operating territory (one thana/upazila). The root of all tenant-scoped data.
 | `partner_id`        | `uuid`                   | NO   | —                | Operating partner.                                                                                                                                                                                               |
 | `geo_area_id`       | `uuid`                   | NO   | —                | The upazila / metro thana this tenant covers; its full-precision `boundary` defines **ownership** (§13.26). Trigger: level must be `upazila` or `metro_thana`, and the area must not be awaiting manual review.  |
 | `slug`              | `text`                   | NO   | —                | Default subdomain, e.g. `savar`. CHECK lower-case, `^[a-z0-9-]{2,40}$`.                                                                                                                                          |
+| `custom_domain`     | `text`                   | YES  | —                | Operator's own domain for the web app (0014). Unique, lower-case hostname; resolved like a subdomain.                                                                                                            |
 | `name_bn`           | `text`                   | NO   | —                | e.g. সাভার.                                                                                                                                                                                                      |
 | `name_en`           | `text`                   | NO   | —                | e.g. Savar.                                                                                                                                                                                                      |
 | `status_code`       | `text → tenant_statuses` | NO   | `'provisioning'` | provisioning → **active → past_due → suspended → terminated → archived**. Behaviour per state and allowed transitions: §13.30. Transition trigger rejects anything else.                                         |
@@ -643,6 +646,8 @@ A global person account, identified by phone. One phone = one account across all
 | `<pk>`                 |                         |      |            |                                                                                                                                                                                                                                                                                                                                                                            |
 | `phone_e164`           | `text`                  | NO   | —          | Login identifier. **Bangladeshi mobile numbers only for signup in v1** (Q24): CHECK `phone_e164 ~ '^\+8801[3-9][0-9]{8}$'` (operator prefixes 013–019), enforced only while `deleted_at IS NULL`, because the account-deletion scrub replaces the number with a tombstone (§13.20). Other phone columns (places, emergency contacts) still accept any E.164 or short code. |
 | `phone_verified_at`    | `timestamptz`           | YES  | —          | Set on first successful OTP.                                                                                                                                                                                                                                                                                                                                               |
+| `password_hash`        | `text`                  | YES  | —          | argon2id hash for email/password login (0013). NULL for phone/Google-only accounts.                                                                                                                                                                                                                                                                                        |
+| `google_id`            | `text`                  | YES  | —          | Google account subject for Google sign-in (0013). Unique.                                                                                                                                                                                                                                                                                                                  |
 | `email`                | `text`                  | YES  | —          | Optional. CHECK lower-case.                                                                                                                                                                                                                                                                                                                                                |
 | `email_verified_at`    | `timestamptz`           | YES  | —          |                                                                                                                                                                                                                                                                                                                                                                            |
 | `status_code`          | `text → user_statuses`  | NO   | `'active'` | active / deactivated (self-closed). **Bans are not on `users`**: tenant ban status lives on `tenant_members` (§2.11, §9.8); global flags in `blacklist_entries`. `users` has **no `tenant_id` and no "active tenant" column**; the current tenant is per-request context (`app.tenant_id`).                                                                                |
@@ -751,18 +756,19 @@ Hashed refresh tokens with rotation-family tracking. Needed by the auth phase; O
 A user's membership in one tenant: role, status and **ban status**. The credit wallet is its 1:1 extension `credit_wallets` (§6.1).
 **Scope:** TENANT-SCOPED
 
-| column              | type                     | null | default    | comment                                                                                                                           |
-| ------------------- | ------------------------ | ---- | ---------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `<pk>`              |                          |      |            |                                                                                                                                   |
-| `<tenant>`          |                          |      |            |                                                                                                                                   |
-| `user_id`           | `uuid`                   | NO   | —          | Global user.                                                                                                                      |
-| `role_code`         | `text → member_roles`    | NO   | `'member'` | member / agent / moderator / tenant_admin / partner_owner. Maps to `app.role`.                                                    |
-| `status_code`       | `text → member_statuses` | NO   | `'active'` | active / left. Tenant-level bans live in `bans` (§9.8).                                                                           |
-| `ban_severity_code` | `text → ban_severities`  | YES  | —          | Cache of the most severe active **tenant-level** ban in this tenant: NULL / restricted / banned. Maintained by trigger on `bans`. |
-| `home_locality_id`  | `uuid`                   | YES  | —          | Default locality for posting/filtering.                                                                                           |
-| `joined_at`         | `timestamptz`            | NO   | `now()`    |                                                                                                                                   |
-| `last_active_at`    | `timestamptz`            | YES  | —          | Last authenticated activity in this tenant, touched at most once per Dhaka day. Used by the credit port rule (§13.32).            |
-| `<audit+soft>`      |                          |      |            |                                                                                                                                   |
+| column              | type                     | null | default    | comment                                                                                                                                  |
+| ------------------- | ------------------------ | ---- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `<pk>`              |                          |      |            |                                                                                                                                          |
+| `<tenant>`          |                          |      |            |                                                                                                                                          |
+| `user_id`           | `uuid`                   | NO   | —          | Global user.                                                                                                                             |
+| `role_code`         | `text → member_roles`    | NO   | `'member'` | member / agent / moderator / tenant_admin / partner_owner. Maps to `app.role`.                                                           |
+| `custom_role_id`    | `uuid → roles`           | YES  | —          | Optional custom role (0015, SET NULL). NULL = permissions of the built-in role matching `role_code`. `role_code` stays the RLS baseline. |
+| `status_code`       | `text → member_statuses` | NO   | `'active'` | active / left. Tenant-level bans live in `bans` (§9.8).                                                                                  |
+| `ban_severity_code` | `text → ban_severities`  | YES  | —          | Cache of the most severe active **tenant-level** ban in this tenant: NULL / restricted / banned. Maintained by trigger on `bans`.        |
+| `home_locality_id`  | `uuid`                   | YES  | —          | Default locality for posting/filtering.                                                                                                  |
+| `joined_at`         | `timestamptz`            | NO   | `now()`    |                                                                                                                                          |
+| `last_active_at`    | `timestamptz`            | YES  | —          | Last authenticated activity in this tenant, touched at most once per Dhaka day. Used by the credit port rule (§13.32).                   |
+| `<audit+soft>`      |                          |      |            |                                                                                                                                          |
 
 **Keys:** PK `id`. `user_id → users` RESTRICT (a wallet must never vanish). `home_locality_id → localities (T)` SET NULL.
 **Indexes:**
@@ -1024,6 +1030,42 @@ Dated VAT rates per revenue stream, so rate changes in the Finance Act (effectiv
 **Constraints:** `EXCLUDE USING gist (revenue_stream_code with =, daterange(effective_from, effective_to, '[]') with &&)`: one rate per stream per day.
 **Indexes:** covered by the exclusion constraint.
 **RLS:** G-REFERENCE (writes `platform_finance`/`platform_admin`).
+
+---
+
+### 2.19 `roles`
+
+Fine-grained permission roles (0015): built-in templates plus each tenant's own custom roles. A second layer on top of
+`tenant_members.role_code`, read by the API's `PermissionGuard`; RLS still uses `role_code`.
+**Scope:** GLOBAL with a **nullable** `tenant_id` — NULL only for built-in templates (`is_builtin`), set for a tenant's
+custom roles. ⚠ An exception to CLAUDE.md hard rule 1 (`tenant_id NOT NULL`), like `payments` / `audit_logs`.
+
+| column       | type      | null | default | comment                                                |
+| ------------ | --------- | ---- | ------- | ------------------------------------------------------ |
+| `<pk>`       |           |      |         |                                                        |
+| `tenant_id`  | `uuid`    | YES  | —       | Owning tenant (CASCADE); NULL for a built-in template. |
+| `code`       | `text`    | NO   | —       | snake_case. Unique among built-ins, and per tenant.    |
+| `name`       | `text`    | NO   | —       | Display name; not blank.                               |
+| `is_builtin` | `boolean` | NO   | `false` | CHECK `is_builtin = (tenant_id IS NULL)`.              |
+| `<audit>`    |           |      |         |                                                        |
+
+**RLS:** SELECT built-ins and the current tenant's roles; `tenant_admin` writes their own tenant's; platform admin all.
+
+### 2.20 `role_permissions`
+
+One `(module, action)` grant per row for a role (0015).
+**Scope:** GLOBAL (visibility follows the parent role)
+
+| column       | type           | null | default | comment                                        |
+| ------------ | -------------- | ---- | ------- | ---------------------------------------------- |
+| `<pk>`       |                |      |         |                                                |
+| `role_id`    | `uuid → roles` | NO   | —       | CASCADE.                                       |
+| `module`     | `text`         | NO   | —       | snake_case module name, or `*`.                |
+| `action`     | `text`         | NO   | —       | `read` / `write` / `approve` / `delete` / `*`. |
+| `created_at` | `timestamptz`  | NO   | `now()` | Immutable rows: no `updated_at`.               |
+
+**Keys:** PK `id`; unique `(role_id, module, action)`.
+**RLS:** follows `roles`: readable with the role, writable by the role's tenant admin, platform admin all.
 
 ---
 
@@ -4351,6 +4393,15 @@ or because a policy would recurse into its own table:
 | `my_active_bans()`                                                          | A `restricted_user` sees their own bans without `reason_text`/evidence.                                                                                                                                                                                                        |
 | `appeal_submit_in_app(ban_or_entry_id, statement)`                          | Sets routing (`queue_code`, `tenant_id`, `escalate_at`) server-side; the user can't pick their queue.                                                                                                                                                                          |
 | `public_appeal_submit(ban_reference, statement)` / `public_appeal_status()` | Session-less path. Requires `app_role() = 'appeal_public'` and acts only on `app_verified_phone()`.                                                                                                                                                                            |
+
+**As built (reconciled 2026-09-25):** `auth_upsert_user_by_phone` shipped as
+`auth_resolve_or_create_by_phone` (0013). `resolve_owning_tenant` and `discover_nearby` are in 0023,
+owned by `ae_rls_bypass` like `legal_hold_blocks`. Three spec'd DB functions were implemented in the API
+instead: `audit_row_change` → `rbac/audit-log.interceptor.ts`, `effective_setting` → `SettingsService`,
+`purge_media_assets` → `media/media-maintenance.service.ts` (it still calls `legal_hold_blocks`, but the
+schema audit's `purge_job_without_legal_hold_check` only sees DB functions). Not yet built:
+`user_is_visible`, `reveal_contact_phone`, `neighbour_landmarks`, `scrub_post`, `app_verified_phone` and
+the later-month finance/appeal functions.
 
 Rules: each is `STABLE`/`VOLATILE` as appropriate, pins `search_path`, returns the
 minimum (booleans/codes, not rows), is owned by `ae_migrator`, has `EXECUTE` granted
