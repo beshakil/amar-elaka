@@ -203,7 +203,7 @@ describe('MediaService', () => {
         {
           name: 'process-media',
           data: { tenantId: TENANT, mediaAssetId: presigned.id },
-          opts: { jobId: `process-media:${presigned.id}` },
+          opts: { jobId: `process-media-${presigned.id}` },
         },
       ]);
     });

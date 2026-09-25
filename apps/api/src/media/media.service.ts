@@ -121,8 +121,9 @@ export class MediaService {
     await this.queue.add(
       JOB_PROCESS_MEDIA,
       { tenantId, mediaAssetId: id },
-      // One job per asset, however many times confirm is called.
-      { jobId: `${JOB_PROCESS_MEDIA}:${id}` },
+      // One job per asset, however many times confirm is called. BullMQ
+      // rejects ':' in custom ids ("Custom Id cannot contain :"), so '-'.
+      { jobId: `${JOB_PROCESS_MEDIA}-${id}` },
     );
     return { ...this.toStatus(row), status: 'processing' };
   }
