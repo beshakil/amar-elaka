@@ -1,5 +1,5 @@
 import { Inject, Injectable, type NestMiddleware } from '@nestjs/common';
-import type { FastifyRequest } from 'fastify';
+import type { IncomingMessage } from 'node:http';
 import { APP_CONFIG } from '../config/config.module';
 import type { Env } from '../config/env.schema';
 import { rootDomainSuffixOf, tenantSignalFromHostname } from './hostname-tenant-signal';
@@ -34,8 +34,10 @@ export class TenantResolutionMiddleware implements NestMiddleware {
     this.rootDomainSuffix = rootDomainSuffixOf(env.APP_ROOT_DOMAIN);
   }
 
+  // The raw Node request: Nest's Fastify adapter runs middleware before
+  // Fastify wraps it (see tenant-resolution.types.ts).
   async use(
-    request: FastifyRequest,
+    request: IncomingMessage,
     _response: unknown,
     next: (error?: unknown) => void,
   ): Promise<void> {
@@ -51,7 +53,7 @@ export class TenantResolutionMiddleware implements NestMiddleware {
     }
   }
 
-  private async resolve(request: FastifyRequest): Promise<TenantResolutionOutcome> {
+  private async resolve(request: IncomingMessage): Promise<TenantResolutionOutcome> {
     const idHeader = firstValue(request.headers[TENANT_ID_HEADER]);
     if (idHeader) {
       if (!UUID_PATTERN.test(idHeader)) return { kind: 'invalid_id' };

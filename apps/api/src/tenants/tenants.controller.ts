@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { Controller, Get, Headers, HttpStatus, Inject, Query, Req, Res } from '@nestjs/common';
 import { ApiNotModifiedResponse, ApiOkResponse } from '@nestjs/swagger';
 import type { FastifyReply, FastifyRequest } from 'fastify';
+import { tenantResolutionOf } from '../database/tenant-resolution.types';
 import { APP_CONFIG } from '../config/config.module';
 import type { Env } from '../config/env.schema';
 import { AllowAnyTenant } from '../database/allow-any-tenant.decorator';
@@ -38,10 +39,8 @@ export class TenantsController {
     @Res({ passthrough: true }) reply: FastifyReply,
     @Headers('if-none-match') ifNoneMatch: string | undefined,
   ): Promise<TenantConfig | undefined> {
-    const tenantId =
-      request.tenantResolution?.kind === 'resolved'
-        ? request.tenantResolution.tenant.id
-        : undefined;
+    const resolution = tenantResolutionOf(request);
+    const tenantId = resolution?.kind === 'resolved' ? resolution.tenant.id : undefined;
     if (!tenantId) throw new TenantRequiredException();
 
     const body = await this.tenants.getConfig(tenantId);

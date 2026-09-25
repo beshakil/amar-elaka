@@ -1,6 +1,7 @@
 import { Injectable, type CanActivate, type ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import type { FastifyRequest } from 'fastify';
+import { tenantResolutionOf } from './tenant-resolution.types';
 import { ALLOW_ANY_TENANT_KEY } from './allow-any-tenant.decorator';
 import {
   TenantIdInvalidException,
@@ -28,7 +29,7 @@ export class TenantGateGuard implements CanActivate {
     ]);
 
     const request = context.switchToHttp().getRequest<FastifyRequest>();
-    const outcome = request.tenantResolution ?? { kind: 'none' as const };
+    const outcome = tenantResolutionOf(request) ?? { kind: 'none' as const };
 
     if (allowAnyTenant) return true;
 

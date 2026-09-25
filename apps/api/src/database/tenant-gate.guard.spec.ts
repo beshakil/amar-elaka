@@ -12,7 +12,8 @@ import {
 import type { ResolvedTenant, TenantResolutionOutcome } from './tenant-resolution.types';
 
 function buildContext(outcome: TenantResolutionOutcome | undefined): ExecutionContext {
-  const request = { tenantResolution: outcome } as unknown as FastifyRequest;
+  // Where the middleware really puts it: on the raw Node request.
+  const request = { raw: { tenantResolution: outcome } } as unknown as FastifyRequest;
   return {
     switchToHttp: () => ({ getRequest: () => request }),
     getHandler: () => undefined,

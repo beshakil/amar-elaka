@@ -1,4 +1,4 @@
-import type { FastifyRequest } from 'fastify';
+import type { IncomingMessage } from 'node:http';
 import { TenantContext } from './tenant-context';
 import { TenantResolutionMiddleware } from './tenant-resolution.middleware';
 import type { ResolvedTenant } from './tenant-resolution.types';
@@ -28,14 +28,15 @@ function buildMiddleware(
   return { lookup, context, middleware };
 }
 
-function request(headers: Record<string, string>): FastifyRequest {
-  return { headers } as unknown as FastifyRequest;
+// Middleware gets the raw Node request under Nest's Fastify adapter.
+function request(headers: Record<string, string>): IncomingMessage {
+  return { headers } as unknown as IncomingMessage;
 }
 
 async function run(
   middleware: TenantResolutionMiddleware,
   context: TenantContext,
-  req: FastifyRequest,
+  req: IncomingMessage,
 ) {
   let error: unknown;
   let contextStore: ReturnType<TenantContext['current']>;

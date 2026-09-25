@@ -18,8 +18,12 @@ export function rootDomainSuffixOf(rootDomain: string): string {
   return `.${rootDomain.toLowerCase()}`;
 }
 
+const IPV4_LITERAL = /^\d{1,3}(?:\.\d{1,3}){3}$/;
+
 export function hostnameOf(host: string | undefined): string | undefined {
   if (!host) return undefined;
+  // An IPv6 literal ("[::1]:3000") is never a tenant host; splitting it on ':' would garble it.
+  if (host.startsWith('[')) return undefined;
   return host.split(':')[0]?.toLowerCase();
 }
 
@@ -35,6 +39,12 @@ export function tenantSignalFromHostname(
     if (!SLUG_PATTERN.test(label)) return { kind: 'unusable' };
     return { kind: 'slug', slug: label };
   }
+
+  // Hosts that can never be anyone's custom domain carry no tenant signal:
+  // single-label names (localhost, a docker service like `api`) and IP
+  // literals. The request is then treated as having no tenant (400
+  // TENANT_REQUIRED on tenant routes), not as an unknown domain (404).
+  if (!hostname.includes('.') || IPV4_LITERAL.test(hostname)) return { kind: 'absent' };
 
   return { kind: 'custom_domain', domain: hostname };
 }

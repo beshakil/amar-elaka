@@ -49,6 +49,12 @@ describe('tenantSignalFromHostname', () => {
     });
   });
 
+  it('is absent for hosts that can never be a custom domain: single labels and IP literals', () => {
+    for (const host of ['localhost', 'localhost:80', 'api:3000', '127.0.0.1:3000', '[::1]:3000']) {
+      expect(tenantSignalFromHostname(host, SUFFIX)).toEqual({ kind: 'absent' });
+    }
+  });
+
   it('is absent when there is no host at all', () => {
     expect(tenantSignalFromHostname(undefined, SUFFIX)).toEqual({ kind: 'absent' });
     expect(tenantSignalFromHostname('', SUFFIX)).toEqual({ kind: 'absent' });

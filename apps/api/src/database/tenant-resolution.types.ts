@@ -1,3 +1,5 @@
+import type { FastifyRequest } from 'fastify';
+
 export interface ResolvedTenant {
   id: string;
   slug: string;
@@ -20,8 +22,16 @@ export type TenantResolutionOutcome =
   /** No X-Tenant-Id, no matching subdomain, no matching custom domain. */
   | { kind: 'none' };
 
-declare module 'fastify' {
-  interface FastifyRequest {
+// Nest's Fastify adapter hands middleware the raw Node request, not the
+// FastifyRequest that guards and controllers get — so the outcome lives on
+// the raw request, and readers must go through tenantResolutionOf().
+declare module 'http' {
+  interface IncomingMessage {
     tenantResolution?: TenantResolutionOutcome;
   }
+}
+
+/** What TenantResolutionMiddleware stored for this request, if it ran. */
+export function tenantResolutionOf(request: FastifyRequest): TenantResolutionOutcome | undefined {
+  return request.raw.tenantResolution;
 }
