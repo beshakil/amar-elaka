@@ -8,6 +8,7 @@ import '../../features/auth/presentation/email_login_screen.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/otp_verify_screen.dart';
 import '../../features/design_system_debug/presentation/design_system_screen.dart';
+import '../../features/form_preview/form_preview_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
 import '../../features/info/presentation/info_screen.dart';
 import '../../features/map/presentation/map_screen.dart';
@@ -89,6 +90,11 @@ GoRouter appRouter(Ref ref) {
         GoRoute(
           path: RoutePaths.designSystem,
           builder: (context, state) => const DesignSystemScreen(),
+        ),
+      if (kDebugMode)
+        GoRoute(
+          path: RoutePaths.formPreview,
+          builder: (context, state) => const FormPreviewScreen(),
         ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>

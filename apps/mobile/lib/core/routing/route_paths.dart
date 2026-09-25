@@ -17,4 +17,5 @@ abstract final class RoutePaths {
   static const String profile = '/profile';
 
   static const String designSystem = '/design-system';
+  static const String formPreview = '/form-preview';
 }

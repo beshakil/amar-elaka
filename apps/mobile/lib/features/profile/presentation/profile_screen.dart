@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -107,6 +108,23 @@ class ProfileScreen extends ConsumerWidget {
                 .setThemeMode(selection.first);
           },
         ),
+        // Debug builds only (compile-time constant, tree-shaken in release):
+        // the QA screens AppRouter registers under the same condition.
+        if (kDebugMode) ...[
+          const SizedBox(height: AppSpacing.xl),
+          AppButton(
+            label: l10n.designSystemTitle,
+            variant: AppButtonVariant.text,
+            icon: Icons.palette_outlined,
+            onPressed: () => context.push(RoutePaths.designSystem),
+          ),
+          AppButton(
+            label: l10n.formPreviewOpen,
+            variant: AppButtonVariant.text,
+            icon: Icons.dynamic_form_outlined,
+            onPressed: () => context.push(RoutePaths.formPreview),
+          ),
+        ],
       ],
     );
   }

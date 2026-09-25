@@ -10,11 +10,10 @@ import 'dio_client.dart';
 
 part 'media_upload_service.g.dart';
 
-/// The presign → PUT → confirm flow every media upload uses
-/// (apps/api/src/storage: `POST /media/uploads`, a direct `PUT` to the
-/// returned presigned URL, `POST /media/uploads/:id/confirm`) — generic
-/// over [MediaKind] so it's reusable beyond the avatar upload it's built
-/// for first (post media later).
+/// A single presign → PUT → confirm upload (apps/api/src/media:
+/// `POST /media/presign`, a direct `PUT` to the returned presigned URL,
+/// `POST /media/:id/confirm`), used for the profile avatar. Post photos go
+/// through the compressing, resumable queue in features/media_upload.
 class MediaUploadService {
   MediaUploadService(this._dio);
 
@@ -31,7 +30,7 @@ class MediaUploadService {
 
     try {
       final createResponse = await _dio.post<Map<String, dynamic>>(
-        '/media/uploads',
+        '/media/presign',
         data: CreateUploadRequest(
           kind: kind,
           contentType: contentType,
@@ -53,7 +52,7 @@ class MediaUploadService {
         ),
       );
 
-      await _dio.post<void>('/media/uploads/${created.id}/confirm');
+      await _dio.post<void>('/media/${created.id}/confirm');
       return created.storageKey;
     } on DioException catch (e) {
       throw mapDioException(e);

@@ -27,6 +27,10 @@ dependencies:
   google_sign_in: ^7.2.0
   connectivity_plus: ^7.3.1
   image_picker: ^1.2.3
+  # On-device WebP compression before upload (media pipeline): users pay for data.
+  flutter_image_compress: ^2.4.0
+  # Persistent upload queue files survive an app restart.
+  path_provider: ^2.1.5
   crypto: ^3.0.7
 
 dev_dependencies:
