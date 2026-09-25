@@ -366,14 +366,24 @@ describe('Category engine (e2e)', () => {
       headers: { 'x-tenant-id': TENANT_A },
     });
     const current = catalog
-      .json<{ slug: string; fieldSchema: { id: string; jsonSchema: { properties: object } } }[]>()
+      .json<
+        {
+          slug: string;
+          fieldSchema: {
+            id: string;
+            jsonSchema: { properties: object };
+            uiSchema: { order: string[] };
+          };
+        }[]
+      >()
       .find((c) => c.slug === SLUG)!;
     expect(current.fieldSchema.id).toBe(v2Id);
-    expect(Object.keys(current.fieldSchema.jsonSchema.properties)).toEqual([
-      'property_type',
-      'price',
-      'gas_supply',
-    ]);
+    // Field order lives in uiSchema.order: jsonSchema is jsonb, and jsonb does not keep
+    // object key order, so only the set of properties is meaningful there.
+    expect(current.fieldSchema.uiSchema.order).toEqual(['property_type', 'price', 'gas_supply']);
+    expect(Object.keys(current.fieldSchema.jsonSchema.properties).sort()).toEqual(
+      ['property_type', 'price', 'gas_supply'].sort(),
+    );
 
     // …the stored post still pins v1, which is still served, labels and all…
     const [stored] = await admin<{ field_schema_id: string }[]>`

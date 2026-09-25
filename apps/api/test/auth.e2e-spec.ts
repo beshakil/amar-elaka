@@ -53,6 +53,9 @@ class FakeSmsProvider implements SmsProvider {
   }
 }
 
+// Clients (mobile, web, admin) always send X-Tenant-Id; tenant routes require a
+// tenant signal before auth runs (TenantGateGuard is global), so authenticated
+// calls here send it too — the token's tenant must then match it.
 describe('Auth module (e2e)', () => {
   let app: NestFastifyApplication;
   let admin: Sql;
@@ -100,6 +103,12 @@ describe('Auth module (e2e)', () => {
   afterAll(async () => {
     await app.close();
     try {
+      // Logins really create memberships, devices and refresh tokens, which
+      // reference the fixture tenant and users — remove them first.
+      const testUsers = admin`select id from users where phone_e164 like ${`+88017${RUN_ID}%`} or google_id = ${GOOGLE_ID}`;
+      await admin`delete from auth_refresh_tokens where user_id in (${testUsers})`;
+      await admin`delete from tenant_members where tenant_id::text like ${FIXTURE_PREFIX} or user_id in (${testUsers})`;
+      await admin`delete from user_devices where user_id in (${testUsers})`;
       await admin`delete from tenants where id::text like ${FIXTURE_PREFIX}`;
       await admin`delete from geo_areas where id::text like ${FIXTURE_PREFIX}`;
       await admin`delete from partners where id::text like ${FIXTURE_PREFIX}`;
@@ -215,14 +224,18 @@ describe('Auth module (e2e)', () => {
       const response = await app.inject({
         method: 'GET',
         url: '/api/v1/auth/me',
-        headers: { authorization: `Bearer ${accessToken}` },
+        headers: { authorization: `Bearer ${accessToken}`, 'x-tenant-id': TENANT },
       });
       expect(response.statusCode).toBe(200);
       expect(response.json()).toMatchObject({ phone, tenantId: TENANT, role: 'member' });
     });
 
     it('rejects /me with no token', async () => {
-      const response = await app.inject({ method: 'GET', url: '/api/v1/auth/me' });
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/v1/auth/me',
+        headers: { 'x-tenant-id': TENANT },
+      });
       expect(response.statusCode).toBe(401);
       expect(response.json<{ error: string }>().error).toBe('UNAUTHENTICATED');
     });
@@ -275,7 +288,7 @@ describe('Auth module (e2e)', () => {
       const loggedOut = await app.inject({
         method: 'POST',
         url: '/api/v1/auth/logout-all',
-        headers: { authorization: `Bearer ${tokens.accessToken}` },
+        headers: { authorization: `Bearer ${tokens.accessToken}`, 'x-tenant-id': TENANT },
       });
       expect(loggedOut.statusCode).toBe(200);
 
@@ -349,7 +362,7 @@ describe('Auth module (e2e)', () => {
       const update = await app.inject({
         method: 'PATCH',
         url: '/api/v1/auth/me',
-        headers: { authorization: `Bearer ${accessToken}` },
+        headers: { authorization: `Bearer ${accessToken}`, 'x-tenant-id': TENANT },
         payload: { displayName: 'Rahim Uddin' },
       });
       expect(update.statusCode).toBe(200);
@@ -358,7 +371,7 @@ describe('Auth module (e2e)', () => {
       const me = await app.inject({
         method: 'GET',
         url: '/api/v1/auth/me',
-        headers: { authorization: `Bearer ${accessToken}` },
+        headers: { authorization: `Bearer ${accessToken}`, 'x-tenant-id': TENANT },
       });
       expect(me.json()).toMatchObject({ displayName: 'Rahim Uddin' });
     });
@@ -377,7 +390,7 @@ describe('Auth module (e2e)', () => {
       const update = await app.inject({
         method: 'PATCH',
         url: '/api/v1/auth/me',
-        headers: { authorization: `Bearer ${accessToken}` },
+        headers: { authorization: `Bearer ${accessToken}`, 'x-tenant-id': TENANT },
         payload: { displayName: '' },
       });
       expect(update.statusCode).toBe(400);
@@ -388,6 +401,7 @@ describe('Auth module (e2e)', () => {
       const response = await app.inject({
         method: 'PATCH',
         url: '/api/v1/auth/me',
+        headers: { 'x-tenant-id': TENANT },
         payload: { displayName: 'Someone' },
       });
       expect(response.statusCode).toBe(401);
