@@ -330,7 +330,7 @@ jobs:
       # Tracked sources only: generated files aren't ours to format.
       - name: Format
         working-directory: apps/mobile
-        run: git ls-files -z -- '*.dart' | xargs -0 dart format --output=none --set-exit-if-changed
+        run: git ls-files -z -- '*.dart' ':!:*.g.dart' | xargs -0 dart format --output=none --set-exit-if-changed
       - name: Analyze
         working-directory: apps/mobile
         run: flutter analyze
