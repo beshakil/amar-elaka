@@ -40,9 +40,22 @@ infra/ (docker, migrations), docs/specs, docs/decisions
    application code. If a number governs behaviour, it lives in
    `platform_settings` (global default) and optionally
    `tenant_settings.setting_overrides` (per-tenant override), read through the
-   typed `SettingsService` (apps/api/src/settings). Adding a setting = seed row
-   - registry entry in the same change. Enforced by
-     apps/api/src/architecture/no-hardcoded-numbers.spec.ts.
+   typed `SettingsService` (apps/api/src/settings). Adding a setting means a
+   seed row plus a registry entry in the same change. Enforced by
+   apps/api/src/architecture/no-hardcoded-numbers.spec.ts.
+10. Discovery is always radius-based (PostGIS distance from the viewer).
+    Tenant boundaries decide ownership (who operates / moderates / earns),
+    never visibility. Never filter a feed, search or map by `tenant_id` alone.
+11. Legal holds: every purge / scrub / anonymize path must check
+    `legal_hold_blocks(subject_type, subject_id)` (table `legal_holds`) first
+    and refuse if it returns true.
+12. Status vs deletion: `sold`, `expired`, `removed` are values of
+    `status_code` (lookup `post_statuses`). `deletion_reason_code` (lookup
+    `post_deletion_reasons`) is only one of: `user_deleted`,
+    `moderator_removed`, `tenant_terminated`, `spam_auto`, `legal_hold`.
+    Never mix the two.
+13. Moderation audit: every takedown writes a `moderation_actions` row with a
+    reason in the same transaction as the status change.
 
 ## Conventions
 
@@ -68,6 +81,11 @@ infra/ (docker, migrations), docs/specs, docs/decisions
 
 ## Current Phase
 
-Week 3 — Client shells. Flutter app skeleton, two Next.js apps, design system,
-API client generation. No business features yet — only navigation, theming,
-auth screens and tenant bootstrap.
+Month 2 (weeks 5–9) — Core marketplace: posts, feed, search UX, map.
+
+- Schema is complete (migrations 0001–0021). It changes only through new
+  migrations, never by editing an existing one.
+- Boost RANKING hooks may exist (a boosted post ranks higher), but there is
+  no purchase flow.
+- Do NOT build yet (months 3–5): payments, credit purchase, boost purchase,
+  subscriptions, chat, reviews, admin dashboards beyond the moderation queue.

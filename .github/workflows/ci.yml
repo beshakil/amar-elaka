@@ -236,9 +236,46 @@ jobs:
 
   # The one check branch protection requires (ADR 022): green only when every
   # job above either passed or was skipped by the path filter.
+  search:
+    name: Search (Meilisearch)
+    needs: changes
+    if: needs.changes.outputs.node == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      meilisearch:
+        # Same image as infra/docker-compose.dev.yml.
+        image: getmeili/meilisearch:v1.8
+        env:
+          MEILI_MASTER_KEY: ci_meili_master_key_0123456789
+          MEILI_NO_ANALYTICS: 'true'
+        ports:
+          - 7700:7700
+        options: >-
+          --health-cmd "curl -fsS http://localhost:7700/health"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    # Throwaway key for a server that lives only as long as this job.
+    env:
+      MEILI_HOST: http://localhost:7700
+      MEILI_MASTER_KEY: ci_meili_master_key_0123456789
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Real-engine suites: Bengali/Banglish/English matching, ranking, geo,
+      # facets, and the indexer's reindex/swap/catch-up (ADR 025).
+      - name: Search integration suites
+        run: pnpm --filter @amar-elaka/api test:search
+
   ci-ok:
     name: CI OK
-    needs: [changes, quality, integration, build, mobile]
+    needs: [changes, quality, integration, search, build, mobile]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5

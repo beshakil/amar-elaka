@@ -48,3 +48,6 @@ packages/shared-types/dart/pubspec.lock
 .DS_Store
 # Claude Code: personal, machine-local settings (shared ones go in .claude/settings.json).
 .claude/settings.local.json
+
+# Raw geo downloads (HDX COD-AB, ~50 MB) — see infra/geo/README.md
+infra/geo/raw/
