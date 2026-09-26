@@ -4,7 +4,7 @@ export const QUEUE_MAINTENANCE = 'maintenance';
 export const QUEUE_MEDIA = 'media';
 /** Search index upkeep (outbox relay, sweeper, settings): one queue, one processor (search/indexing/search.processor.ts). */
 export const QUEUE_SEARCH = 'search';
-/** Post upkeep (the live → expired sweep): one queue, one processor (posts/posts.processor.ts). */
+/** Post upkeep (expiry, expiry reminders, stale drafts): one queue, one processor (posts/posts.processor.ts). */
 export const QUEUE_POSTS = 'posts';
 
 /** BullMQ has no built-in dead-letter concept — a job that exhausts its retries is relayed onto `<queue>-dlq` instead (queue/dlq.util.ts). */
@@ -22,6 +22,8 @@ export const JOB_SWEEP_SEARCH_INDEX = 'sweep-search-index';
 export const JOB_PURGE_SEARCH_OUTBOX = 'purge-search-outbox';
 export const JOB_APPLY_SEARCH_SETTINGS = 'apply-search-settings';
 export const JOB_EXPIRE_POSTS = 'expire-posts';
+export const JOB_REMIND_EXPIRING_POSTS = 'remind-expiring-posts';
+export const JOB_CLEAN_STALE_DRAFTS = 'clean-stale-drafts';
 
 export interface SendEmailJob {
   to: string;
@@ -38,8 +40,17 @@ export interface ProcessMediaJob {
   mediaAssetId: string;
 }
 
-/** Scheduled sweeps carry no data. */
-export type MediaSweepJob = Record<string, never>;
+/**
+ * A scheduled lifecycle job (ADR 031). The repeatable schedule enqueues it
+ * with no data; a platform admin's manual trigger says who asked.
+ */
+export interface ScheduledJobData {
+  trigger?: 'manual';
+  triggeredByUserId?: string;
+}
+
+/** The media sweeps are scheduled lifecycle jobs. */
+export type MediaSweepJob = ScheduledJobData;
 
 /** Search jobs carry no data: each reads its work from the outbox or the tables. */
 export type SearchJob = Record<string, never>;
@@ -56,6 +67,11 @@ export interface QueueJobs {
     [JOB_PROCESS_MEDIA]: ProcessMediaJob;
     [JOB_CLEAN_ORPHAN_MEDIA]: MediaSweepJob;
     [JOB_PURGE_DELETED_MEDIA]: MediaSweepJob;
+  };
+  [QUEUE_POSTS]: {
+    [JOB_EXPIRE_POSTS]: ScheduledJobData;
+    [JOB_REMIND_EXPIRING_POSTS]: ScheduledJobData;
+    [JOB_CLEAN_STALE_DRAFTS]: ScheduledJobData;
   };
   [QUEUE_SEARCH]: {
     [JOB_RELAY_SEARCH_OUTBOX]: SearchJob;

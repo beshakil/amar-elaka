@@ -1,0 +1,33 @@
+import {
+  JOB_CLEAN_ORPHAN_MEDIA,
+  JOB_CLEAN_STALE_DRAFTS,
+  JOB_EXPIRE_POSTS,
+  JOB_PURGE_DELETED_MEDIA,
+  JOB_REMIND_EXPIRING_POSTS,
+  QUEUE_MEDIA,
+  QUEUE_POSTS,
+} from '../queue/queue.types';
+
+/**
+ * The scheduled lifecycle jobs (ADR 031) and the queue each runs on. Codes
+ * are the BullMQ job names, the job-scheduler keys and the `scheduled_jobs`
+ * lookup codes (0028) — one name everywhere.
+ */
+export const SCHEDULED_JOBS = {
+  [JOB_EXPIRE_POSTS]: { queue: QUEUE_POSTS },
+  [JOB_REMIND_EXPIRING_POSTS]: { queue: QUEUE_POSTS },
+  [JOB_CLEAN_STALE_DRAFTS]: { queue: QUEUE_POSTS },
+  [JOB_CLEAN_ORPHAN_MEDIA]: { queue: QUEUE_MEDIA },
+  [JOB_PURGE_DELETED_MEDIA]: { queue: QUEUE_MEDIA },
+} as const;
+
+export type ScheduledJobCode = keyof typeof SCHEDULED_JOBS;
+
+export const SCHEDULED_JOB_CODES = Object.keys(SCHEDULED_JOBS) as [
+  ScheduledJobCode,
+  ...ScheduledJobCode[],
+];
+
+export function isScheduledJobCode(name: string): name is ScheduledJobCode {
+  return name in SCHEDULED_JOBS;
+}
