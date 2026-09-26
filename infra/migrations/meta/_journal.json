@@ -190,6 +190,13 @@
       "when": 1790341099655,
       "tag": "0026_posts_module",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1790346457392,
+      "tag": "0027_trust_moderation",
+      "breakpoints": true
     }
   ]
 }

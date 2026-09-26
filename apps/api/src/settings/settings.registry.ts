@@ -98,6 +98,30 @@ export const SETTING_DEFINITIONS = {
   post_list_page_size_default: wholeNumber,
   post_list_page_size_max: wholeNumber,
 
+  // Trust-based moderation (migration 0027, ADR 030)
+  trust_base_score: wholeNumber,
+  trust_points_per_approved_post: wholeNumber,
+  trust_max_approved_points: wholeNumber,
+  trust_penalty_per_rejected_post: wholeNumber,
+  trust_penalty_per_removed_post: wholeNumber,
+  trust_penalty_per_upheld_report: wholeNumber,
+  trust_points_per_account_month: wholeNumber,
+  trust_max_account_age_points: wholeNumber,
+  trust_points_phone_verified: wholeNumber,
+  trust_points_store_verified: wholeNumber,
+  trust_penalty_per_ban: wholeNumber,
+  trust_auto_approve_threshold: wholeNumber,
+  moderation_sample_rate_percent: wholeNumber,
+  moderation_banned_keywords: textArray,
+  moderation_max_links_per_post: wholeNumber,
+  moderation_duplicate_window_hours: wholeNumber,
+  moderation_price_outlier_factor: decimal,
+  moderation_price_min_samples: wholeNumber,
+  moderation_price_lookback_days: wholeNumber,
+  moderation_bulk_max: wholeNumber,
+  moderation_queue_page_size_default: wholeNumber,
+  moderation_queue_page_size_max: wholeNumber,
+
   // Tenant resolution (tenants/nearby)
   tenant_nearby_max_radius_km: decimal,
 

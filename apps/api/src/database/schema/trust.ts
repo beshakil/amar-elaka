@@ -389,3 +389,49 @@ export const moderationActions = pgTable('moderation_actions', {
   xactId: xid8('xact_id').notNull(),
   ...auditColumns(),
 });
+
+// ---- member_trust_scores (0027, ADR 030): TENANT-SCOPED --------------------
+// One score per tenant_members row; composite FK to tenant_members stays in SQL.
+export const memberTrustScores = pgTable('member_trust_scores', {
+  id: id(),
+  tenantId: uuid('tenant_id')
+    .notNull()
+    .references(() => tenants.id, { onDelete: 'restrict' })
+    .default(sql`public.current_tenant_id()`),
+  memberId: uuid('member_id').notNull(),
+  score: smallint('score').notNull(),
+  components: jsonb('components')
+    .$type<Record<string, number>>()
+    .notNull()
+    .default(sql`'{}'::jsonb`),
+  algorithmVersion: smallint('algorithm_version').notNull(),
+  computedAt: timestamptz('computed_at').notNull().defaultNow(),
+  nextRecomputeAt: timestamptz('next_recompute_at'),
+  overrideScore: smallint('override_score'),
+  overrideReason: text('override_reason'),
+  ...auditColumns(),
+});
+
+// ---- moderation_queue_items (0027, ADR 030): TENANT-SCOPED -----------------
+export const moderationQueueItems = pgTable('moderation_queue_items', {
+  id: id(),
+  tenantId: uuid('tenant_id')
+    .notNull()
+    .references(() => tenants.id, { onDelete: 'restrict' })
+    .default(sql`public.current_tenant_id()`),
+  postId: uuid('post_id').notNull(),
+  authorMemberId: uuid('author_member_id').notNull(),
+  sourceCode: text('source_code').notNull(),
+  reasons: text('reasons')
+    .array()
+    .notNull()
+    .default(sql`'{}'::text[]`),
+  authorTrustScore: smallint('author_trust_score'),
+  statusCode: text('status_code').notNull().default('open'),
+  resolutionCode: text('resolution_code'),
+  resolvedByUserId: uuid('resolved_by_user_id').references(() => users.id, {
+    onDelete: 'set null',
+  }),
+  resolvedAt: timestamptz('resolved_at'),
+  ...auditColumns(),
+});
