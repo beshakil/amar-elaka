@@ -279,6 +279,22 @@ describe('Moderation (e2e)', () => {
         { score: number }[]
       >`select score from member_trust_scores where member_id = ${M_NEWBIE}`;
       expect(after!.score).toBeLessThan(before!.score);
+
+      // The author sees why, with the moderator's note, on the post and in "my posts".
+      const mine = await call('GET', `/posts/${post.id}`, 'newbie');
+      expect(mine.json()).toMatchObject({
+        status: 'rejected',
+        moderationReason: 'wrong_category',
+        moderationNote: 'এটা গাড়ির ক্যাটাগরিতে দিন',
+      });
+      const listed = await call('GET', '/posts/me?status=rejected', 'newbie');
+      expect(
+        listed.json<{ items: { id: string; moderationNote: string | null }[] }>().items,
+      ).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ id: post.id, moderationNote: 'এটা গাড়ির ক্যাটাগরিতে দিন' }),
+        ]),
+      );
     });
 
     it('remove: live → removed, owner notified; approving it afterwards is illegal', async () => {

@@ -24,6 +24,9 @@ const POST_ROW = z.object({
   ownership_resolution_code: z.string(),
   show_phone: z.boolean(),
   allow_chat: z.boolean(),
+  show_whatsapp: z.boolean(),
+  contact_name: z.string().nullable(),
+  contact_phone_e164: z.string().nullable(),
   status_code: z.enum(POST_STATUSES),
   sold_at: nullableDate,
   sold_price: z.string().nullable(),
@@ -44,6 +47,7 @@ const POST_COLUMNS = sql`
   p.title, p.description, p.fields, p.price::text as price,
   st_y(p.location::geometry) as lat, st_x(p.location::geometry) as lng,
   p.geo_area_id, p.outside_boundary, p.ownership_resolution_code, p.show_phone, p.allow_chat,
+  p.show_whatsapp, p.contact_name, p.contact_phone_e164,
   p.status_code, p.sold_at, p.sold_price::text as sold_price, p.moderation_reason_code,
   p.published_at, p.expires_at, p.bumped_at, p.hidden_by_owner, p.scrubbed_at, p.deleted_at,
   p.created_at, p.updated_at`;
@@ -86,6 +90,9 @@ export interface NewPost {
   outsideBoundary: boolean;
   showPhone: boolean | undefined;
   allowChat: boolean | undefined;
+  showWhatsapp: boolean | undefined;
+  contactName: string | null;
+  contactPhone: string | null;
   status: PostStatus;
   publishedAt: Date | null;
   expiresAt: Date | null;
@@ -101,6 +108,9 @@ export type PostPatch = Partial<{
   geoAreaId: string | null;
   showPhone: boolean;
   allowChat: boolean;
+  showWhatsapp: boolean;
+  contactName: string;
+  contactPhone: string;
   status: PostStatus;
   publishedAt: Date;
   expiresAt: Date;
@@ -191,25 +201,70 @@ export class PostsRepository {
 
   async myPostRefs(
     tx: DatabaseTransaction,
-    statuses: readonly PostStatus[] | null,
+    filter: { statuses: readonly PostStatus[] | null; hidden: boolean | null },
     before: string | null,
     limit: number,
   ): Promise<{ id: string; tenantId: string }[]> {
     const rows = await tx.execute(sql`
       select id, tenant_id from public.my_post_refs(
         ${
-          statuses === null
+          filter.statuses === null
             ? null
             : sql`array[${sql.join(
-                statuses.map((s) => sql`${s}`),
+                filter.statuses.map((s) => sql`${s}`),
                 sql`, `,
               )}]::text[]`
         },
-        ${before}::uuid, ${limit})`);
+        ${filter.hidden}::boolean, ${before}::uuid, ${limit})`);
     return z
       .array(z.object({ id: z.string(), tenant_id: z.string() }))
       .parse([...rows])
       .map((r) => ({ id: r.id, tenantId: r.tenant_id }));
+  }
+
+  /** The caller's posts per "my posts" tab (my_post_counts, 0029); missing buckets are 0. */
+  async myPostCounts(tx: DatabaseTransaction): Promise<Map<string, number>> {
+    const rows = await tx.execute(sql`select bucket, post_count from public.my_post_counts()`);
+    return new Map(
+      z
+        .array(z.object({ bucket: z.string(), post_count: z.number() }))
+        .parse([...rows])
+        .map((r) => [r.bucket, r.post_count]),
+    );
+  }
+
+  /** The author's own profile name and phone: a new post's default contact. */
+  async myContactDefaults(
+    tx: DatabaseTransaction,
+  ): Promise<{ name: string | null; phone: string | null }> {
+    const rows = await tx.execute(sql`
+      select up.display_name, u.phone_e164
+      from public.users u
+      left join public.user_profiles up on up.user_id = u.id
+      where u.id = public.current_user_id()`);
+    const [row] = z
+      .array(z.object({ display_name: z.string().nullable(), phone_e164: z.string().nullable() }))
+      .max(1)
+      .parse([...rows]);
+    return { name: row?.display_name?.trim() || null, phone: row?.phone_e164 ?? null };
+  }
+
+  /**
+   * The moderator's note on the post's latest rejection or removal, as its
+   * author may read it (my_post_moderation_history, 0010/0029). Needs the
+   * author's own member context in the post's tenant.
+   */
+  async moderationNote(tx: DatabaseTransaction, postId: string): Promise<string | null> {
+    const rows = await tx.execute(sql`
+      select reason_text from public.my_post_moderation_history(${postId}::uuid)
+      where action_code in ('rejected', 'removed')
+      order by created_at desc
+      limit 1`);
+    const [row] = z
+      .array(z.object({ reason_text: z.string().nullable() }))
+      .max(1)
+      .parse([...rows]);
+    return row?.reason_text ?? null;
   }
 
   async categoryPolicy(
@@ -271,13 +326,15 @@ export class PostsRepository {
       insert into public.posts
         (author_member_id, category_id, field_schema_id, title, description, fields,
          location, location_is_approximate, geo_area_id, ownership_resolution_code, outside_boundary,
-         show_phone, allow_chat, status_code, published_at, expires_at, bumped_at)
+         show_phone, allow_chat, show_whatsapp, contact_name, contact_phone_e164,
+         status_code, published_at, expires_at, bumped_at)
       values
         (${memberId}::uuid, ${post.categoryId}::uuid, ${post.fieldSchemaId}::uuid, ${post.title},
          ${post.description}, ${JSON.stringify(post.fields)}::jsonb,
          public.geo_point(${post.lat}, ${post.lng}), false, ${post.geoAreaId}::uuid,
          ${post.ownershipResolution}, ${post.outsideBoundary},
-         ${post.showPhone ?? true}, ${post.allowChat ?? true}, ${post.status},
+         ${post.showPhone ?? true}, ${post.allowChat ?? true}, ${post.showWhatsapp ?? false},
+         ${post.contactName}, ${post.contactPhone}, ${post.status},
          ${post.publishedAt?.toISOString() ?? null}::timestamptz,
          ${post.expiresAt?.toISOString() ?? null}::timestamptz,
          ${post.publishedAt?.toISOString() ?? null}::timestamptz)
@@ -304,6 +361,9 @@ export class PostsRepository {
     if (patch.geoAreaId !== undefined) set('geo_area_id', sql`${patch.geoAreaId}::uuid`);
     if (patch.showPhone !== undefined) set('show_phone', sql`${patch.showPhone}`);
     if (patch.allowChat !== undefined) set('allow_chat', sql`${patch.allowChat}`);
+    if (patch.showWhatsapp !== undefined) set('show_whatsapp', sql`${patch.showWhatsapp}`);
+    if (patch.contactName !== undefined) set('contact_name', sql`${patch.contactName}`);
+    if (patch.contactPhone !== undefined) set('contact_phone_e164', sql`${patch.contactPhone}`);
     if (patch.status !== undefined) set('status_code', sql`${patch.status}`);
     if (patch.publishedAt !== undefined) set('published_at', iso(patch.publishedAt));
     if (patch.expiresAt !== undefined) set('expires_at', iso(patch.expiresAt));

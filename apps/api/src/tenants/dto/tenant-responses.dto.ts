@@ -54,6 +54,8 @@ export const tenantConfigSchema = z.object({
     email: z.string().nullable(),
     whatsappE164: z.string().nullable(),
   }),
+  /** What a seller is promised after submitting a post that waits for review. */
+  moderation: z.object({ typicalReviewHours: z.number() }),
 });
 export type TenantConfig = z.infer<typeof tenantConfigSchema>;
 export class TenantConfigDto extends createZodDto(tenantConfigSchema) {}

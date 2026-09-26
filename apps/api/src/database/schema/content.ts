@@ -125,6 +125,7 @@ export const posts = pgTable('posts', {
   contactPhoneE164: text('contact_phone_e164'),
   contactName: text('contact_name'),
   showPhone: boolean('show_phone').notNull().default(true),
+  showWhatsapp: boolean('show_whatsapp').notNull().default(false),
   allowChat: boolean('allow_chat').notNull().default(true),
   statusCode: text('status_code')
     .notNull()

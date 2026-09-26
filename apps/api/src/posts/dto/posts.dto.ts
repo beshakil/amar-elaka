@@ -15,6 +15,10 @@ const IDEMPOTENCY_KEY_MAX_CHARS = 200;
 const title = z.string().trim().min(1);
 const description = z.string().trim();
 
+/** A Bangladeshi mobile number in E.164, as users.phone_e164 (0001). */
+const bdMobile = z.string().regex(/^\+8801[3-9]\d{8}$/, 'a BD mobile number like +8801712345678');
+const contactName = z.string().trim().min(1);
+
 const location = z.object({
   lat: z.number().min(-MAX_LAT).max(MAX_LAT),
   lng: z.number().min(-MAX_LNG).max(MAX_LNG),
@@ -32,6 +36,10 @@ export const createPostSchema = z
     mediaIds: z.array(z.string().uuid()).default([]),
     showPhone: z.boolean().optional(),
     allowChat: z.boolean().optional(),
+    showWhatsapp: z.boolean().optional(),
+    /** Who buyers contact; defaults to the author's own profile name and phone. */
+    contactName: contactName.optional(),
+    contactPhone: bdMobile.optional(),
     /** true = submit for review right away; false = keep as a draft. */
     submit: z.boolean().default(false),
   })
@@ -49,6 +57,9 @@ export const updatePostSchema = z
     mediaIds: z.array(z.string().uuid()),
     showPhone: z.boolean(),
     allowChat: z.boolean(),
+    showWhatsapp: z.boolean(),
+    contactName,
+    contactPhone: bdMobile,
   })
   .partial()
   .strict()
@@ -77,6 +88,11 @@ export const myPostsQuerySchema = z
           .filter((s) => s !== ''),
       )
       .pipe(z.array(z.enum(POST_STATUSES)).min(1))
+      .optional(),
+    /** true = only hidden posts (the "hidden" tab), false = none of them; absent = both. */
+    hidden: z
+      .enum(['true', 'false'])
+      .transform((value) => value === 'true')
       .optional(),
     /** The `nextCursor` of the previous page. */
     cursor: z.string().uuid().optional(),
@@ -129,6 +145,13 @@ export const postSchema = z.object({
   media: z.array(mediaSchema),
   showPhone: z.boolean(),
   allowChat: z.boolean(),
+  showWhatsapp: z.boolean(),
+  /** What a buyer sees: the phone only when showPhone (always for the owner and staff). */
+  contact: z.object({
+    name: z.string().nullable(),
+    phone: z.string().nullable(),
+    whatsapp: z.boolean(),
+  }),
   isSold: z.boolean(),
   soldAt: z.string().nullable(),
   soldPrice: z.string().nullable(),
@@ -140,6 +163,8 @@ export const postSchema = z.object({
   /** Only in the owner's and staff's view. */
   hiddenByOwner: z.boolean().optional(),
   moderationReason: z.string().nullable().optional(),
+  /** The moderator's note to the author on a rejection or removal. Owner and staff only. */
+  moderationNote: z.string().nullable().optional(),
   isMine: z.boolean(),
 });
 export type PostView = z.infer<typeof postSchema>;
@@ -162,6 +187,20 @@ export const myPostsSchema = z.object({
 });
 export type MyPostsPage = z.infer<typeof myPostsSchema>;
 export class MyPostsDto extends createZodDto(myPostsSchema) {}
+
+/** The "my posts" tab counts: each status among visible posts, plus every hidden post. */
+export const myPostCountsSchema = z.object({
+  draft: z.number(),
+  pending: z.number(),
+  live: z.number(),
+  rejected: z.number(),
+  sold: z.number(),
+  expired: z.number(),
+  removed: z.number(),
+  hidden: z.number(),
+});
+export type MyPostCounts = z.infer<typeof myPostCountsSchema>;
+export class MyPostCountsDto extends createZodDto(myPostCountsSchema) {}
 
 export const ownershipSchema = z.object({
   tenantId: z.string(),

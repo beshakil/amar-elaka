@@ -23,6 +23,7 @@ import {
   CreatePostDto,
   idempotencyKeySchema,
   MarkSoldDto,
+  MyPostCountsDto,
   MyPostsDto,
   MyPostsQueryDto,
   OwnershipDto,
@@ -30,6 +31,7 @@ import {
   PostDto,
   PostIdParamDto,
   UpdatePostDto,
+  type MyPostCounts,
   type MyPostsPage,
   type OwnershipView,
   type PostView,
@@ -75,6 +77,14 @@ export class PostsController {
   @ApiOkResponse({ type: MyPostsDto })
   listMine(@Query() query: MyPostsQueryDto): Promise<MyPostsPage> {
     return this.posts.listMine(query);
+  }
+
+  /** The "my posts" tab counts. */
+  @Get('me/counts')
+  @UseGuards(JwtAuthGuard)
+  @ApiOkResponse({ type: MyPostCountsDto })
+  countMine(): Promise<MyPostCounts> {
+    return this.posts.countMine();
   }
 
   /** Which area a post at this point will be listed in — ask before uploading photos. */

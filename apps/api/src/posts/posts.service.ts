@@ -18,6 +18,7 @@ import { TrustScoreService } from '../trust/trust-score.service';
 import type {
   CreatePostInput,
   MarkSoldInput,
+  MyPostCounts,
   MyPostsPage,
   MyPostsQuery,
   OwnershipView,
@@ -141,6 +142,9 @@ export class PostsService {
           owningTenantId: owner.tenantId,
           requestTenantId,
         });
+        // Buyers reach the seller as their profile says, unless the post says otherwise.
+        const profile =
+          input.contactName && input.contactPhone ? null : await this.repo.myContactDefaults(tx);
         const postId = await this.repo.insert(tx, memberId!, {
           categoryId: validated.categoryId,
           fieldSchemaId: validated.fieldSchemaId,
@@ -154,6 +158,9 @@ export class PostsService {
           outsideBoundary: owner.outsideBoundary,
           showPhone: input.showPhone,
           allowChat: input.allowChat,
+          showWhatsapp: input.showWhatsapp,
+          contactName: input.contactName ?? profile?.name ?? null,
+          contactPhone: input.contactPhone ?? profile?.phone ?? null,
           status: 'draft',
           publishedAt: null,
           expiresAt: null,
@@ -192,10 +199,18 @@ export class PostsService {
     const tenantId = await this.ownership.tenantOf(id);
     if (!tenantId) throw new PostNotFoundException();
     return this.ownership.inTenant(tenantId, 'lookup', async ({ memberId, role }) => {
-      const { row, media } = await this.tenantDb.transaction(
+      const { row, media, note } = await this.tenantDb.transaction(
         async (tx) => {
           const found = await this.repo.findById(tx, id);
-          return { row: found, media: found ? await this.repo.mediaOf(tx, [id]) : [] };
+          return {
+            row: found,
+            media: found ? await this.repo.mediaOf(tx, [id]) : [],
+            // Only the author's own context can read the history (0029).
+            note:
+              found && found.author_member_id === memberId && hasModerationNote(found)
+                ? await this.repo.moderationNote(tx, id)
+                : null,
+          };
         },
         { accessMode: 'read only' },
       );
@@ -218,7 +233,7 @@ export class PostsService {
       );
       if (visibility === 'none') throw new PostNotFoundException();
       if (visibility === 'scrubbed') return toScrubbed(row);
-      return this.toView(row, media, viewer);
+      return this.toView(row, media, viewer, note);
     });
   }
 
@@ -230,7 +245,13 @@ export class PostsService {
     ]);
     const limit = Math.min(query.limit ?? pageDefault, pageMax);
     const refs = await this.tenantDb.transaction(
-      (tx) => this.repo.myPostRefs(tx, query.status ?? null, query.cursor ?? null, limit + 1),
+      (tx) =>
+        this.repo.myPostRefs(
+          tx,
+          { statuses: query.status ?? null, hidden: query.hidden ?? null },
+          query.cursor ?? null,
+          limit + 1,
+        ),
       { accessMode: 'read only' },
     );
     const page = refs.slice(0, limit);
@@ -245,7 +266,12 @@ export class PostsService {
           async (tx) => {
             const rows = await this.repo.findByIds(tx, ids);
             const media = await this.repo.mediaOf(tx, ids);
-            for (const row of rows) views.set(row.id, this.toView(row, media, 'owner'));
+            for (const row of rows) {
+              const note = hasModerationNote(row)
+                ? await this.repo.moderationNote(tx, row.id)
+                : null;
+              views.set(row.id, this.toView(row, media, 'owner', note));
+            }
           },
           { accessMode: 'read only' },
         ),
@@ -254,6 +280,24 @@ export class PostsService {
     return {
       items: page.map((ref) => views.get(ref.id)).filter((v): v is PostView => v !== undefined),
       nextCursor: refs.length > limit ? (page.at(-1)?.id ?? null) : null,
+    };
+  }
+
+  async countMine(): Promise<MyPostCounts> {
+    this.requireUserId();
+    const counts = await this.tenantDb.transaction((tx) => this.repo.myPostCounts(tx), {
+      accessMode: 'read only',
+    });
+    const of = (bucket: string) => counts.get(bucket) ?? 0;
+    return {
+      draft: of('draft'),
+      pending: of('pending'),
+      live: of('live'),
+      rejected: of('rejected'),
+      sold: of('sold'),
+      expired: of('expired'),
+      removed: of('removed'),
+      hidden: of('hidden'),
     };
   }
 
@@ -312,6 +356,9 @@ export class PostsService {
       }
       if (input.showPhone !== undefined) patch.showPhone = input.showPhone;
       if (input.allowChat !== undefined) patch.allowChat = input.allowChat;
+      if (input.showWhatsapp !== undefined) patch.showWhatsapp = input.showWhatsapp;
+      if (input.contactName !== undefined) patch.contactName = input.contactName;
+      if (input.contactPhone !== undefined) patch.contactPhone = input.contactPhone;
 
       if (input.mediaIds !== undefined) {
         const current = await this.repo.mediaIdsOf(tx, id);
@@ -745,8 +792,14 @@ export class PostsService {
     return areas.at(-1)?.id ?? null;
   }
 
-  private toView(row: PostRow, media: readonly PostMediaRow[], viewer: PostViewer): PostView {
+  private toView(
+    row: PostRow,
+    media: readonly PostMediaRow[],
+    viewer: PostViewer,
+    moderationNote: string | null = null,
+  ): PostView {
     const privileged = viewer !== 'public';
+    const phone = privileged || row.show_phone ? row.contact_phone_e164 : null;
     return {
       id: row.id,
       tenantId: row.tenant_id,
@@ -781,6 +834,12 @@ export class PostsService {
         }),
       showPhone: row.show_phone,
       allowChat: row.allow_chat,
+      showWhatsapp: row.show_whatsapp,
+      contact: {
+        name: row.contact_name,
+        phone,
+        whatsapp: row.show_whatsapp && phone !== null,
+      },
       isSold: row.status_code === 'sold',
       soldAt: row.sold_at?.toISOString() ?? null,
       soldPrice: row.sold_price,
@@ -791,10 +850,19 @@ export class PostsService {
       updatedAt: row.updated_at.toISOString(),
       isMine: viewer === 'owner',
       ...(privileged
-        ? { hiddenByOwner: row.hidden_by_owner, moderationReason: row.moderation_reason_code }
+        ? {
+            hiddenByOwner: row.hidden_by_owner,
+            moderationReason: row.moderation_reason_code,
+            moderationNote,
+          }
         : {}),
     };
   }
+}
+
+/** A rejected or removed post: its author is shown why (ADR 032). */
+function hasModerationNote(row: PostRow): boolean {
+  return row.status_code === 'rejected' || row.status_code === 'removed';
 }
 
 function toScrubbed(row: PostRow): ScrubbedPostView {

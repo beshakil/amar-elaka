@@ -592,7 +592,7 @@ describe('Row level security: trust domain (0010)', () => {
             select * from public.my_post_moderation_history(${POST_1})`,
       );
       expect(rows).toHaveLength(2);
-      // reason_text is only exposed for removed/restored (spec) — curated
+      // reason_text is only exposed for rejected/removed/restored (0029) — curated
       // away for moderator_removed even though the underlying row has one,
       // but shown for 'removed'.
       const byAction = Object.fromEntries(rows.map((row) => [row.action_code, row.reason_text]));

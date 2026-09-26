@@ -574,6 +574,47 @@ describe('Posts (e2e)', () => {
     });
   });
 
+  describe('contact', () => {
+    interface Contact {
+      contact: { name: string | null; phone: string | null; whatsapp: boolean };
+    }
+
+    it("defaults to the author's own phone; an override and WhatsApp are kept", async () => {
+      const plain = await create();
+      expect((plain as unknown as Contact).contact).toMatchObject({
+        phone: '+8801766000001',
+        whatsapp: false,
+      });
+
+      const custom = await create({
+        contactName: 'রহিম চাচা',
+        contactPhone: '+8801812345678',
+        showWhatsapp: true,
+      });
+      expect((custom as unknown as Contact).contact).toEqual({
+        name: 'রহিম চাচা',
+        phone: '+8801812345678',
+        whatsapp: true,
+      });
+
+      const edited = await call('PATCH', `/${custom.id}`, 'owner', { showWhatsapp: false });
+      expect(edited.json<Contact>().contact.whatsapp).toBe(false);
+    });
+
+    it('refuses a phone that is not a BD mobile number', async () => {
+      const response = await call('POST', '', 'owner', draftBody({ contactPhone: '01812345678' }));
+      expect(response.statusCode).toBe(400);
+    });
+
+    it('hides the phone from buyers when showPhone is off, never from the owner', async () => {
+      const post = await create({ submit: true, showPhone: false, showWhatsapp: true });
+      const publicView = (await call('GET', `/${post.id}`, 'anon')).json<Contact>();
+      expect(publicView.contact).toMatchObject({ phone: null, whatsapp: false });
+      const ownerView = (await call('GET', `/${post.id}`, 'owner')).json<Contact>();
+      expect(ownerView.contact.phone).toBe('+8801766000001');
+    });
+  });
+
   describe('GET /me', () => {
     it('lists the owner’s posts across tenants, hidden ones included, filterable and paged', async () => {
       const hidden = await liveInA();
@@ -595,8 +636,45 @@ describe('Posts (e2e)', () => {
       expect(next.json<{ items: Post[] }>().items[0]!.id < nextCursor!).toBe(true);
     });
 
+    it('filters the hidden tab both ways', async () => {
+      const hidden = await liveInA();
+      await call('POST', `/${hidden.id}/hide`, 'owner');
+      const shown = await liveInA();
+
+      const onlyHidden = (await call('GET', '/me?hidden=true&limit=100', 'owner')).json<{
+        items: Post[];
+      }>().items;
+      expect(onlyHidden.map((p) => p.id)).toContain(hidden.id);
+      expect(onlyHidden.map((p) => p.id)).not.toContain(shown.id);
+
+      const notHidden = (
+        await call('GET', '/me?status=live&hidden=false&limit=100', 'owner')
+      ).json<{
+        items: Post[];
+      }>().items;
+      expect(notHidden.map((p) => p.id)).toContain(shown.id);
+      expect(notHidden.map((p) => p.id)).not.toContain(hidden.id);
+    });
+
+    it('counts per tab: statuses of visible posts, and every hidden post under hidden', async () => {
+      const before = (await call('GET', '/me/counts', 'owner')).json<Record<string, number>>();
+      const draft = await create();
+      const live = await liveInA();
+      await call('POST', `/${live.id}/hide`, 'owner');
+
+      const after = (await call('GET', '/me/counts', 'owner')).json<Record<string, number>>();
+      expect(after['draft']).toBe(before['draft']! + 1);
+      expect(after['hidden']).toBe(before['hidden']! + 1);
+      expect(after['live']).toBe(before['live']);
+
+      await call('DELETE', `/${draft.id}`, 'owner');
+      const deleted = (await call('GET', '/me/counts', 'owner')).json<Record<string, number>>();
+      expect(deleted['draft']).toBe(before['draft']);
+    });
+
     it('needs a signed-in user', async () => {
       expect((await call('GET', '/me', 'anon')).statusCode).toBe(401);
+      expect((await call('GET', '/me/counts', 'anon')).statusCode).toBe(401);
     });
   });
 });

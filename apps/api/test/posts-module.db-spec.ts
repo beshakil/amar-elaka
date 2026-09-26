@@ -192,7 +192,7 @@ describe('Posts module database helpers (0026)', () => {
     });
   });
 
-  describe('my_post_refs / my_post_stats', () => {
+  describe('my_post_refs / my_post_stats / my_post_counts', () => {
     beforeAll(async () => {
       await admin`
         insert into posts (id, tenant_id, author_member_id, category_id, field_schema_id, title, status_code)
@@ -204,7 +204,7 @@ describe('Posts module database helpers (0026)', () => {
         app,
         asUser(USER),
         (tx) => tx<{ id: string; tenant_id: string }[]>`
-        select * from public.my_post_refs(null, null, 10)`,
+        select * from public.my_post_refs(null, null, null, 10)`,
       );
       expect(rows.map((r) => r.id)).toEqual([POST_B_PENDING, POST_A_DRAFT, POST_A_LIVE]);
       expect(rows[0]!.tenant_id).toBe(TENANT_B);
@@ -215,14 +215,14 @@ describe('Posts module database helpers (0026)', () => {
         app,
         asUser(USER),
         (tx) => tx<{ id: string }[]>`
-        select id from public.my_post_refs(array['live']::text[], null, 10)`,
+        select id from public.my_post_refs(array['live']::text[], null, null, 10)`,
       );
       expect(live.map((r) => r.id)).toEqual([POST_A_LIVE]);
       const page2 = await as(
         app,
         asUser(USER),
         (tx) => tx<{ id: string }[]>`
-        select id from public.my_post_refs(null, ${POST_A_DRAFT}::uuid, 10)`,
+        select id from public.my_post_refs(null, null, ${POST_A_DRAFT}::uuid, 10)`,
       );
       expect(page2.map((r) => r.id)).toEqual([POST_A_LIVE]);
     });
@@ -239,13 +239,52 @@ describe('Posts module database helpers (0026)', () => {
       expect(stats!.created_since_count).toBe(5);
     });
 
+    it('filters the hidden tab (0029): hidden only, or none of them', async () => {
+      await admin`update posts set hidden_by_owner = true where id = ${POST_A_LIVE}`;
+      try {
+        const hidden = await as(
+          app,
+          asUser(USER),
+          (tx) => tx<{ id: string }[]>`select id from public.my_post_refs(null, true, null, 10)`,
+        );
+        expect(hidden.map((r) => r.id)).toEqual([POST_A_LIVE]);
+        const shown = await as(
+          app,
+          asUser(USER),
+          (tx) => tx<{ id: string }[]>`select id from public.my_post_refs(null, false, null, 10)`,
+        );
+        expect(shown.map((r) => r.id)).toEqual([POST_B_PENDING, POST_A_DRAFT]);
+
+        const counts = await as(
+          app,
+          asUser(USER),
+          (tx) => tx<{ bucket: string; post_count: number }[]>`
+            select bucket, post_count from public.my_post_counts() order by bucket`,
+        );
+        // Hidden counts under hidden whatever its status; deleted posts not at all.
+        expect(counts).toEqual([
+          { bucket: 'draft', post_count: 1 },
+          { bucket: 'hidden', post_count: 1 },
+          { bucket: 'pending', post_count: 1 },
+        ]);
+      } finally {
+        await admin`update posts set hidden_by_owner = false where id = ${POST_A_LIVE}`;
+      }
+    });
+
     it('shows a stranger nothing', async () => {
       const rows = await as(
         app,
         asUser(STRANGER),
-        (tx) => tx`select * from public.my_post_refs(null, null, 10)`,
+        (tx) => tx`select * from public.my_post_refs(null, null, null, 10)`,
       );
       expect(rows).toHaveLength(0);
+      const counts = await as(
+        app,
+        asUser(STRANGER),
+        (tx) => tx`select * from public.my_post_counts()`,
+      );
+      expect(counts).toHaveLength(0);
     });
   });
 });

@@ -140,6 +140,10 @@ export class TenantsService {
           .orderBy(asc(emergencyContacts.sortOrder));
 
         const radiusKm = await this.boundaryRadiusKm(tx, tenant.id);
+        const typicalReviewHours = await this.settings.get(
+          'moderation_typical_review_hours',
+          tenant.id,
+        );
 
         return {
           id: tenant.id,
@@ -158,6 +162,7 @@ export class TenantsService {
             email: settingsRow?.contactEmail ?? null,
             whatsappE164: settingsRow?.whatsappE164 ?? null,
           },
+          moderation: { typicalReviewHours },
         };
       },
       { accessMode: 'read only' },

@@ -1339,6 +1339,18 @@
             "schema": {}
           },
           {
+            "name": "hidden",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "true",
+                "false"
+              ],
+              "type": "string"
+            }
+          },
+          {
             "name": "cursor",
             "required": false,
             "in": "query",
@@ -1363,6 +1375,27 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/MyPostsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Posts"
+        ]
+      }
+    },
+    "/posts/me/counts": {
+      "get": {
+        "operationId": "PostsController_countMine",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyPostCountsDto"
                 }
               }
             }
@@ -3014,6 +3047,17 @@
               "email",
               "whatsappE164"
             ]
+          },
+          "moderation": {
+            "type": "object",
+            "properties": {
+              "typicalReviewHours": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "typicalReviewHours"
+            ]
           }
         },
         "required": [
@@ -3028,7 +3072,8 @@
           "featureFlags",
           "enabledCategories",
           "emergencyNumbers",
-          "support"
+          "support",
+          "moderation"
         ]
       },
       "TenantSummaryDto": {
@@ -4211,6 +4256,17 @@
           "allowChat": {
             "type": "boolean"
           },
+          "showWhatsapp": {
+            "type": "boolean"
+          },
+          "contactName": {
+            "type": "string",
+            "minLength": 1
+          },
+          "contactPhone": {
+            "type": "string",
+            "pattern": "^\\+8801[3-9]\\d{8}$"
+          },
           "submit": {
             "type": "boolean"
           }
@@ -4334,6 +4390,30 @@
           "allowChat": {
             "type": "boolean"
           },
+          "showWhatsapp": {
+            "type": "boolean"
+          },
+          "contact": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "nullable": true
+              },
+              "phone": {
+                "type": "string",
+                "nullable": true
+              },
+              "whatsapp": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "name",
+              "phone",
+              "whatsapp"
+            ]
+          },
           "isSold": {
             "type": "boolean"
           },
@@ -4370,6 +4450,10 @@
             "type": "string",
             "nullable": true
           },
+          "moderationNote": {
+            "type": "string",
+            "nullable": true
+          },
           "isMine": {
             "type": "boolean"
           }
@@ -4392,6 +4476,8 @@
           "media",
           "showPhone",
           "allowChat",
+          "showWhatsapp",
+          "contact",
           "isSold",
           "soldAt",
           "soldPrice",
@@ -4520,6 +4606,30 @@
                 "allowChat": {
                   "type": "boolean"
                 },
+                "showWhatsapp": {
+                  "type": "boolean"
+                },
+                "contact": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "phone": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "whatsapp": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "phone",
+                    "whatsapp"
+                  ]
+                },
                 "isSold": {
                   "type": "boolean"
                 },
@@ -4556,6 +4666,10 @@
                   "type": "string",
                   "nullable": true
                 },
+                "moderationNote": {
+                  "type": "string",
+                  "nullable": true
+                },
                 "isMine": {
                   "type": "boolean"
                 }
@@ -4578,6 +4692,8 @@
                 "media",
                 "showPhone",
                 "allowChat",
+                "showWhatsapp",
+                "contact",
                 "isSold",
                 "soldAt",
                 "soldPrice",
@@ -4598,6 +4714,45 @@
         "required": [
           "items",
           "nextCursor"
+        ]
+      },
+      "MyPostCountsDto": {
+        "type": "object",
+        "properties": {
+          "draft": {
+            "type": "number"
+          },
+          "pending": {
+            "type": "number"
+          },
+          "live": {
+            "type": "number"
+          },
+          "rejected": {
+            "type": "number"
+          },
+          "sold": {
+            "type": "number"
+          },
+          "expired": {
+            "type": "number"
+          },
+          "removed": {
+            "type": "number"
+          },
+          "hidden": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "draft",
+          "pending",
+          "live",
+          "rejected",
+          "sold",
+          "expired",
+          "removed",
+          "hidden"
         ]
       },
       "OwnershipDto": {
@@ -4677,6 +4832,17 @@
           },
           "allowChat": {
             "type": "boolean"
+          },
+          "showWhatsapp": {
+            "type": "boolean"
+          },
+          "contactName": {
+            "type": "string",
+            "minLength": 1
+          },
+          "contactPhone": {
+            "type": "string",
+            "pattern": "^\\+8801[3-9]\\d{8}$"
           }
         },
         "required": [

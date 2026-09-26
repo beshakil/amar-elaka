@@ -121,6 +121,7 @@ export const SETTING_DEFINITIONS = {
   moderation_bulk_max: wholeNumber,
   moderation_queue_page_size_default: wholeNumber,
   moderation_queue_page_size_max: wholeNumber,
+  moderation_typical_review_hours: wholeNumber,
 
   // Scheduled post-lifecycle jobs (ADR 031)
   post_expiry_reminder_days: wholeNumber,
