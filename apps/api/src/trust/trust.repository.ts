@@ -99,16 +99,23 @@ export class TrustRepository {
     tx: DatabaseTransaction,
     tenantId: string,
     memberId: string,
-    score: number,
-    components: TrustComponents,
-    algorithmVersion: number,
+    computed: {
+      score: number;
+      components: TrustComponents;
+      algorithmVersion: number;
+      /** When a time-based input (account age) next changes; null if none will. */
+      nextRecomputeAt: Date | null;
+    },
   ): Promise<void> {
+    const next = computed.nextRecomputeAt?.toISOString() ?? null;
     await tx.execute(sql`
       insert into public.member_trust_scores (tenant_id, member_id, score, components, algorithm_version, computed_at, next_recompute_at)
-      values (${tenantId}::uuid, ${memberId}::uuid, ${score}, ${JSON.stringify(components)}::jsonb, ${algorithmVersion}, now(), null)
+      values (${tenantId}::uuid, ${memberId}::uuid, ${computed.score}, ${JSON.stringify(computed.components)}::jsonb,
+              ${computed.algorithmVersion}, now(), ${next}::timestamptz)
       on conflict (tenant_id, member_id) do update set
         score = excluded.score, components = excluded.components,
-        algorithm_version = excluded.algorithm_version, computed_at = now(), next_recompute_at = null`);
+        algorithm_version = excluded.algorithm_version, computed_at = now(),
+        next_recompute_at = excluded.next_recompute_at`);
   }
 
   async markStale(tx: DatabaseTransaction, tenantId: string, memberId: string): Promise<void> {

@@ -5,6 +5,7 @@ import { TenantDb } from '../database/tenant-db';
 import { SettingsService } from '../settings/settings.service';
 import {
   computeTrust,
+  nextAccountAgeStep,
   TRUST_ALGORITHM_VERSION,
   type TrustComponents,
   type TrustWeights,
@@ -24,7 +25,9 @@ export interface MemberTrust {
  *  - moderation actions call recompute() right after they commit;
  *  - any other module whose event changes an input (ban issued, phone
  *    verified, report upheld) calls markStale(); the next read recomputes;
- *  - a member with no row yet is computed on first read.
+ *  - a member with no row yet is computed on first read;
+ *  - time is an input too (account age): each save sets next_recompute_at to
+ *    the next account-age step, so the first read after it recomputes.
  * Runs as `system`: the inputs include reports and bans the member can't see.
  */
 @Injectable()
@@ -53,15 +56,14 @@ export class TrustScoreService {
     return this.asSystem(tenantId, async (tx) => {
       const inputs = await this.repo.inputs(tx, tenantId, memberId);
       if (!inputs) throw new Error(`trust: no member ${memberId} in tenant ${tenantId}`);
-      const result = computeTrust(inputs, weights, new Date());
-      await this.repo.save(
-        tx,
-        tenantId,
-        memberId,
-        result.score,
-        result.components,
-        TRUST_ALGORITHM_VERSION,
-      );
+      const now = new Date();
+      const result = computeTrust(inputs, weights, now);
+      await this.repo.save(tx, tenantId, memberId, {
+        score: result.score,
+        components: result.components,
+        algorithmVersion: TRUST_ALGORITHM_VERSION,
+        nextRecomputeAt: nextAccountAgeStep(inputs.memberSince, weights, now),
+      });
       return result;
     });
   }

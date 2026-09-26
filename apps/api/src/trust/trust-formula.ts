@@ -78,3 +78,20 @@ export function computeTrust(
   const total = Object.values(components).reduce((sum, value) => sum + value, 0);
   return { score: Math.max(TRUST_MIN, Math.min(TRUST_MAX, Math.round(total))), components };
 }
+
+/**
+ * When the account-age component next changes: the next 30-day month
+ * boundary, until the age points reach their cap (then never). Saved as
+ * `next_recompute_at`, so an idle member's score still grows with age — the
+ * next read after that instant recomputes it; nothing runs on a schedule.
+ */
+export function nextAccountAgeStep(
+  memberSince: Date,
+  weights: Pick<TrustWeights, 'perAccountMonth' | 'maxAccountAgePoints'>,
+  now: Date,
+): Date | null {
+  if (weights.perAccountMonth <= 0) return null;
+  const months = Math.max(0, Math.floor((now.getTime() - memberSince.getTime()) / MS_PER_MONTH));
+  if (months * weights.perAccountMonth >= weights.maxAccountAgePoints) return null;
+  return new Date(memberSince.getTime() + (months + 1) * MS_PER_MONTH);
+}

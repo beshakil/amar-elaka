@@ -1,4 +1,9 @@
-import { computeTrust, type TrustInputs, type TrustWeights } from './trust-formula';
+import {
+  computeTrust,
+  nextAccountAgeStep,
+  type TrustInputs,
+  type TrustWeights,
+} from './trust-formula';
 
 const WEIGHTS: TrustWeights = {
   base: 20,
@@ -64,5 +69,34 @@ describe('trust formula', () => {
     });
     expect(score).toBe(0); // 20 + 10 - 8 - 15 - 10 = -3 → 0
     expect(computeTrust({ ...fresh, bans: 5 }, WEIGHTS, NOW).score).toBe(0);
+  });
+});
+
+describe('nextAccountAgeStep (score drift without a cron)', () => {
+  const DAY = 24 * 60 * 60 * 1_000;
+  const since = (days: number) => new Date(NOW.getTime() - days * DAY);
+
+  it('is the next 30-day boundary while age points can still grow', () => {
+    expect(nextAccountAgeStep(since(0), WEIGHTS, NOW)).toEqual(new Date(NOW.getTime() + 30 * DAY));
+    expect(nextAccountAgeStep(since(45), WEIGHTS, NOW)).toEqual(
+      new Date(since(45).getTime() + 60 * DAY),
+    );
+  });
+
+  it('is null once the age points are capped (15 points at 2/month: from month 8)', () => {
+    expect(nextAccountAgeStep(since(7 * 30), WEIGHTS, NOW)).not.toBeNull();
+    expect(nextAccountAgeStep(since(8 * 30), WEIGHTS, NOW)).toBeNull();
+  });
+
+  it('is null when age earns nothing', () => {
+    expect(nextAccountAgeStep(since(10), { ...WEIGHTS, perAccountMonth: 0 }, NOW)).toBeNull();
+  });
+
+  it('matches the formula: the score changes exactly at the step', () => {
+    const member = { ...fresh, memberSince: since(29) };
+    const step = nextAccountAgeStep(member.memberSince, WEIGHTS, NOW)!;
+    const before = computeTrust(member, WEIGHTS, new Date(step.getTime() - 1)).score;
+    const at = computeTrust(member, WEIGHTS, step).score;
+    expect(at - before).toBe(WEIGHTS.perAccountMonth);
   });
 });
