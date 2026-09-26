@@ -8,7 +8,8 @@
     "tenants": "এলাকা",
     "members": "সদস্য",
     "expandSidebar": "সাইডবার খুলুন",
-    "collapseSidebar": "সাইডবার বন্ধ করুন"
+    "collapseSidebar": "সাইডবার বন্ধ করুন",
+    "moderation": "মডারেশন"
   },
   "breadcrumb": {
     "label": "ব্রেডক্রাম্ব",
@@ -128,7 +129,11 @@
     "roleAlreadyExists": "এই নামে একটি রোল আগে থেকেই আছে।",
     "validationFailed": "দেওয়া তথ্যে সমস্যা আছে। দেখে আবার চেষ্টা করুন।",
     "roleBuiltinImmutable": "বিল্ট-ইন রোল পরিবর্তন বা মুছে ফেলা যায় না।",
-    "roleNotFound": "রোলটি খুঁজে পাওয়া যায়নি। হয়তো এটি আগেই মুছে ফেলা হয়েছে।"
+    "roleNotFound": "রোলটি খুঁজে পাওয়া যায়নি। হয়তো এটি আগেই মুছে ফেলা হয়েছে।",
+    "moderationPostNotFound": "এই এলাকায় এমন কোনো পোস্ট নেই।",
+    "moderationIllegalTransition": "পোস্টটির অবস্থা বদলে গেছে, এই কাজটি আর করা যাবে না। পাতাটি রিফ্রেশ করুন।",
+    "legalHoldBlocksScrub": "এই পোস্টে আইনি হোল্ড আছে, তাই স্থায়ীভাবে মুছে ফেলা যাবে না। কিছুই বদলানো হয়নি।",
+    "moderationBulkTooLarge": "একবারে এত বেশি পোস্টে কাজ করা যাবে না।"
   },
   "error": {
     "title": "কিছু একটা ভুল হয়েছে",
@@ -139,5 +144,72 @@
     "title": "পাতাটি খুঁজে পাওয়া যায়নি",
     "body": "আপনি যে পাতাটি খুঁজছেন সেটি নেই।",
     "action": "ড্যাশবোর্ডে ফিরে যান"
+  },
+  "moderation": {
+    "pageTitle": "মডারেশন কিউ",
+    "description": "রিভিউয়ের অপেক্ষায় থাকা পোস্ট, সবচেয়ে পুরোনোটি আগে।",
+    "filter": "কারণ অনুযায়ী ছাঁকুন",
+    "all": "সব",
+    "postTitle": "শিরোনাম",
+    "category": "বিভাগ",
+    "reasons": "কারণ",
+    "trust": "ট্রাস্ট স্কোর",
+    "postStatus": "অবস্থা",
+    "age": "অপেক্ষা",
+    "ageHours": "{hours, number} ঘণ্টা",
+    "approve": "অনুমোদন",
+    "reject": "বাতিল",
+    "remove": "সরান",
+    "hardRemove": "স্থায়ীভাবে মুছুন",
+    "approved": "পোস্ট অনুমোদিত হয়েছে",
+    "rejectDone": "পোস্ট বাতিল হয়েছে",
+    "removeDone": "পোস্ট সরানো হয়েছে",
+    "hardRemoveDone": "পোস্ট স্থায়ীভাবে মুছে ফেলা হয়েছে",
+    "rejectTitle": "পোস্ট বাতিল করুন",
+    "removeTitle": "পোস্ট সরিয়ে দিন",
+    "hardRemoveTitle": "পোস্ট স্থায়ীভাবে মুছে ফেলুন",
+    "reasonCode": "কারণ",
+    "reasonText": "বিস্তারিত (ঐচ্ছিক)",
+    "reasonTextRequired": "বিস্তারিত",
+    "evidence": "প্রমাণের রেফারেন্স (কমা দিয়ে আলাদা করুন)",
+    "hardRemoveWarning": "পোস্টের লেখা, ছবি ও যোগাযোগের তথ্য চিরতরে মুছে যাবে। এটি ফেরানো যাবে না।",
+    "cancel": "বাতিল করুন",
+    "reason": {
+      "low_trust": "নতুন/কম ট্রাস্ট",
+      "pre_moderation": "আগে-রিভিউ বিভাগ",
+      "outside_boundary": "এলাকার বাইরে",
+      "resubmission": "পুনরায় জমা",
+      "banned_keyword": "নিষিদ্ধ শব্দ",
+      "contact_info": "ফোন নম্বর",
+      "link_spam": "লিংক স্প্যাম",
+      "duplicate": "ডুপ্লিকেট",
+      "price_outlier": "অস্বাভাবিক দাম",
+      "sample": "নমুনা রিভিউ",
+      "rereview": "সম্পাদনার পর রিভিউ"
+    },
+    "takedown": {
+      "spam": "স্প্যাম",
+      "wrong_category": "ভুল বিভাগ",
+      "duplicate": "ডুপ্লিকেট",
+      "policy_violation": "নীতিমালা লঙ্ঘন",
+      "prohibited_item": "নিষিদ্ধ পণ্য",
+      "scam_suspected": "প্রতারণার সন্দেহ",
+      "poor_quality_listing": "নিম্নমানের পোস্ট",
+      "contact_info_exposed": "যোগাযোগের তথ্য প্রকাশ",
+      "other": "অন্যান্য",
+      "illegal_content": "বেআইনি কনটেন্ট",
+      "doxxing": "ব্যক্তিগত তথ্য ফাঁস",
+      "csam": "শিশু নির্যাতনমূলক কনটেন্ট",
+      "credible_threat": "গুরুতর হুমকি"
+    },
+    "status": {
+      "draft": "খসড়া",
+      "pending": "অপেক্ষমাণ",
+      "live": "লাইভ",
+      "rejected": "বাতিল",
+      "sold": "বিক্রি হয়েছে",
+      "expired": "মেয়াদোত্তীর্ণ",
+      "removed": "সরানো"
+    }
   }
 }

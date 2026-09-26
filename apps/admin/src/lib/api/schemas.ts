@@ -72,3 +72,33 @@ export type _ApiContract = [
   Assert<Accepts<Me, Api['MeResultDto']>>,
   Assert<Accepts<Role, Api['RoleDto']>>,
 ];
+
+/** Matches QueuePageDto (apps/api/src/moderation/dto/moderation.dto.ts). */
+export const moderationQueueItemSchema = z.object({
+  id: z.string(),
+  postId: z.string(),
+  source: z.enum(['submission', 'sample', 'rereview']),
+  reasons: z.array(z.string()),
+  postStatus: z.string(),
+  title: z.string(),
+  category: z.object({ id: z.string(), name: z.object({ bn: z.string(), en: z.string() }) }),
+  price: z.string().nullable(),
+  outsideBoundary: z.boolean(),
+  mediaCount: z.number(),
+  authorTrustScore: z.number().nullable(),
+  queuedAt: z.string(),
+  ageHours: z.number(),
+});
+export type ModerationQueueItem = z.infer<typeof moderationQueueItemSchema>;
+
+export const moderationQueuePageSchema = z.object({
+  items: z.array(moderationQueueItemSchema),
+  nextCursor: z.string().nullable(),
+});
+
+/** Matches ModerationResultDto. */
+export const moderationResultSchema = z.object({
+  postId: z.string(),
+  status: z.string(),
+  scrubbed: z.boolean(),
+});

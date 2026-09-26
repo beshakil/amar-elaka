@@ -12,6 +12,10 @@ describe('apiErrorMessageKey', () => {
     ['ROLE_ALREADY_EXISTS', 'roleAlreadyExists'],
     ['ROLE_BUILTIN_IMMUTABLE', 'roleBuiltinImmutable'],
     ['ROLE_NOT_FOUND', 'roleNotFound'],
+    ['MODERATION_POST_NOT_FOUND', 'moderationPostNotFound'],
+    ['POST_ILLEGAL_TRANSITION', 'moderationIllegalTransition'],
+    ['LEGAL_HOLD_BLOCKS_SCRUB', 'legalHoldBlocksScrub'],
+    ['MODERATION_BULK_TOO_LARGE', 'moderationBulkTooLarge'],
     ['VALIDATION_FAILED', 'validationFailed'],
   ])('maps %s to %s', (code, key) => {
     expect(apiErrorMessageKey(new ApiError(400, code, 'x'))).toBe(key);
@@ -40,6 +44,10 @@ describe('apiErrorMessageKey', () => {
       'ROLE_ALREADY_EXISTS',
       'ROLE_BUILTIN_IMMUTABLE',
       'ROLE_NOT_FOUND',
+      'MODERATION_POST_NOT_FOUND',
+      'POST_ILLEGAL_TRANSITION',
+      'LEGAL_HOLD_BLOCKS_SCRUB',
+      'MODERATION_BULK_TOO_LARGE',
       'VALIDATION_FAILED',
       'OTHER',
     ];

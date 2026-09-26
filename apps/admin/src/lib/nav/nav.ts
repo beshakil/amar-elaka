@@ -6,7 +6,7 @@ export interface NavItem {
   /** Key into the `nav` message catalog — no label is hardcoded here. */
   key: string;
   href: Route;
-  icon: 'dashboard' | 'shield' | 'users' | 'building';
+  icon: 'dashboard' | 'shield' | 'users' | 'building' | 'flag';
   /** Omitted for items every member of that nav set may see. */
   requires?: { module: string; action: string };
 }
@@ -18,6 +18,12 @@ export interface NavItem {
  */
 export const TENANT_ADMIN_NAV: NavItem[] = [
   { key: 'overview', href: '/', icon: 'dashboard' },
+  {
+    key: 'moderation',
+    href: '/moderation',
+    icon: 'flag',
+    requires: { module: 'posts', action: 'approve' },
+  },
   { key: 'roles', href: '/roles', icon: 'shield', requires: { module: 'roles', action: 'read' } },
 ];
 

@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import {
   Building2,
+  Flag,
   LayoutDashboard,
   PanelLeftClose,
   PanelLeftOpen,
@@ -21,6 +22,7 @@ const ICONS = {
   shield: Shield,
   users: Users,
   building: Building2,
+  flag: Flag,
 } as const;
 
 /**

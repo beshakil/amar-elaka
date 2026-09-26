@@ -28,11 +28,16 @@ describe('visibleNav', () => {
   const keys = (items: { key: string }[]) => items.map((item) => item.key);
 
   it('gives a tenant admin the tenant set', () => {
-    expect(keys(visibleNav(tenantAdmin))).toEqual(['overview', 'roles']);
+    expect(keys(visibleNav(tenantAdmin))).toEqual(['overview', 'moderation', 'roles']);
   });
 
   it('hides items whose grant the viewer lacks', () => {
     expect(keys(visibleNav(moderator))).toEqual(['overview']);
+  });
+
+  it('shows the moderation queue to whoever may approve posts', () => {
+    const approver = { isPlatformAdmin: false, grants: [{ module: 'posts', action: 'approve' }] };
+    expect(keys(visibleNav(approver))).toEqual(['overview', 'moderation']);
   });
 
   it('gives a platform admin the platform set', () => {

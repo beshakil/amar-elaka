@@ -39,6 +39,14 @@ export function apiErrorMessageKey(error: unknown): string {
       return 'roleBuiltinImmutable';
     case 'ROLE_NOT_FOUND':
       return 'roleNotFound';
+    case 'MODERATION_POST_NOT_FOUND':
+      return 'moderationPostNotFound';
+    case 'POST_ILLEGAL_TRANSITION':
+      return 'moderationIllegalTransition';
+    case 'LEGAL_HOLD_BLOCKS_SCRUB':
+      return 'legalHoldBlocksScrub';
+    case 'MODERATION_BULK_TOO_LARGE':
+      return 'moderationBulkTooLarge';
     case 'VALIDATION_FAILED':
       return 'validationFailed';
     default:
