@@ -1,0 +1,43 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Emulator",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "args": ["--dart-define=API_BASE_URL=http://10.0.2.2:3000/api/v1"]
+    },
+    {
+      "name": "Phone (USB)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "args": ["--dart-define=API_BASE_URL=http://localhost:3000/api/v1"],
+      "preLaunchTask": "adb reverse API port"
+    },
+    {
+      "name": "Phone (WiFi)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "args": ["--dart-define=API_BASE_URL=http://${input:pcLanIp}:3000/api/v1"]
+    },
+    {
+      "name": "Emulator (profile)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "args": ["--dart-define=API_BASE_URL=http://10.0.2.2:3000/api/v1"],
+      "flutterMode": "profile"
+    }
+  ],
+  "inputs": [
+    {
+      "id": "pcLanIp",
+      "type": "promptString",
+      "description": "This PC's WiFi IPv4 (Windows: ipconfig → Wireless LAN adapter Wi-Fi → IPv4 Address)",
+      "default": "192.168.0.100"
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "adb reverse API port",
+      "detail": "Phone (USB): the phone's localhost:3000 → this PC's localhost:3000 (and on into WSL).",
+      "type": "process",
+      "command": "adb",
+      "windows": {
+        "command": "${env:LOCALAPPDATA}\\Android\\Sdk\\platform-tools\\adb.exe"
+      },
+      "args": ["reverse", "tcp:3000", "tcp:3000"],
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "silent"
+      }
+    }
+  ]
+}
