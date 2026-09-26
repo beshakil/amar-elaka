@@ -2000,6 +2000,264 @@
         ]
       }
     },
+    "/moderation/queue": {
+      "get": {
+        "operationId": "ModerationController_queue",
+        "parameters": [
+          {
+            "name": "reason",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "low_trust",
+                "pre_moderation",
+                "outside_boundary",
+                "resubmission",
+                "banned_keyword",
+                "contact_info",
+                "link_spam",
+                "duplicate",
+                "price_outlier",
+                "sample",
+                "rereview"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "categoryId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "olderThanHours",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueuePageDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Moderation"
+        ]
+      }
+    },
+    "/moderation/bulk": {
+      "post": {
+        "operationId": "ModerationController_bulk",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkResultDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Moderation"
+        ]
+      }
+    },
+    "/moderation/{id}/approve": {
+      "post": {
+        "operationId": "ModerationController_approve",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModerationResultDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Moderation"
+        ]
+      }
+    },
+    "/moderation/{id}/reject": {
+      "post": {
+        "operationId": "ModerationController_reject",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecisionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModerationResultDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Moderation"
+        ]
+      }
+    },
+    "/moderation/{id}/remove": {
+      "post": {
+        "operationId": "ModerationController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecisionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModerationResultDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Moderation"
+        ]
+      }
+    },
+    "/moderation/{id}/hard-remove": {
+      "post": {
+        "operationId": "ModerationController_hardRemove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HardRemoveDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModerationResultDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Moderation"
+        ]
+      }
+    },
     "/search": {
       "get": {
         "operationId": "SearchController_find",
@@ -5040,6 +5298,283 @@
           "mode",
           "center",
           "radiusKm"
+        ]
+      },
+      "QueuePageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "postId": {
+                  "type": "string"
+                },
+                "source": {
+                  "type": "string",
+                  "enum": [
+                    "submission",
+                    "sample",
+                    "rereview"
+                  ]
+                },
+                "reasons": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "postStatus": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "category": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "object",
+                      "properties": {
+                        "bn": {
+                          "type": "string"
+                        },
+                        "en": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "bn",
+                        "en"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name"
+                  ]
+                },
+                "price": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "outsideBoundary": {
+                  "type": "boolean"
+                },
+                "mediaCount": {
+                  "type": "number"
+                },
+                "authorTrustScore": {
+                  "type": "number",
+                  "nullable": true
+                },
+                "queuedAt": {
+                  "type": "string"
+                },
+                "ageHours": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "id",
+                "postId",
+                "source",
+                "reasons",
+                "postStatus",
+                "title",
+                "category",
+                "price",
+                "outsideBoundary",
+                "mediaCount",
+                "authorTrustScore",
+                "queuedAt",
+                "ageHours"
+              ]
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ]
+      },
+      "BulkDto": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "approve",
+              "reject"
+            ]
+          },
+          "postIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "reasonCode": {
+            "type": "string",
+            "enum": [
+              "spam",
+              "wrong_category",
+              "duplicate",
+              "policy_violation",
+              "prohibited_item",
+              "scam_suspected",
+              "poor_quality_listing",
+              "contact_info_exposed",
+              "other",
+              "illegal_content",
+              "doxxing",
+              "csam",
+              "credible_threat"
+            ]
+          },
+          "reasonText": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "action",
+          "postIds"
+        ]
+      },
+      "BulkResultDto": {
+        "type": "object",
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "postId": {
+                  "type": "string"
+                },
+                "ok": {
+                  "type": "boolean"
+                },
+                "status": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "error": {
+                  "type": "string",
+                  "nullable": true
+                }
+              },
+              "required": [
+                "postId",
+                "ok",
+                "status",
+                "error"
+              ]
+            }
+          }
+        },
+        "required": [
+          "results"
+        ]
+      },
+      "ModerationResultDto": {
+        "type": "object",
+        "properties": {
+          "postId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "scrubbed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "postId",
+          "status",
+          "scrubbed"
+        ]
+      },
+      "DecisionDto": {
+        "type": "object",
+        "properties": {
+          "reasonCode": {
+            "type": "string",
+            "enum": [
+              "spam",
+              "wrong_category",
+              "duplicate",
+              "policy_violation",
+              "prohibited_item",
+              "scam_suspected",
+              "poor_quality_listing",
+              "contact_info_exposed",
+              "other",
+              "illegal_content",
+              "doxxing",
+              "csam",
+              "credible_threat"
+            ]
+          },
+          "reasonText": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "reasonCode"
+        ]
+      },
+      "HardRemoveDto": {
+        "type": "object",
+        "properties": {
+          "reasonCode": {
+            "type": "string",
+            "enum": [
+              "spam",
+              "wrong_category",
+              "duplicate",
+              "policy_violation",
+              "prohibited_item",
+              "scam_suspected",
+              "poor_quality_listing",
+              "contact_info_exposed",
+              "other",
+              "illegal_content",
+              "doxxing",
+              "csam",
+              "credible_threat"
+            ]
+          },
+          "reasonText": {
+            "type": "string",
+            "minLength": 1
+          },
+          "evidenceRefs": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "required": [
+          "reasonCode",
+          "reasonText",
+          "evidenceRefs"
         ]
       },
       "SearchResponseDto": {
