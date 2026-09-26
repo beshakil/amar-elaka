@@ -36,6 +36,7 @@ import {
   PostMediaTenantMismatchException,
   PostNotEditableException,
   PostNotFoundException,
+  PostRenewTooEarlyException,
   PostTextTooLongException,
   TooManyPostMediaException,
 } from './posts.exceptions';
@@ -430,15 +431,24 @@ export class PostsService {
     });
   }
 
-  /** expired → live with a fresh listing period. */
+  /**
+   * The one-tap repost (ADR 031):
+   *  - expired → live with a fresh listing period, bumped;
+   *  - live, inside the expiry-reminder window → renewed: a fresh listing
+   *    period from now, same status, not bumped (a renewal is not a boost).
+   */
   repost(id: string): Promise<PostView> {
     const userId = this.requireUserId();
     return this.asOwner(id, async (post, tx) => {
+      const now = new Date();
+      if (post.status_code === 'live') {
+        await this.renew(tx, post, userId, now);
+        return;
+      }
       assertTransition(post.status_code, 'live', 'owner');
       await this.repo.lockUser(tx, userId);
       await this.checkLimits(tx, { creating: false, activating: true });
       const policy = await this.repo.categoryPolicy(tx, post.category_id, post.tenant_id);
-      const now = new Date();
       await this.repo.update(tx, id, {
         status: 'live',
         bumpedAt: now,
@@ -450,6 +460,29 @@ export class PostsService {
         from: 'expired',
         to: 'live',
       });
+    });
+  }
+
+  private async renew(
+    tx: DatabaseTransaction,
+    post: { id: string; tenant_id: string; category_id: string; expires_at: Date | null },
+    userId: string,
+    now: Date,
+  ): Promise<void> {
+    const windowDays = await this.settings.get('post_expiry_reminder_days');
+    if (post.expires_at) {
+      const renewableFrom = new Date(post.expires_at.getTime() - windowDays * MS_PER_DAY);
+      if (now < renewableFrom) throw new PostRenewTooEarlyException(renewableFrom);
+    }
+    const policy = await this.repo.categoryPolicy(tx, post.category_id, post.tenant_id);
+    const expiresAt = await this.expiryFrom(now, policy.expiryDays);
+    await this.repo.update(tx, post.id, { expiresAt });
+    await this.repo.emit(tx, 'post.renewed', post.id, {
+      tenantId: post.tenant_id,
+      actorUserId: userId,
+      from: 'live',
+      to: 'live',
+      expiresAt: expiresAt.toISOString(),
     });
   }
 

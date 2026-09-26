@@ -10,7 +10,8 @@ import {
  * Sends a notification through every registered channel. Called after the
  * action it reports has committed; a channel failure is logged, never thrown
  * — a moderator's decision must not fail because a notification couldn't go
- * out.
+ * out. The result says how many channels delivered, for a caller that retries
+ * (the expiry reminder marks a post reminded only once one did).
  */
 @Injectable()
 export class NotificationService {
@@ -21,11 +22,12 @@ export class NotificationService {
     this.logger.setContext(NotificationService.name);
   }
 
-  async send(notification: OutgoingNotification): Promise<void> {
-    await Promise.all(
+  async send(notification: OutgoingNotification): Promise<{ delivered: number }> {
+    const results = await Promise.all(
       this.channels.map(async (channel) => {
         try {
           await channel.deliver(notification);
+          return true;
         } catch (error) {
           this.logger.error(
             {
@@ -36,8 +38,10 @@ export class NotificationService {
             },
             'notification delivery failed',
           );
+          return false;
         }
       }),
     );
+    return { delivered: results.filter(Boolean).length };
   }
 }

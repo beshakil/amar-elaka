@@ -115,6 +115,11 @@ export class PostsController {
     return this.posts.markSold(params.id, body);
   }
 
+  /**
+   * The one-tap repost: expired → live with a fresh listing period. A live
+   * post inside the expiry-reminder window (post_expiry_reminder_days) is
+   * renewed instead; earlier → 409 POST_RENEW_TOO_EARLY.
+   */
   @Post(':id/repost')
   @HttpCode(HttpStatus.OK)
   @RequirePermission('posts', 'write')

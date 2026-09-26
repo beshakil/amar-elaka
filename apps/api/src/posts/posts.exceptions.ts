@@ -130,3 +130,19 @@ export class IdempotentRequestInProgressException extends DomainException {
     super('The same request is still being processed. Try again in a moment.');
   }
 }
+
+/**
+ * A live post can be renewed (one-tap repost) only inside the expiry-reminder
+ * window (post_expiry_reminder_days before it expires), not at any time — a
+ * renewal is not a free way to stay on top forever.
+ */
+export class PostRenewTooEarlyException extends DomainException {
+  readonly code = 'POST_RENEW_TOO_EARLY';
+  readonly httpStatus = HttpStatus.CONFLICT;
+  readonly issues: { renewableFrom: string };
+
+  constructor(renewableFrom: Date) {
+    super('This post can be renewed closer to its expiry.');
+    this.issues = { renewableFrom: renewableFrom.toISOString() };
+  }
+}

@@ -435,7 +435,9 @@ describe('Posts (e2e)', () => {
     it('live → expired by the sweep, then expired → live by repost with a fresh expiry', async () => {
       const post = await liveInA();
       await admin`update posts set expires_at = now() - interval '1 minute' where id = ${post.id}`;
-      expect(await expiry.expireDue()).toBeGreaterThanOrEqual(1);
+      // A global sweep: another suite's posts may expire in the same run, so
+      // this asserts on its own post, not on the count.
+      await expiry.expireDue({ batchSize: 500, maxBatches: 20 });
       const expired = await call('GET', `/${post.id}`, 'owner');
       expect(expired.json<Post>().status).toBe('expired');
 
