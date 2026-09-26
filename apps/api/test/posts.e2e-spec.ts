@@ -82,20 +82,30 @@ describe('Posts (e2e)', () => {
     await admin`delete from tenants where id::text like ${FIXTURE}`;
     await admin`delete from partners where id::text like ${FIXTURE}`;
     await admin`delete from geo_areas where id::text like ${FIXTURE}`;
+    // Implicit memberships can land outside the fixture tenants; drop them too.
+    await admin`delete from tenant_members where user_id::text like ${FIXTURE}`;
     await admin`delete from users where id::text like ${FIXTURE}`;
   }
 
-  // This suite creates far more posts than one person may in a day; raise
-  // the per-user limits before the app (and its settings cache) starts.
+  // This suite is about posts, not moderation (moderation.e2e-spec.ts): a
+  // clean submission in a post-moderated tenant should go live. Per-tenant
+  // overrides, so e2e suites running in parallel never see them.
+  const OVERRIDES = { trust_auto_approve_threshold: 0, moderation_sample_rate_percent: 0 };
+  // It also creates far more posts than one person may in a day. Those limits
+  // count across every tenant, so only platform_settings can raise them; a
+  // higher cap can't break a suite running alongside. Set before the app (and
+  // its settings cache) starts; restored after.
+  const LIMITS = { post_max_per_day_per_user: 200, post_max_active_per_user: 200 };
   let savedLimits: { key: string; value: unknown }[] = [];
-  const LIMIT_KEYS = ['post_max_per_day_per_user', 'post_max_active_per_user'];
 
   beforeAll(async () => {
     admin = testSqlClient(1, resolveTestDatabaseUrl());
     await cleanUp();
     savedLimits = await admin<{ key: string; value: unknown }[]>`
-      select key, value from platform_settings where key in ${admin(LIMIT_KEYS)}`;
-    await admin`update platform_settings set value = '200' where key in ${admin(LIMIT_KEYS)}`;
+      select key, value from platform_settings where key in ${admin(Object.keys(LIMITS))}`;
+    for (const [key, value] of Object.entries(LIMITS)) {
+      await admin`update platform_settings set value = to_jsonb(${value}::int) where key = ${key}`;
+    }
 
     await admin`
       insert into users (id, phone_e164) values
@@ -113,9 +123,13 @@ describe('Posts (e2e)', () => {
       values
         (${TENANT_A}, ${PARTNER}, ${AREA_A}, 'posts-e2e-a', 'এ', 'A', st_point(90.05, 24.05)::geography, 'active'),
         (${TENANT_B}, ${PARTNER}, ${AREA_B}, 'posts-e2e-b', 'বি', 'B', st_point(90.23, 24.05)::geography, 'active')`;
-    await admin`
-      insert into tenant_settings (tenant_id, post_moderation_mode_code)
-      values (${TENANT_A}, 'post'), (${TENANT_B}, 'pre')`;
+    await admin.begin(async (tx) => {
+      // These keys are platform-scope overrides (0003 trigger): platform staff only.
+      await tx`select set_config('app.role', 'platform_admin', true)`;
+      await tx`
+        insert into tenant_settings (tenant_id, post_moderation_mode_code, setting_overrides)
+        values (${TENANT_A}, 'post', ${tx.json(OVERRIDES)}), (${TENANT_B}, 'pre', ${tx.json(OVERRIDES)})`;
+    });
     await admin`
       insert into tenant_members (id, tenant_id, user_id, role_code) values
         (${OWNER_MEMBER}, ${TENANT_A}, ${OWNER}, 'member'),
@@ -210,9 +224,12 @@ describe('Posts (e2e)', () => {
       ...(body === undefined ? {} : { payload: body as Record<string, unknown> }),
     });
 
+  // A fresh title each time: the duplicate pre-filter holds a repeat of the
+  // author's own post (same title + photos) from the last 24 hours.
+  let titleCounter = 0;
   const draftBody = (overrides: Record<string, unknown> = {}) => ({
     categoryId: CATEGORY,
-    title: 'মিরপুরে ২ রুমের ফ্ল্যাট ভাড়া',
+    title: `মিরপুরে ২ রুমের ফ্ল্যাট ভাড়া ${++titleCounter}`,
     description: 'Gas, lift, near the main road.',
     fields: { price: '15000.00' },
     location: INSIDE_A,
@@ -316,8 +333,9 @@ describe('Posts (e2e)', () => {
   describe('idempotent create', () => {
     it('returns the same post for the same key and body, and refuses the key for another body', async () => {
       const key = `tap-${Date.now()}`;
-      const first = await call('POST', '', 'owner', draftBody(), { 'idempotency-key': key });
-      const again = await call('POST', '', 'owner', draftBody(), { 'idempotency-key': key });
+      const body = draftBody();
+      const first = await call('POST', '', 'owner', body, { 'idempotency-key': key });
+      const again = await call('POST', '', 'owner', body, { 'idempotency-key': key });
       expect(first.statusCode).toBe(201);
       expect(again.statusCode).toBe(200);
       expect(again.json<Post>().id).toBe(first.json<Post>().id);
@@ -329,7 +347,7 @@ describe('Posts (e2e)', () => {
       expect(different.json()).toMatchObject({ error: 'IDEMPOTENCY_KEY_REUSED' });
 
       const [count] = await admin<{ n: number }[]>`
-        select count(*)::int as n from posts where title = ${draftBody().title} and id = ${first.json<Post>().id}`;
+        select count(*)::int as n from posts where title = ${body.title}`;
       expect(count!.n).toBe(1);
     });
   });

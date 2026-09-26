@@ -2,9 +2,11 @@ import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
 import { CategoriesModule } from '../categories/categories.module';
 import { LocationsModule } from '../locations/locations.module';
+import { ModerationModule } from '../moderation/moderation.module';
 import { RbacModule } from '../rbac/rbac.module';
 import { SettingsModule } from '../settings/settings.module';
 import { StorageModule } from '../storage/storage.module';
+import { TrustModule } from '../trust/trust.module';
 import { POST_IDEMPOTENCY_STORE, RedisPostIdempotencyStore } from './post-idempotency.store';
 import { PostOwnershipService } from './post-ownership.service';
 import { PostsController } from './posts.controller';
@@ -20,6 +22,8 @@ import { PostsService } from './posts.service';
     StorageModule,
     CategoriesModule,
     LocationsModule,
+    ModerationModule,
+    TrustModule,
   ],
   controllers: [PostsController],
   providers: [

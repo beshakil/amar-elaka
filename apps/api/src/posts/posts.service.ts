@@ -7,8 +7,14 @@ import { TenantContext } from '../database/tenant-context';
 import { TenantDb } from '../database/tenant-db';
 import { LocationsService } from '../locations/locations.service';
 import { parseVariants } from '../media/media.types';
+import {
+  ModerationDecisionService,
+  type ForcedReviewReason,
+} from '../moderation/moderation-decision.service';
+import { ModerationRepository } from '../moderation/moderation.repository';
 import { SettingsService } from '../settings/settings.service';
 import { STORAGE_SERVICE, type StorageService } from '../storage/storage.ports';
+import { TrustScoreService } from '../trust/trust-score.service';
 import type {
   CreatePostInput,
   MarkSoldInput,
@@ -72,6 +78,9 @@ export class PostsService {
     private readonly settings: SettingsService,
     @Inject(STORAGE_SERVICE) private readonly storage: StorageService,
     @Inject(POST_IDEMPOTENCY_STORE) private readonly idempotency: PostIdempotencyStore,
+    private readonly decision: ModerationDecisionService,
+    private readonly moderationRepo: ModerationRepository,
+    private readonly trust: TrustScoreService,
   ) {}
 
   // ---- ownership preview ---------------------------------------------------
@@ -120,7 +129,9 @@ export class PostsService {
     return this.ownership.inTenant(owner.tenantId, 'ensure', async ({ memberId }) => {
       // Validated in the owning tenant: the category must be enabled THERE.
       const validated = await this.fieldValidation.validate(input.categoryId, input.fields);
-      const now = new Date();
+      const trustScore = input.submit
+        ? (await this.trust.get(owner.tenantId, memberId!)).score
+        : undefined;
 
       return this.tenantDb.transaction(async (tx) => {
         await this.repo.lockUser(tx, userId);
@@ -129,23 +140,6 @@ export class PostsService {
           owningTenantId: owner.tenantId,
           requestTenantId,
         });
-        const policy = await this.repo.categoryPolicy(tx, input.categoryId, owner.tenantId);
-
-        // draft → pending → live, each step checked by the state machine.
-        let status: PostStatus = 'draft';
-        const events: [`post.${string}`, Record<string, unknown>][] = [];
-        if (input.submit) {
-          assertTransition(status, 'pending', 'owner');
-          status = 'pending';
-          events.push(['post.submitted', { from: 'draft', to: 'pending' }]);
-          if (policy.moderationMode === 'post' && !owner.needsReview) {
-            assertTransition(status, 'live', 'system');
-            status = 'live';
-            events.push(['post.live', { from: 'pending', to: 'live', reason: 'post_moderation' }]);
-          }
-        }
-        const expiresAt = status === 'live' ? await this.expiryFrom(now, policy.expiryDays) : null;
-
         const postId = await this.repo.insert(tx, memberId!, {
           categoryId: validated.categoryId,
           fieldSchemaId: validated.fieldSchemaId,
@@ -159,21 +153,33 @@ export class PostsService {
           outsideBoundary: owner.outsideBoundary,
           showPhone: input.showPhone,
           allowChat: input.allowChat,
-          status,
-          publishedAt: status === 'live' ? now : null,
-          expiresAt,
+          status: 'draft',
+          publishedAt: null,
+          expiresAt: null,
         });
         await this.repo.replaceMedia(tx, postId, mediaIds);
-
-        const base = { tenantId: owner.tenantId, actorUserId: userId };
         await this.repo.emit(tx, 'post.created', postId, {
-          ...base,
-          status,
+          tenantId: owner.tenantId,
+          actorUserId: userId,
+          status: 'draft',
           categoryId: validated.categoryId,
           ownershipResolution: owner.resolution,
         });
-        for (const [type, payload] of events)
-          await this.repo.emit(tx, type, postId, { ...base, ...payload });
+        if (input.submit) {
+          await this.applySubmission(tx, {
+            id: postId,
+            tenantId: owner.tenantId,
+            from: 'draft',
+            categoryId: validated.categoryId,
+            title: input.title,
+            description: input.description ?? null,
+            price: priceOf(validated.values),
+            ownershipResolution: owner.resolution,
+            authorMemberId: memberId!,
+            actorUserId: userId,
+            trustScore: trustScore!,
+          });
+        }
         return postId;
       });
     });
@@ -322,13 +328,41 @@ export class PostsService {
       let sentBack = false;
       if (post.status_code === 'live' && rereview) {
         const policy = await this.repo.categoryPolicy(tx, post.category_id, post.tenant_id);
+        const title = patch.title ?? post.title;
+        const description = patch.description !== undefined ? patch.description : post.description;
+        const flags = await this.decision.prefilter(tx, {
+          tenantId: post.tenant_id,
+          postId: id,
+          authorMemberId: post.author_member_id!,
+          title,
+          description,
+          categoryId: patch.categoryId ?? post.category_id,
+          price: priceOf(patch.fields ?? post.fields),
+          forced: [],
+          trustScore: 0,
+        });
         if (
           policy.moderationMode === 'pre' ||
           post.ownership_resolution_code === 'beyond_buffer_fallback'
         ) {
+          // Pre-moderated: back to the queue before anyone sees the change.
           assertTransition('live', 'pending', 'system');
           patch.status = 'pending';
           sentBack = true;
+          await this.moderationRepo.fileItem(tx, {
+            postId: id,
+            source: 'submission',
+            reasons: ['rereview', ...flags],
+            trustScore: null,
+          });
+        } else {
+          // Post-moderated: stays live, a moderator looks after the fact.
+          await this.moderationRepo.fileItem(tx, {
+            postId: id,
+            source: 'rereview',
+            reasons: ['rereview', ...flags],
+            trustScore: null,
+          });
         }
       }
       await this.repo.update(tx, id, patch);
@@ -350,44 +384,29 @@ export class PostsService {
     });
   }
 
-  /** draft → pending (and on to live in a post-moderated tenant); rejected/removed → pending. */
+  /**
+   * draft → pending, then the moderation decision (ADR 030) may take it on to
+   * live; rejected/removed → pending always waits for a human.
+   */
   submit(id: string): Promise<PostView> {
     const userId = this.requireUserId();
     return this.asOwner(id, async (post, tx) => {
       assertTransition(post.status_code, 'pending', 'owner');
       await this.repo.lockUser(tx, userId);
       await this.checkLimits(tx, { creating: false, activating: true });
-      const policy = await this.repo.categoryPolicy(tx, post.category_id, post.tenant_id);
-      const base = { tenantId: post.tenant_id, actorUserId: userId };
-      await this.repo.emit(tx, 'post.submitted', id, {
-        ...base,
+      const trustScore = (await this.trust.get(post.tenant_id, post.author_member_id!)).score;
+      await this.applySubmission(tx, {
+        id,
+        tenantId: post.tenant_id,
         from: post.status_code,
-        to: 'pending',
-      });
-
-      // Only a fresh draft may skip the queue. A post a moderator rejected or
-      // removed always goes back to a human, whatever the tenant's mode.
-      const autoLive =
-        post.status_code === 'draft' &&
-        policy.moderationMode === 'post' &&
-        post.ownership_resolution_code !== 'beyond_buffer_fallback';
-      if (!autoLive) {
-        await this.repo.update(tx, id, { status: 'pending' });
-        return;
-      }
-      assertTransition('pending', 'live', 'system');
-      const now = new Date();
-      await this.repo.update(tx, id, {
-        status: 'live',
-        publishedAt: now,
-        bumpedAt: now,
-        expiresAt: await this.expiryFrom(now, policy.expiryDays),
-      });
-      await this.repo.emit(tx, 'post.live', id, {
-        ...base,
-        from: 'pending',
-        to: 'live',
-        reason: 'post_moderation',
+        categoryId: post.category_id,
+        title: post.title,
+        description: post.description,
+        price: priceOf(post.fields),
+        ownershipResolution: post.ownership_resolution_code,
+        authorMemberId: post.author_member_id!,
+        actorUserId: userId,
+        trustScore,
       });
     });
   }
@@ -474,6 +493,91 @@ export class PostsService {
   }
 
   // ---- helpers -------------------------------------------------------------
+
+  /**
+   * The submission step shared by create(submit), submit and resubmission:
+   * → pending, then the moderation decision (ADR 030) — forced review, the
+   * pre-filter, the author's trust — may take it on to live. Files the queue
+   * item (with its reasons, or a random sample of auto-approvals).
+   */
+  private async applySubmission(
+    tx: DatabaseTransaction,
+    post: {
+      id: string;
+      tenantId: string;
+      from: PostStatus;
+      categoryId: string;
+      title: string;
+      description: string | null;
+      price: string | null;
+      ownershipResolution: string;
+      authorMemberId: string;
+      actorUserId: string;
+      trustScore: number;
+    },
+  ): Promise<void> {
+    assertTransition(post.from, 'pending', 'owner');
+    const policy = await this.repo.categoryPolicy(tx, post.categoryId, post.tenantId);
+    const forced: ForcedReviewReason[] = [];
+    if (policy.moderationMode === 'pre') forced.push('pre_moderation');
+    if (post.ownershipResolution === 'beyond_buffer_fallback') forced.push('outside_boundary');
+    // A post a moderator rejected or removed always goes back to a human.
+    if (post.from !== 'draft') forced.push('resubmission');
+
+    const decision = await this.decision.decide(tx, {
+      tenantId: post.tenantId,
+      postId: post.id,
+      authorMemberId: post.authorMemberId,
+      title: post.title,
+      description: post.description,
+      categoryId: post.categoryId,
+      price: post.price,
+      forced,
+      trustScore: post.trustScore,
+    });
+    const base = { tenantId: post.tenantId, actorUserId: post.actorUserId };
+    await this.repo.emit(tx, 'post.submitted', post.id, {
+      ...base,
+      from: post.from,
+      to: 'pending',
+    });
+
+    if (decision.status === 'pending') {
+      await this.repo.update(tx, post.id, { status: 'pending' });
+      await this.moderationRepo.fileItem(tx, {
+        postId: post.id,
+        source: 'submission',
+        reasons: decision.reasons,
+        trustScore: post.trustScore,
+      });
+      return;
+    }
+
+    assertTransition('pending', 'live', 'system');
+    const now = new Date();
+    await this.repo.update(tx, post.id, {
+      status: 'live',
+      publishedAt: now,
+      bumpedAt: now,
+      expiresAt: await this.expiryFrom(now, policy.expiryDays),
+    });
+    await this.repo.emit(tx, 'post.live', post.id, {
+      ...base,
+      from: 'pending',
+      to: 'live',
+      reason: 'trusted_author',
+      trustScore: post.trustScore,
+      sampled: decision.sampled,
+    });
+    if (decision.sampled) {
+      await this.moderationRepo.fileItem(tx, {
+        postId: post.id,
+        source: 'sample',
+        reasons: ['sample'],
+        trustScore: post.trustScore,
+      });
+    }
+  }
 
   /**
    * Loads the post in its owning tenant, locked, checks the caller is its
@@ -674,4 +778,10 @@ function toScrubbed(row: PostRow): ScrubbedPostView {
 /** Same body + same tenant = the same request; the key alone isn't trusted to mean that. */
 function hashRequest(tenantId: string | undefined, input: CreatePostInput): string {
   return createHash('sha256').update(JSON.stringify({ tenantId, input })).digest('hex');
+}
+
+/** The post's price field (money string) — what the category-norm check compares. */
+function priceOf(fields: Record<string, unknown>): string | null {
+  const price = fields['price'];
+  return typeof price === 'string' ? price : null;
 }
