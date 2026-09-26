@@ -29,7 +29,7 @@ resolutions, so a post that is later scrubbed still counts against its author.
 
 **3. Recompute on events, not on a cron.** Every moderation action recomputes the author's score after commit.
 Anything else can call `markStale()`, and `get()` recomputes lazily on the next submission. There is no nightly job
-to fall behind.
+to fall behind. Time-based drift (account age) is handled the same way: see ADR 031 §6.
 
 **4. The submission decision** (`ModerationDecisionService.decide`), in the author's transaction:
 
