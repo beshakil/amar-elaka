@@ -141,6 +141,7 @@ export const posts = pgTable('posts', {
   moderatedAt: timestamptz('moderated_at'),
   publishedAt: timestamptz('published_at'),
   expiresAt: timestamptz('expires_at'),
+  expiryReminderFor: timestamptz('expiry_reminder_for'),
   bumpedAt: timestamptz('bumped_at'),
   creditsCharged: integer('credits_charged').notNull().default(0),
   viewCount: integer('view_count').notNull().default(0),

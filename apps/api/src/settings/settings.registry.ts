@@ -122,6 +122,15 @@ export const SETTING_DEFINITIONS = {
   moderation_queue_page_size_default: wholeNumber,
   moderation_queue_page_size_max: wholeNumber,
 
+  // Scheduled post-lifecycle jobs (ADR 031)
+  post_expiry_reminder_days: wholeNumber,
+  draft_retention_days: wholeNumber,
+  job_batch_size: wholeNumber,
+  job_max_batches_per_run: wholeNumber,
+  job_run_stale_minutes: wholeNumber,
+  job_run_retention_days: wholeNumber,
+  job_runs_page_size: wholeNumber,
+
   // Tenant resolution (tenants/nearby)
   tenant_nearby_max_radius_km: decimal,
 

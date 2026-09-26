@@ -24,6 +24,7 @@ import {
   ticketCategories,
   ticketPriorities,
   ticketStatuses,
+  scheduledJobs,
   visitOutcomes,
   visitPurposes,
 } from './enums';
@@ -284,4 +285,28 @@ export const agentCashRemittances = pgTable('agent_cash_remittances', {
   disputeNote: text('dispute_note'),
   createdAt: timestamptz('created_at').notNull().defaultNow(),
   updatedAt: timestamptz('updated_at').notNull().defaultNow(),
+});
+
+/** Migration 0028 (ADR 031): one row per scheduled-job run, the jobs health view's source. */
+export const jobRuns = pgTable('job_runs', {
+  id: id(),
+  jobCode: text('job_code')
+    .notNull()
+    .references(() => scheduledJobs.code, { onDelete: 'restrict' }),
+  triggerCode: text('trigger_code').notNull(),
+  triggeredByUserId: uuid('triggered_by_user_id').references(() => users.id, {
+    onDelete: 'set null',
+  }),
+  queueJobId: text('queue_job_id'),
+  statusCode: text('status_code').notNull().default('running'),
+  startedAt: timestamptz('started_at').notNull().defaultNow(),
+  finishedAt: timestamptz('finished_at'),
+  durationMs: integer('duration_ms'),
+  rowsAffected: integer('rows_affected').notNull().default(0),
+  details: jsonb('details')
+    .$type<Record<string, unknown>>()
+    .notNull()
+    .default(sql`'{}'::jsonb`),
+  errorMessage: text('error_message'),
+  ...auditColumns(),
 });

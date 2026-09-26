@@ -164,3 +164,6 @@ export const activityEventTypes = pgTable('activity_event_types', enumTableColum
 export const ticketCategories = pgTable('ticket_categories', enumTableColumns());
 export const ticketStatuses = pgTable('ticket_statuses', enumTableColumns());
 export const ticketPriorities = pgTable('ticket_priorities', enumTableColumns());
+
+// Enum table added by migration 0028 (ADR 031).
+export const scheduledJobs = pgTable('scheduled_jobs', enumTableColumns());

@@ -379,10 +379,16 @@ describe('Row level security: content domain (0005)', () => {
       );
     });
 
-    it('has no DELETE grant at all (soft delete only)', async () => {
-      await expectDenied(
-        withContext(app, AS_AUTHOR, (tx) => tx`delete from posts where id = ${POST_DRAFT}`),
+    // Soft delete only for every role: the one hard delete (the system
+    // removing a stale, unheld draft, 0028) is covered in lifecycle-jobs.db-spec.
+    it('never lets the author hard-delete a post, not even their own draft', async () => {
+      const result = await withContext(
+        app,
+        AS_AUTHOR,
+        (tx) => tx`delete from posts where id = ${POST_DRAFT}`,
       );
+      expect(result.count).toBe(0);
+      expect(await admin`select 1 from posts where id = ${POST_DRAFT}`).toHaveLength(1);
     });
   });
 
