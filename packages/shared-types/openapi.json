@@ -2433,6 +2433,107 @@
           "Search"
         ]
       }
+    },
+    "/platform/jobs": {
+      "get": {
+        "operationId": "PlatformJobsController_health",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/JobHealthDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "PlatformJobs"
+        ]
+      }
+    },
+    "/platform/jobs/{code}/runs": {
+      "get": {
+        "operationId": "PlatformJobsController_runs",
+        "parameters": [
+          {
+            "name": "code",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "enum": [
+                "expire-posts",
+                "remind-expiring-posts",
+                "clean-stale-drafts",
+                "clean-orphan-media",
+                "purge-deleted-media"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/JobRunDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "PlatformJobs"
+        ]
+      }
+    },
+    "/platform/jobs/{code}/run": {
+      "post": {
+        "operationId": "PlatformJobsController_trigger",
+        "parameters": [
+          {
+            "name": "code",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "enum": [
+                "expire-posts",
+                "remind-expiring-posts",
+                "clean-stale-drafts",
+                "clean-orphan-media",
+                "purge-deleted-media"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobTriggeredDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "PlatformJobs"
+        ]
+      }
     }
   },
   "info": {
@@ -5998,6 +6099,292 @@
           "query",
           "suggestions",
           "degraded"
+        ]
+      },
+      "JobHealthDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": [
+              "expire-posts",
+              "remind-expiring-posts",
+              "clean-stale-drafts",
+              "clean-orphan-media",
+              "purge-deleted-media"
+            ]
+          },
+          "queue": {
+            "type": "string"
+          },
+          "schedule": {
+            "type": "object",
+            "properties": {
+              "pattern": {
+                "type": "string",
+                "nullable": true
+              },
+              "tz": {
+                "type": "string",
+                "nullable": true
+              },
+              "nextRunAt": {
+                "type": "string",
+                "nullable": true
+              }
+            },
+            "required": [
+              "pattern",
+              "tz",
+              "nextRunAt"
+            ],
+            "nullable": true
+          },
+          "running": {
+            "type": "boolean"
+          },
+          "lastRun": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "trigger": {
+                "type": "string",
+                "enum": [
+                  "schedule",
+                  "manual"
+                ]
+              },
+              "triggeredByUserId": {
+                "type": "string",
+                "nullable": true
+              },
+              "queueJobId": {
+                "type": "string",
+                "nullable": true
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "running",
+                  "succeeded",
+                  "failed",
+                  "skipped"
+                ]
+              },
+              "startedAt": {
+                "type": "string"
+              },
+              "finishedAt": {
+                "type": "string",
+                "nullable": true
+              },
+              "durationMs": {
+                "type": "number",
+                "nullable": true
+              },
+              "rowsAffected": {
+                "type": "number"
+              },
+              "details": {
+                "type": "object",
+                "additionalProperties": {}
+              },
+              "error": {
+                "type": "string",
+                "nullable": true
+              }
+            },
+            "required": [
+              "id",
+              "trigger",
+              "triggeredByUserId",
+              "queueJobId",
+              "status",
+              "startedAt",
+              "finishedAt",
+              "durationMs",
+              "rowsAffected",
+              "details",
+              "error"
+            ],
+            "nullable": true
+          },
+          "lastSuccessAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastFailure": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "trigger": {
+                "type": "string",
+                "enum": [
+                  "schedule",
+                  "manual"
+                ]
+              },
+              "triggeredByUserId": {
+                "type": "string",
+                "nullable": true
+              },
+              "queueJobId": {
+                "type": "string",
+                "nullable": true
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "running",
+                  "succeeded",
+                  "failed",
+                  "skipped"
+                ]
+              },
+              "startedAt": {
+                "type": "string"
+              },
+              "finishedAt": {
+                "type": "string",
+                "nullable": true
+              },
+              "durationMs": {
+                "type": "number",
+                "nullable": true
+              },
+              "rowsAffected": {
+                "type": "number"
+              },
+              "details": {
+                "type": "object",
+                "additionalProperties": {}
+              },
+              "error": {
+                "type": "string",
+                "nullable": true
+              }
+            },
+            "required": [
+              "id",
+              "trigger",
+              "triggeredByUserId",
+              "queueJobId",
+              "status",
+              "startedAt",
+              "finishedAt",
+              "durationMs",
+              "rowsAffected",
+              "details",
+              "error"
+            ],
+            "nullable": true
+          }
+        },
+        "required": [
+          "code",
+          "queue",
+          "schedule",
+          "running",
+          "lastRun",
+          "lastSuccessAt",
+          "lastFailure"
+        ]
+      },
+      "JobRunDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "trigger": {
+            "type": "string",
+            "enum": [
+              "schedule",
+              "manual"
+            ]
+          },
+          "triggeredByUserId": {
+            "type": "string",
+            "nullable": true
+          },
+          "queueJobId": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "running",
+              "succeeded",
+              "failed",
+              "skipped"
+            ]
+          },
+          "startedAt": {
+            "type": "string"
+          },
+          "finishedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "durationMs": {
+            "type": "number",
+            "nullable": true
+          },
+          "rowsAffected": {
+            "type": "number"
+          },
+          "details": {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "error": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "trigger",
+          "triggeredByUserId",
+          "queueJobId",
+          "status",
+          "startedAt",
+          "finishedAt",
+          "durationMs",
+          "rowsAffected",
+          "details",
+          "error"
+        ]
+      },
+      "JobTriggeredDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": [
+              "expire-posts",
+              "remind-expiring-posts",
+              "clean-stale-drafts",
+              "clean-orphan-media",
+              "purge-deleted-media"
+            ]
+          },
+          "queue": {
+            "type": "string"
+          },
+          "queueJobId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "queue",
+          "queueJobId"
         ]
       }
     }

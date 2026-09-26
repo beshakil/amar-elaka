@@ -19,6 +19,7 @@ import { SettingsModule } from './settings/settings.module';
 import { MediaModule } from './media/media.module';
 import { ModerationModule } from './moderation/moderation.module';
 import { PostsModule } from './posts/posts.module';
+import { PlatformJobsModule } from './jobs/platform-jobs.module';
 import { LocationsModule } from './locations/locations.module';
 import { SearchModule } from './search/search.module';
 import { TenantsModule } from './tenants/tenants.module';
@@ -44,6 +45,7 @@ import { TenantsModule } from './tenants/tenants.module';
     ModerationModule,
     SearchModule,
     LocationsModule,
+    PlatformJobsModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },
