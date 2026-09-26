@@ -1,20 +1,15 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { inArray, sql } from 'drizzle-orm';
-import { PinoLogger } from 'nestjs-pino';
 import { z } from 'zod';
 import type { DatabaseTransaction } from '../database/database.client';
 import { mediaAssets } from '../database/schema/content';
 import { TenantContext } from '../database/tenant-context';
 import { TenantDb } from '../database/tenant-db';
+import { inBatches, type JobBudget, type JobOutcome } from '../jobs/job-batches';
 import { SettingsService } from '../settings/settings.service';
 import { MEDIA_KIND_POLICIES } from '../storage/media-kind.constants';
 import { STORAGE_SERVICE, type StorageService } from '../storage/storage.ports';
 import { assetObjectKeys } from './media.types';
-
-// settings-exempt: work-batch size for a background sweep (throughput tuning), not a business rule
-const SWEEP_BATCH = 200;
-// settings-exempt: see above — caps one run so a huge backlog can't hold the worker forever
-const SWEEP_MAX_BATCHES = 50;
 
 const AssetKeys = z.object({
   id: z.string(),
@@ -29,13 +24,18 @@ type AssetKeysRow = z.infer<typeof AssetKeys>;
  *
  *   - Orphans: uploads older than `orphan_media_hours` that nothing uses — never
  *     confirmed, rejected, or ready but never attached to a post, store, message,
- *     ad, avatar or logo (media_asset_is_referenced, 0019). The row is deleted
- *     first (the RESTRICTIVE policy re-checks "unreferenced" at that instant, so
- *     a post attaching it concurrently wins), then its objects.
+ *     ad, avatar or logo (media_asset_is_referenced, 0019). Row and objects go in
+ *     one transaction: the rows are deleted (the RESTRICTIVE policy re-checks
+ *     "unreferenced" at that instant, and the row locks make a concurrent
+ *     attach wait, then fail), the objects deleted, then commit. If the objects
+ *     can't be deleted the transaction rolls back and the rows stay for the
+ *     next run — never a row gone with its files left behind.
  *   - Purge: soft-deleted media whose `purge_due_at` has passed (set when a post
  *     is deleted, 0019). Objects are deleted and `purged_at` set; the row stays
  *     so references don't dangle (schema.md §4.1).
- * Both skip evidence holds and legal holds.
+ * Both skip evidence holds and legal holds, work in batches within the
+ * JobRunner's budget (ADR 031), and are idempotent: a deleted or purged asset
+ * is never selected again, and deleting an object already gone succeeds.
  */
 @Injectable()
 export class MediaMaintenanceService {
@@ -44,19 +44,15 @@ export class MediaMaintenanceService {
     private readonly settings: SettingsService,
     private readonly tenantDb: TenantDb,
     private readonly tenantContext: TenantContext,
-    private readonly logger: PinoLogger,
-  ) {
-    this.logger.setContext(MediaMaintenanceService.name);
-  }
+  ) {}
 
-  async cleanOrphans(): Promise<number> {
+  async cleanOrphans(budget: JobBudget): Promise<JobOutcome> {
     const hours = await this.settings.get('orphan_media_hours');
-    let removed = 0;
-    for (let batch = 0; batch < SWEEP_MAX_BATCHES; batch++) {
-      const rows = await this.asSystem((tx) =>
-        tx.execute(sql`
-          delete from public.media_assets m
-          where m.id in (
+    return inBatches(budget, (limit) =>
+      this.asSystem(async (tx) => {
+        // A locking CTE runs exactly once; `id in (select … limit)` may not.
+        const rows = await tx.execute(sql`
+          with due as (
             select c.id from public.media_assets c
             where c.deleted_at is null
               and not c.evidence_hold
@@ -64,23 +60,20 @@ export class MediaMaintenanceService {
               and not public.media_asset_is_referenced(c.id, c.storage_key)
               and not public.legal_hold_blocks('media_asset', c.id)
             order by c.created_at
-            limit ${SWEEP_BATCH}
+            limit ${limit}
             for update skip locked
           )
-          returning m.id, m.kind_code, m.storage_key, m.variants`),
-      );
-      const parsed = z.array(AssetKeys).parse([...rows]);
-      await this.deleteObjects(parsed);
-      removed += parsed.length;
-      if (parsed.length < SWEEP_BATCH) break;
-    }
-    if (removed > 0) this.logger.info({ removed }, 'removed orphan media');
-    return removed;
+          delete from public.media_assets m using due where m.id = due.id
+          returning m.id, m.kind_code, m.storage_key, m.variants`);
+        const removed = z.array(AssetKeys).parse([...rows]);
+        await this.deleteObjects(removed);
+        return removed.length;
+      }),
+    );
   }
 
-  async purgeDeleted(): Promise<number> {
-    let purged = 0;
-    for (let batch = 0; batch < SWEEP_MAX_BATCHES; batch++) {
+  async purgeDeleted(budget: JobBudget): Promise<JobOutcome> {
+    return inBatches(budget, async (limit) => {
       // Claim a batch, delete its objects, then mark it purged. If object
       // deletion fails the batch stays unpurged and the next run retries it.
       const claimed = await this.asSystem(async (tx) => {
@@ -93,10 +86,10 @@ export class MediaMaintenanceService {
             and not m.evidence_hold
             and not public.legal_hold_blocks('media_asset', m.id)
           order by m.purge_due_at
-          limit ${SWEEP_BATCH}`);
+          limit ${limit}`);
         return z.array(AssetKeys).parse([...rows]);
       });
-      if (claimed.length === 0) break;
+      if (claimed.length === 0) return 0;
 
       await this.deleteObjects(claimed);
       await this.asSystem((tx) =>
@@ -110,11 +103,8 @@ export class MediaMaintenanceService {
             ),
           ),
       );
-      purged += claimed.length;
-      if (claimed.length < SWEEP_BATCH) break;
-    }
-    if (purged > 0) this.logger.info({ purged }, 'purged deleted media');
-    return purged;
+      return claimed.length;
+    });
   }
 
   private async deleteObjects(rows: AssetKeysRow[]): Promise<void> {

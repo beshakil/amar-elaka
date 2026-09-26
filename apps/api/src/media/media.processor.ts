@@ -1,6 +1,7 @@
 import { InjectQueue, OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq';
 import type { Job, Queue } from 'bullmq';
 import { PinoLogger } from 'nestjs-pino';
+import { JobRunner } from '../jobs/job-runner.service';
 import { relayToDeadLetterQueueOnFinalFailure } from '../queue/dlq.util';
 import {
   deadLetterQueueName,
@@ -9,11 +10,12 @@ import {
   JOB_PURGE_DELETED_MEDIA,
   QUEUE_MEDIA,
   type ProcessMediaJob,
+  type ScheduledJobData,
 } from '../queue/queue.types';
 import { MediaMaintenanceService } from './media-maintenance.service';
 import { MediaProcessingService } from './media-processing.service';
 
-type MediaJob = Job<ProcessMediaJob | Record<string, never>>;
+type MediaJob = Job<ProcessMediaJob | ScheduledJobData>;
 
 /**
  * The only processor on the `media` queue, dispatching by job name (a second
@@ -28,6 +30,7 @@ export class MediaProcessor extends WorkerHost {
   constructor(
     private readonly processing: MediaProcessingService,
     private readonly maintenance: MediaMaintenanceService,
+    private readonly runner: JobRunner,
     @InjectQueue(deadLetterQueueName(QUEUE_MEDIA)) private readonly dlq: Queue,
     private readonly logger: PinoLogger,
   ) {
@@ -42,9 +45,19 @@ export class MediaProcessor extends WorkerHost {
         return this.processing.process(tenantId, mediaAssetId);
       }
       case JOB_CLEAN_ORPHAN_MEDIA:
-        return this.maintenance.cleanOrphans();
+        return this.runner.run(
+          JOB_CLEAN_ORPHAN_MEDIA,
+          job.data as ScheduledJobData,
+          job.id ?? null,
+          (budget) => this.maintenance.cleanOrphans(budget),
+        );
       case JOB_PURGE_DELETED_MEDIA:
-        return this.maintenance.purgeDeleted();
+        return this.runner.run(
+          JOB_PURGE_DELETED_MEDIA,
+          job.data as ScheduledJobData,
+          job.id ?? null,
+          (budget) => this.maintenance.purgeDeleted(budget),
+        );
       default:
         throw new Error(`media queue: unknown job ${job.name}`);
     }
