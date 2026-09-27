@@ -281,6 +281,20 @@ export class FeedRepository {
     return z.array(postCardRow).parse([...rows]);
   }
 
+  /** Which of these posts the caller saved (their own saved_posts rows are visible in any tenant). */
+  async savedPostIds(tx: DatabaseTransaction, ids: readonly string[]): Promise<Set<string>> {
+    if (ids.length === 0) return new Set();
+    const rows = await tx.execute(sql`
+      select post_id from public.saved_posts
+      where user_id = public.current_user_id() and post_id = any (${uuidArray(ids)})`);
+    return new Set(
+      z
+        .array(z.object({ post_id: z.string() }))
+        .parse([...rows])
+        .map((r) => r.post_id),
+    );
+  }
+
   async storeCards(tx: DatabaseTransaction, ids: readonly string[]): Promise<StoreCardRow[]> {
     if (ids.length === 0) return [];
     const rows = await tx.execute(sql`

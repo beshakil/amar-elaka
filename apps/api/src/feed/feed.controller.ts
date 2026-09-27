@@ -1,5 +1,6 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { ApiOkResponse } from '@nestjs/swagger';
+import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { FeedQueryDto, FeedResponseDto, type FeedResponse } from './dto/feed.dto';
 import { FeedService } from './feed.service';
 
@@ -15,9 +16,11 @@ export class FeedController {
   /**
    * Ranked post cards mixed with nearby stores and, on the first page, the
    * emergency shortcut, today's bazar prices and landmarks. Page with
-   * `cursor` (keep the other parameters the same).
+   * `cursor` (keep the other parameters the same). A signed-in viewer's
+   * saved posts come marked `isSaved`.
    */
   @Get()
+  @UseGuards(OptionalJwtAuthGuard)
   @ApiOkResponse({ type: FeedResponseDto })
   list(@Query() query: FeedQueryDto): Promise<FeedResponse> {
     return this.feed.feed(query);

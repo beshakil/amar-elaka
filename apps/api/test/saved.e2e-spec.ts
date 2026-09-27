@@ -300,6 +300,21 @@ describe('Saved items and follows (e2e)', () => {
     });
   });
 
+  describe('isSaved on feed cards', () => {
+    it("marks the viewer's saved posts after the shared page cache, never for someone else", async () => {
+      const id = await post();
+      await call('POST', `/saved/post/${id}`, 'saver');
+      const card = async (as: As | 'anon') =>
+        (await call('GET', `/feed?lat=${IN_A.lat}&lng=${IN_A.lng}&limit=50`, as))
+          .json<{ items: { kind: string; id: string; isSaved?: boolean }[] }>()
+          .items.find((item) => item.kind === 'post' && item.id === id);
+      expect(await card('saver')).toMatchObject({ isSaved: true });
+      // The same cached page, another viewer: not theirs.
+      expect(await card('mod')).toMatchObject({ isSaved: false });
+      expect(await card('anon')).toMatchObject({ isSaved: false });
+    });
+  });
+
   describe('GET /saved', () => {
     it('keeps sold, expired, deleted and removed posts, each with a clear state', async () => {
       const sold = await post();

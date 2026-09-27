@@ -78,6 +78,8 @@ export const postCardSchema = z.object({
   area: localized.nullable(),
   badges: z.array(z.enum(POST_BADGES)),
   createdAt: z.string(),
+  /** The signed-in viewer saved it (ADR 037); always false for a guest. Set after the shared page cache. */
+  isSaved: z.boolean(),
 });
 
 export const storeCardSchema = z.object({

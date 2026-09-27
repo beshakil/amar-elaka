@@ -36,7 +36,8 @@ import {
 } from './feed.repository';
 import { geohashCenter, geohashEncode } from './geohash';
 
-const CACHE_KEY_VERSION = 'v1';
+// v2: post cards carry isSaved (always false in the cache).
+const CACHE_KEY_VERSION = 'v2';
 
 interface Plan {
   tenantId: string;
@@ -77,6 +78,26 @@ export class FeedService {
   ) {}
 
   async feed(query: FeedQuery): Promise<FeedResponse> {
+    const response = await this.sharedPage(query);
+    return { ...response, items: await this.withSaved(response.items) };
+  }
+
+  /**
+   * Marks the cards the signed-in viewer saved. Runs after the page cache,
+   * which is shared by everyone in a geohash cell, so the cache never holds
+   * one user's saves. One query per page; guests skip it.
+   */
+  async withSaved<T extends FeedItem | PostCard>(items: T[]): Promise<T[]> {
+    if (!this.context.current()?.userId) return items;
+    const ids = items.flatMap((item) => (item.kind === 'post' ? [item.id] : []));
+    const saved = await this.readOnly((tx) => this.repo.savedPostIds(tx, ids));
+    if (saved.size === 0) return items;
+    return items.map((item) =>
+      item.kind === 'post' && saved.has(item.id) ? { ...item, isSaved: true } : item,
+    );
+  }
+
+  private async sharedPage(query: FeedQuery): Promise<FeedResponse> {
     const plan = await this.plan(query);
     if (plan.cursor !== null) return this.page(plan);
 
@@ -123,7 +144,9 @@ export class FeedService {
         limit: q.limit + 1,
       }),
     );
-    return this.postCards(ranked.filter((r) => r.id !== q.excludeId).slice(0, q.limit));
+    return this.withSaved(
+      await this.postCards(ranked.filter((r) => r.id !== q.excludeId).slice(0, q.limit)),
+    );
   }
 
   private async plan(query: FeedQuery): Promise<Plan> {
@@ -319,6 +342,7 @@ export class FeedService {
         row.area_bn === null && row.area_en === null ? null : { bn: row.area_bn, en: row.area_en },
       badges,
       createdAt: row.created_at.toISOString(),
+      isSaved: false,
     };
   }
 

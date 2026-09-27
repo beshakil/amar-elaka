@@ -6860,6 +6860,9 @@
                     },
                     "createdAt": {
                       "type": "string"
+                    },
+                    "isSaved": {
+                      "type": "boolean"
                     }
                   },
                   "required": [
@@ -6872,7 +6875,8 @@
                     "distanceMeters",
                     "area",
                     "badges",
-                    "createdAt"
+                    "createdAt",
+                    "isSaved"
                   ]
                 },
                 {
@@ -7645,6 +7649,9 @@
                 },
                 "createdAt": {
                   "type": "string"
+                },
+                "isSaved": {
+                  "type": "boolean"
                 }
               },
               "required": [
@@ -7657,7 +7664,8 @@
                 "distanceMeters",
                 "area",
                 "badges",
-                "createdAt"
+                "createdAt",
+                "isSaved"
               ]
             }
           },

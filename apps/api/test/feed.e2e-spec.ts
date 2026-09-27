@@ -268,6 +268,7 @@ describe('Feed (e2e)', () => {
       area: { bn: 'ফিড বি', en: 'Feed E2E B' },
       badges: ['negotiable'],
       createdAt: expect.any(String) as unknown,
+      isSaved: false,
     });
     const boosted = body.items.find((i) => i.kind === 'post' && i.id === boostedPost);
     expect(boosted).toMatchObject({ badges: ['boosted'] });
