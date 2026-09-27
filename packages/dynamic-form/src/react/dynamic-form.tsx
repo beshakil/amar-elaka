@@ -2,7 +2,7 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useLocale, useTranslations } from 'next-intl';
-import { useId, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useId, useMemo, useState, type ReactNode } from 'react';
 import {
   Controller,
   useForm,
@@ -69,6 +69,14 @@ export interface DynamicFormProps {
   className?: string;
   /** Rendered next to the submit button (cancel, save draft…). */
   actions?: ReactNode;
+  /** The <form>'s id: a button elsewhere on the page can submit it (`form={id}`). */
+  id?: string;
+  /** Leave out the form's own submit button (a page-level one submits it instead). */
+  hideSubmit?: boolean;
+  /** What was typed, exactly, on every change — for drafts and live previews. */
+  onStateChange?: (state: FormState) => void;
+  /** Restores `onStateChange`'s output (a draft); wins over `defaultValues`. */
+  defaultState?: FormState;
 }
 
 type Translate = ReturnType<typeof useTranslations<'dynamicForm'>>;
@@ -94,6 +102,10 @@ export function DynamicForm({
   submitLabel,
   className,
   actions,
+  id,
+  hideSubmit = false,
+  onStateChange,
+  defaultState,
 }: DynamicFormProps) {
   const intlLocale = useLocale();
   const locale: Locale = localeProp ?? (intlLocale === 'en' ? 'en' : 'bn');
@@ -121,11 +133,18 @@ export function DynamicForm({
   }, [schema, context]);
   const form = useForm<FormState, unknown, FieldValues>({
     resolver,
-    defaultValues: defaultValues ? valuesToFormState(schema, defaultValues, locale) : {},
+    defaultValues:
+      defaultState ?? (defaultValues ? valuesToFormState(schema, defaultValues, locale) : {}),
     mode: 'onTouched',
     shouldFocusError: true,
   });
   const state = useWatch({ control: form.control });
+  const stateJson = JSON.stringify(state);
+  useEffect(() => {
+    onStateChange?.(JSON.parse(stateJson) as FormState);
+    // Only a change in what was typed matters, not a new callback identity.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stateJson]);
   const visible = visibleFields(schema.jsonSchema, formStateToValues(schema.jsonSchema, state));
   const keys = formFieldKeys(schema).filter((key) => visible.has(key));
   const errors = form.formState.errors;
@@ -140,6 +159,7 @@ export function DynamicForm({
 
   return (
     <form
+      id={id}
       onSubmit={(event) => void submit(event)}
       noValidate
       className={cn('space-y-5', className)}
@@ -173,16 +193,18 @@ export function DynamicForm({
         );
       })}
 
-      <div className="flex flex-wrap items-center gap-3 pt-2">
-        <button
-          type="submit"
-          disabled={form.formState.isSubmitting}
-          className="inline-flex h-11 items-center rounded-md bg-brand px-5 text-sm font-medium text-brand-foreground hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50"
-        >
-          {submitLabel ?? t('ui.submit')}
-        </button>
-        {actions}
-      </div>
+      {!hideSubmit && (
+        <div className="flex flex-wrap items-center gap-3 pt-2">
+          <button
+            type="submit"
+            disabled={form.formState.isSubmitting}
+            className="inline-flex h-11 items-center rounded-md bg-brand px-5 text-sm font-medium text-brand-foreground hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50"
+          >
+            {submitLabel ?? t('ui.submit')}
+          </button>
+          {actions}
+        </div>
+      )}
     </form>
   );
 }
