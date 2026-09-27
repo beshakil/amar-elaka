@@ -8,8 +8,9 @@ const nextConfig: NextConfig = {
   // Deployed as a container image (Coolify/Docker), not on a serverless platform.
   output: 'standalone',
   typedRoutes: true,
-  // Workspace package shipped as TypeScript source (packages/dynamic-form).
-  transpilePackages: ['@amar-elaka/dynamic-form'],
+  // Workspace packages shipped as TypeScript source (packages/dynamic-form,
+  // and packages/shared-types' runtime constants such as ./map).
+  transpilePackages: ['@amar-elaka/dynamic-form', '@amar-elaka/shared-types'],
 };
 
 export default withNextIntl(nextConfig);

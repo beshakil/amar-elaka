@@ -1,4 +1,10 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { isAccessTokenExpired } from '@/lib/auth/jwt';
+import {
+  ACCESS_TOKEN_COOKIE,
+  REFRESH_COOKIE_MAX_AGE,
+  REFRESH_TOKEN_COOKIE,
+} from '@/lib/auth/session';
 import {
   TENANT_ID_HEADER,
   TENANT_RESOLUTION_HEADER,
@@ -6,6 +12,11 @@ import {
 } from '@/lib/tenant-headers';
 
 const RESOLVE_TIMEOUT_MS = 3_000;
+const REFRESH_TIMEOUT_MS = 5_000;
+
+/** Seller pages: a session is required (post creation, my posts). */
+const PROTECTED_PREFIXES = ['/post', '/me'];
+const LOGIN_PATH = '/login';
 // Infrastructure tuning, not business rules: how long a hostname's answer is
 // reused before asking again, and how many hostnames are remembered at once.
 // The API caches the lookup itself (TENANT_CACHE_TTL_MS); this only saves the
@@ -44,8 +55,102 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
   headers.delete(TENANT_ID_HEADER);
   headers.set(TENANT_RESOLUTION_HEADER, resolution.kind);
   if (resolution.kind === 'resolved') headers.set(TENANT_ID_HEADER, resolution.tenantId);
+  // Where the visitor was going, for a login redirect's `next`.
+  headers.set('x-pathname', request.nextUrl.pathname + request.nextUrl.search);
 
-  return NextResponse.next({ request: { headers } });
+  const { pathname } = request.nextUrl;
+  const isProtected = PROTECTED_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+  if (!isProtected) return NextResponse.next({ request: { headers } });
+  return gate(request, headers, resolution);
+}
+
+/**
+ * A UX gate, not the security boundary (the API checks the token on every
+ * call): lets a live session through, rotates an expired access token on the
+ * way (so a seller isn't sent to login every fifteen minutes), and sends
+ * anyone else to /login with `next` set to come back here.
+ */
+async function gate(
+  request: NextRequest,
+  headers: Headers,
+  resolution: TenantResolution,
+): Promise<NextResponse> {
+  const accessToken = request.cookies.get(ACCESS_TOKEN_COOKIE)?.value;
+  const refreshToken = request.cookies.get(REFRESH_TOKEN_COOKIE)?.value;
+  if (accessToken && !isAccessTokenExpired(accessToken)) {
+    return NextResponse.next({ request: { headers } });
+  }
+
+  if (refreshToken && resolution.kind === 'resolved') {
+    const rotation = await rotate(refreshToken, resolution.tenantId);
+    if (rotation.kind === 'rotated') {
+      // The page renders in this same request: hand it the new tokens too.
+      headers.set(
+        'cookie',
+        [
+          `${ACCESS_TOKEN_COOKIE}=${rotation.accessToken}`,
+          `${REFRESH_TOKEN_COOKIE}=${rotation.refreshToken}`,
+        ].join('; '),
+      );
+      const response = NextResponse.next({ request: { headers } });
+      const options = {
+        httpOnly: true as const,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax' as const,
+        path: '/',
+      };
+      response.cookies.set(ACCESS_TOKEN_COOKIE, rotation.accessToken, options);
+      response.cookies.set(REFRESH_TOKEN_COOKIE, rotation.refreshToken, {
+        ...options,
+        maxAge: REFRESH_COOKIE_MAX_AGE,
+      });
+      return response;
+    }
+    // The API couldn't be asked: keep the (still unspent) session and let the
+    // page report the outage, rather than logging the seller out over a blip.
+    if (rotation.kind === 'unavailable') return NextResponse.next({ request: { headers } });
+  }
+
+  const login = new URL(LOGIN_PATH, request.url);
+  login.searchParams.set('next', request.nextUrl.pathname + request.nextUrl.search);
+  const redirect = NextResponse.redirect(login);
+  redirect.cookies.delete(ACCESS_TOKEN_COOKIE);
+  redirect.cookies.delete(REFRESH_TOKEN_COOKIE);
+  return redirect;
+}
+
+type Rotation =
+  | { kind: 'rotated'; accessToken: string; refreshToken: string }
+  /** The API answered no: expired, revoked, or a replay of a spent token. */
+  | { kind: 'refused' }
+  /** The API could not answer: down, timed out, or a 5xx. */
+  | { kind: 'unavailable' };
+
+async function rotate(refreshToken: string, tenantId: string): Promise<Rotation> {
+  try {
+    const response = await fetch(`${process.env.API_BASE_URL ?? ''}/auth/refresh`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        accept: 'application/json',
+        [TENANT_ID_HEADER]: tenantId,
+      },
+      body: JSON.stringify({ refreshToken }),
+      signal: AbortSignal.timeout(REFRESH_TIMEOUT_MS),
+    });
+    if (response.status >= 500) return { kind: 'unavailable' };
+    if (!response.ok) return { kind: 'refused' };
+    const body: unknown = await response.json();
+    if (typeof body !== 'object' || body === null) return { kind: 'refused' };
+    const { accessToken, refreshToken: next } = body as Record<string, unknown>;
+    return typeof accessToken === 'string' && typeof next === 'string'
+      ? { kind: 'rotated', accessToken, refreshToken: next }
+      : { kind: 'refused' };
+  } catch {
+    return { kind: 'unavailable' };
+  }
 }
 
 async function resolveCached(host: string): Promise<TenantResolution> {

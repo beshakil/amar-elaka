@@ -133,3 +133,68 @@ describe('web tenant-resolution middleware', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
+
+/** The URL a fetch call was made to (fetch takes a string, URL or Request). */
+const urlOf = (input: string | URL | Request) =>
+  input instanceof Request ? input.url : input.toString();
+
+describe('seller-page gate', () => {
+  const token = (secondsLeft: number) =>
+    `x.${btoa(JSON.stringify({ exp: Math.floor(Date.now() / 1000) + secondsLeft }))}.y`;
+  const pageRequest = (path: string, cookie?: string) =>
+    new NextRequest(`http://mirpur.localhost:3001${path}`, {
+      headers: { host: 'mirpur.localhost:3001', ...(cookie ? { cookie } : {}) },
+    });
+
+  it('sends a visitor without a session to login, with next set to come back', async () => {
+    fetchMock.mockResolvedValue(Response.json({ tenantId: T1 }));
+    const res = await (await load())(pageRequest('/post/new'));
+    expect(res.status).toBe(307);
+    const location = new URL(res.headers.get('location')!);
+    expect(location.pathname).toBe('/login');
+    expect(location.searchParams.get('next')).toBe('/post/new');
+  });
+
+  it('lets a live session through, and leaves public pages alone', async () => {
+    fetchMock.mockResolvedValue(Response.json({ tenantId: T1 }));
+    const middleware = await load();
+    const allowed = await middleware(
+      pageRequest('/me/posts', `ae_access=${token(600)}; ae_refresh=r1`),
+    );
+    expect(allowed.headers.get('location')).toBeNull();
+    const publicPage = await middleware(pageRequest('/listing/abc'));
+    expect(publicPage.headers.get('location')).toBeNull();
+  });
+
+  it('rotates an expired access token on the way through', async () => {
+    fetchMock.mockImplementation((input) =>
+      Promise.resolve(
+        urlOf(input).includes('/auth/refresh')
+          ? Response.json({ accessToken: token(900), refreshToken: 'r2' })
+          : Response.json({ tenantId: T1 }),
+      ),
+    );
+    const res = await (
+      await load()
+    )(pageRequest('/post/new', `ae_access=${token(-10)}; ae_refresh=r1`));
+    expect(res.headers.get('location')).toBeNull();
+    expect(res.cookies.get('ae_refresh')?.value).toBe('r2');
+    const refresh = fetchMock.mock.calls.find(([input]) => urlOf(input).includes('/auth/refresh'));
+    expect((refresh?.[1]?.headers as Record<string, string>)['x-tenant-id']).toBe(T1);
+  });
+
+  it('a refused refresh goes to login and clears the cookies', async () => {
+    fetchMock.mockImplementation((input) =>
+      Promise.resolve(
+        urlOf(input).includes('/auth/refresh')
+          ? Response.json({ error: 'REFRESH_TOKEN_REUSED' }, { status: 401 })
+          : Response.json({ tenantId: T1 }),
+      ),
+    );
+    const res = await (
+      await load()
+    )(pageRequest('/me/posts', `ae_access=${token(-10)}; ae_refresh=r1`));
+    expect(new URL(res.headers.get('location')!).pathname).toBe('/login');
+    expect(res.cookies.get('ae_refresh')?.value).toBe('');
+  });
+});

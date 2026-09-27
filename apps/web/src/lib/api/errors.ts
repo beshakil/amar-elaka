@@ -14,6 +14,8 @@ export class ApiError extends Error {
     /** The API's `error` field — a DomainException code like OTP_EXPIRED. */
     readonly code: string,
     message: string,
+    /** The exception's `issues` (a limit, a field, validation paths), when it has any. */
+    readonly details?: unknown,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -43,6 +45,6 @@ export async function toApiError(response: Response): Promise<ApiError> {
   const body: unknown = await response.json().catch(() => null);
   const parsed = errorBodySchema.safeParse(body);
   return parsed.success
-    ? new ApiError(response.status, parsed.data.error, parsed.data.message)
+    ? new ApiError(response.status, parsed.data.error, parsed.data.message, parsed.data.details)
     : new ApiError(response.status, 'UNKNOWN_ERROR', response.statusText);
 }

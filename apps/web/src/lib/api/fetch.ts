@@ -17,6 +17,8 @@ interface ApiRequest<TSchema extends z.ZodTypeAny> {
   query?: Record<string, string>;
   tenantId?: string | undefined;
   accessToken?: string | undefined;
+  /** Extra request headers, e.g. Idempotency-Key. */
+  headers?: Record<string, string>;
   /** Seconds for Next's data cache; omit for an uncached request. */
   revalidate?: number;
 }
@@ -40,6 +42,7 @@ export async function apiFetch<TSchema extends z.ZodTypeAny>(
   if (request.body !== undefined) headers['content-type'] = 'application/json';
   if (request.tenantId) headers['x-tenant-id'] = request.tenantId;
   if (request.accessToken) headers.authorization = `Bearer ${request.accessToken}`;
+  Object.assign(headers, request.headers);
 
   const init: RequestInit & { next?: { revalidate: number } } = {
     method,

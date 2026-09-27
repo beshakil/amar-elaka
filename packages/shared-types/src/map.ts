@@ -2,6 +2,8 @@
  * The one map for every client — web, admin and the Flutter app
  * (apps/mobile/lib/core/map/map_config.dart mirrors these values): OpenStreetMap's
  * standard raster tiles. Free, no key. docs/decisions/033-openstreetmap-maps.md.
+ * Import it as `@amar-elaka/shared-types/map`: it has no imports of its own,
+ * so a client bundle takes only these constants.
  *
  * OSM's tile usage policy (https://operations.osmfoundation.org/policies/tiles/)
  * is the price: show the attribution below on every map, send a real
