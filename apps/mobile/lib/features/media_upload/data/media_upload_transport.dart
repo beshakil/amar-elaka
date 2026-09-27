@@ -45,6 +45,8 @@ abstract interface class MediaUploadTransport {
     CancelToken? cancelToken,
   });
 
+  /// Confirms the upload and returns once the photo is `ready` to attach to
+  /// a post (the API refuses photos still `processing`).
   Future<void> confirm(String mediaId);
 }
 
@@ -111,9 +113,37 @@ class DioMediaUploadTransport implements MediaUploadTransport {
     );
   });
 
+  /// How often, and how long, to wait for the worker to make a confirmed
+  /// photo ready (transport tuning: processing takes a second or two).
+  static const readyPollInterval = Duration(milliseconds: 500);
+  static const readyMaxPolls = 40;
+
+  /// Confirm, then wait until the worker has made the photo `ready`: only
+  /// then is it "done" — a post can't attach one still `processing`, and a
+  /// seller who taps "post" right after the last upload must not get
+  /// POST_MEDIA_INVALID. A photo the worker rejects fails here.
   @override
-  Future<void> confirm(String mediaId) =>
-      _call(() => _api.post<void>('/media/$mediaId/confirm'));
+  Future<void> confirm(String mediaId) => _call(() async {
+    var status = await _status(
+      _api.post<Map<String, dynamic>>('/media/$mediaId/confirm'),
+    );
+    for (var poll = 0; status == 'processing' && poll < readyMaxPolls; poll++) {
+      await Future<void>.delayed(readyPollInterval);
+      status = await _status(_api.get<Map<String, dynamic>>('/media/$mediaId'));
+    }
+    switch (status) {
+      case 'ready':
+        return;
+      case 'processing':
+        throw const UploadFailure('processing_timeout', retryable: true);
+      default:
+        throw UploadFailure('media_$status', retryable: false);
+    }
+  });
+
+  Future<String> _status(
+    Future<Response<Map<String, dynamic>>> request,
+  ) async => ((await request).data?['status'] as String?) ?? 'processing';
 
   Future<T> _call<T>(Future<T> Function() work) async {
     try {
