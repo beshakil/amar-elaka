@@ -166,6 +166,29 @@ export const SETTING_DEFINITIONS = {
   geocode_reverse_cache_decimals: wholeNumber,
   map_viewport_max_areas: wholeNumber,
   tenant_service_radius_max_km: decimal,
+
+  // Feed (ADR 035, migration 0030)
+  feed_default_radius_km: decimal,
+  feed_max_radius_km: decimal,
+  feed_page_size_default: wholeNumber,
+  feed_page_size_max: wholeNumber,
+  feed_weight_distance: decimal,
+  feed_weight_recency: decimal,
+  feed_weight_boost: decimal,
+  feed_weight_trust: decimal,
+  feed_weight_completeness: decimal,
+  feed_distance_half_km: decimal,
+  feed_recency_half_life_hours: wholeNumber,
+  feed_completeness_photo_target: wholeNumber,
+  feed_store_card_interval: wholeNumber,
+  feed_emergency_card_position: wholeNumber,
+  feed_bazar_card_position: wholeNumber,
+  feed_landmark_card_position: wholeNumber,
+  feed_landmark_cards_max: wholeNumber,
+  feed_bazar_card_items: wholeNumber,
+  feed_emergency_card_items: wholeNumber,
+  feed_cache_ttl_seconds: wholeNumber,
+  feed_cache_geohash_precision: wholeNumber,
 } as const satisfies Record<string, z.ZodTypeAny>;
 
 export type SettingKey = keyof typeof SETTING_DEFINITIONS;

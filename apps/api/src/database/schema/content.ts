@@ -146,6 +146,10 @@ export const posts = pgTable('posts', {
   bumpedAt: timestamptz('bumped_at'),
   creditsCharged: integer('credits_charged').notNull().default(0),
   viewCount: integer('view_count').notNull().default(0),
+  // Attached photos, kept by the media_attachments_post_photo_count trigger (0030).
+  photoCount: smallint('photo_count').notNull().default(0),
+  // Non-empty keys of fields, kept by posts_a_maintain_filled_field_count (0030).
+  filledFieldCount: smallint('filled_field_count').notNull().default(0),
   searchSyncedAt: timestamptz('search_synced_at'),
   hiddenByOwner: boolean('hidden_by_owner').notNull().default(false),
   scrubbedAt: timestamptz('scrubbed_at'),

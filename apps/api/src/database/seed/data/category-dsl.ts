@@ -49,6 +49,8 @@ export interface CategoryDef {
   /** NULL for places and modules; they never expire. */
   expiryDays: number | null;
   phase1: boolean;
+  /** Can be sent by courier: shown in the country-wide feed (0030). */
+  shippable?: boolean;
   fields: FieldSpec[];
   conditions?: ConditionalRule[];
   /** Inherited fields the child hides from its form. */

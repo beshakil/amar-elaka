@@ -28,7 +28,7 @@ const filterValue = z.union([
  * Checked against the category's schema afterwards (parseFieldFilters), so it
  * needs `category`.
  */
-const filtersParam = z
+export const filtersParam = z
   .string()
   .max(FILTERS_MAX_CHARS)
   .transform((text, ctx): RawFieldFilter[] => {

@@ -2467,6 +2467,107 @@
         ]
       }
     },
+    "/feed": {
+      "get": {
+        "operationId": "FeedController_list",
+        "parameters": [
+          {
+            "name": "lat",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": -90,
+              "maximum": 90,
+              "type": "number"
+            }
+          },
+          {
+            "name": "lng",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": -180,
+              "maximum": 180,
+              "type": "number"
+            }
+          },
+          {
+            "name": "scope",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "area",
+                "nearby",
+                "country"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "radius_km",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          {
+            "name": "category",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "filters",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 2000,
+              "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 1000,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Feed"
+        ]
+      }
+    },
     "/platform/jobs": {
       "get": {
         "operationId": "PlatformJobsController_health",
@@ -6265,6 +6366,398 @@
           "query",
           "suggestions",
           "degraded"
+        ]
+      },
+      "FeedResponseDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "post"
+                      ]
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "tenantId": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "price": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "cover": {
+                      "type": "object",
+                      "properties": {
+                        "url": {
+                          "type": "string"
+                        },
+                        "thumbhash": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "url",
+                        "thumbhash"
+                      ],
+                      "nullable": true
+                    },
+                    "distanceMeters": {
+                      "type": "number",
+                      "nullable": true
+                    },
+                    "area": {
+                      "type": "object",
+                      "properties": {
+                        "bn": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "en": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "bn",
+                        "en"
+                      ],
+                      "nullable": true
+                    },
+                    "badges": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "boosted",
+                          "highlighted",
+                          "verified_store",
+                          "free",
+                          "negotiable"
+                        ]
+                      }
+                    },
+                    "createdAt": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "id",
+                    "tenantId",
+                    "title",
+                    "price",
+                    "cover",
+                    "distanceMeters",
+                    "area",
+                    "badges",
+                    "createdAt"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "store"
+                      ]
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "tenantId": {
+                      "type": "string"
+                    },
+                    "slug": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "object",
+                      "properties": {
+                        "bn": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "en": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "bn",
+                        "en"
+                      ]
+                    },
+                    "cover": {
+                      "type": "object",
+                      "properties": {
+                        "url": {
+                          "type": "string"
+                        },
+                        "thumbhash": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "url",
+                        "thumbhash"
+                      ],
+                      "nullable": true
+                    },
+                    "distanceMeters": {
+                      "type": "number"
+                    },
+                    "isVerified": {
+                      "type": "boolean"
+                    },
+                    "rating": {
+                      "type": "number",
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "id",
+                    "tenantId",
+                    "slug",
+                    "name",
+                    "cover",
+                    "distanceMeters",
+                    "isVerified",
+                    "rating"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "landmark"
+                      ]
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "tenantId": {
+                      "type": "string"
+                    },
+                    "slug": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "object",
+                      "properties": {
+                        "bn": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "en": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "bn",
+                        "en"
+                      ]
+                    },
+                    "category": {
+                      "type": "object",
+                      "properties": {
+                        "slug": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "object",
+                          "properties": {
+                            "bn": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "en": {
+                              "type": "string",
+                              "nullable": true
+                            }
+                          },
+                          "required": [
+                            "bn",
+                            "en"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "slug",
+                        "name"
+                      ]
+                    },
+                    "distanceMeters": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "id",
+                    "tenantId",
+                    "slug",
+                    "name",
+                    "category",
+                    "distanceMeters"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "bazar_prices"
+                      ]
+                    },
+                    "date": {
+                      "type": "string"
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "commodity": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "object",
+                            "properties": {
+                              "bn": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "en": {
+                                "type": "string",
+                                "nullable": true
+                              }
+                            },
+                            "required": [
+                              "bn",
+                              "en"
+                            ]
+                          },
+                          "unit": {
+                            "type": "string"
+                          },
+                          "minPrice": {
+                            "type": "string"
+                          },
+                          "maxPrice": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "commodity",
+                          "name",
+                          "unit",
+                          "minPrice",
+                          "maxPrice"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "date",
+                    "items"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "emergency"
+                      ]
+                    },
+                    "hotlines": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "serviceType": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "object",
+                            "properties": {
+                              "bn": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "en": {
+                                "type": "string",
+                                "nullable": true
+                              }
+                            },
+                            "required": [
+                              "bn",
+                              "en"
+                            ]
+                          },
+                          "dial": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "serviceType",
+                          "name",
+                          "dial"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "hotlines"
+                  ]
+                }
+              ]
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "area",
+              "nearby",
+              "country"
+            ]
+          },
+          "radiusKm": {
+            "type": "number",
+            "nullable": true
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor",
+          "scope",
+          "radiusKm"
         ]
       },
       "JobHealthDto": {

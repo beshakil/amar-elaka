@@ -22,6 +22,7 @@ import { PostsModule } from './posts/posts.module';
 import { PlatformJobsModule } from './jobs/platform-jobs.module';
 import { LocationsModule } from './locations/locations.module';
 import { SearchModule } from './search/search.module';
+import { FeedModule } from './feed/feed.module';
 import { TenantsModule } from './tenants/tenants.module';
 
 @Module({
@@ -44,6 +45,7 @@ import { TenantsModule } from './tenants/tenants.module';
     PostsModule,
     ModerationModule,
     SearchModule,
+    FeedModule,
     LocationsModule,
     PlatformJobsModule,
   ],

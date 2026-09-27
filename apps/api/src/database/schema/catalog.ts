@@ -119,6 +119,8 @@ export const categories = pgTable('categories', {
     .notNull()
     .default('free')
     .references(() => monetizationModes.code, { onDelete: 'restrict' }),
+  // The country-wide feed shows only these (0030).
+  isShippable: boolean('is_shippable').notNull().default(false),
   ...softDeleteColumns(),
 });
 

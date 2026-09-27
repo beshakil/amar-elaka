@@ -533,6 +533,7 @@ export const CATEGORIES: CategoryDef[] = [
     monetizationMode: 'per_listing',
     expiryDays: 30,
     phase1: false,
+    shippable: true,
     card: ['condition', 'brand', 'official_neir'],
     fields: [
       field(
@@ -620,6 +621,7 @@ export const CATEGORIES: CategoryDef[] = [
     monetizationMode: 'boost',
     expiryDays: 30,
     phase1: false,
+    shippable: true,
     fields: [
       field(
         'item_type',

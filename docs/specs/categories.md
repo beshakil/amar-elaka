@@ -197,6 +197,7 @@ nothing for them.
   | `lead_fee`     | Free to list. Revenue per revealed contact comes later (change C6).                                                                                                                                                                                                                  |
   | `free`         | No monetization.                                                                                                                                                                                                                                                                     |
 
+- **Shippable** (`categories.is_shippable`, migration 0030): items a courier can deliver, so a buyer anywhere in the country may want them. These are the only categories in the feed's country-wide scope (ADR 035). Set for `gadgets-electronics` and `fashion`.
 - **Boost cost** is **global per boost type** (`boost_types.default_cost_credits`, which tenants can adjust within min/max). It is not per category. Boosting is available in every post category. For `boost`-mode categories it is the main revenue source. Per-category boost pricing was considered and dropped for now (Q3).
 
 ---

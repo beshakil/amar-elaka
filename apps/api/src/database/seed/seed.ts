@@ -315,12 +315,12 @@ async function seedCategories(
       insert into categories
         (id, parent_id, kind_code, module_code, slug, name_bn, name_en, icon_key, default_sort_order,
          default_post_cost_credits, default_moderation_mode_code, default_post_expiry_days,
-         monetization_mode_code, is_active)
+         monetization_mode_code, is_active, is_shippable)
       values
         (${idBySlug.get(c.slug)!}, ${c.parent ? idBySlug.get(c.parent)! : null}, ${c.kind},
          ${c.moduleCode ?? null}, ${c.slug}, ${c.nameBn}, ${c.nameEn}, ${c.icon}, ${(i + 1) * 10},
          ${c.costCredits}, ${c.moderationMode}, ${c.expiryDays}, ${c.monetizationMode},
-         ${c.phase1})
+         ${c.phase1}, ${c.shippable ?? false})
       on conflict (id) do nothing`;
   }
 
