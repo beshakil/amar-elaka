@@ -306,9 +306,14 @@ describe('Post lifecycle jobs (e2e)', () => {
     it("leaves a deleted draft's photos to the orphan job, which removes them with their files", async () => {
       const draft = await post('draft', { untouchedFor: '40 days' });
       const photo = await asset({ age: '40 days' });
-      await admin`
-        insert into media_attachments (tenant_id, post_id, media_asset_id, sort_order)
-        values (${TENANT}, ${draft}, ${photo.id}, 0)`;
+      await admin.begin(async (tx) => {
+        // Attached 40 days ago too: without triggers, so 0030's photo_count
+        // upkeep doesn't bump the draft's updated_at to now.
+        await tx`set local session_replication_role = replica`;
+        await tx`
+          insert into media_attachments (tenant_id, post_id, media_asset_id, sort_order)
+          values (${TENANT}, ${draft}, ${photo.id}, 0)`;
+      });
 
       await media.cleanOrphans(BUDGET); // attached: not an orphan yet
       expect(await storage.head('media', photo.key)).toBeDefined();
