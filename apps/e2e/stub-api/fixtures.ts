@@ -11,4 +11,11 @@ export const PERSONAS = {
   tenantAdmin: 'admin@mirpur.test',
   moderator: 'mod@mirpur.test',
   platformAdmin: 'root@platform.test',
+  /** A seller on the public site, who signs in with a phone and an SMS code. */
+  seller: 'seller@mirpur.test',
 } as const;
+
+/** The seller's phone, as typed, and the SMS code the stub accepts. */
+export const SELLER_PHONE = '01711111111';
+export const OTP_CODE = '123456';
+export const PHONE_CATEGORY_ID = '0191e3a0-0000-7000-8000-00000000c001';

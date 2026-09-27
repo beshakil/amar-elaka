@@ -1,5 +1,13 @@
 import { test as base, expect, type APIRequestContext, type Page } from '@playwright/test';
-import { PASSWORD, PERSONAS, STUB_URL, TENANT_MIRPUR } from '../stub-api/fixtures';
+import type { components } from '@amar-elaka/shared-types';
+import {
+  OTP_CODE,
+  PASSWORD,
+  PERSONAS,
+  SELLER_PHONE,
+  STUB_URL,
+  TENANT_MIRPUR,
+} from '../stub-api/fixtures';
 
 export const WEB = 'http://localhost:3001';
 export const ADMIN = 'http://localhost:3002';
@@ -28,9 +36,17 @@ export class Stub {
     reset?: boolean;
     down?: boolean;
     accessTtlSeconds?: number;
-  }): Promise<void> {
+    seedPosts?: Partial<components['schemas']['PostDto']>[];
+  }): Promise<{ posts: { id: string; title: string }[] }> {
     const res = await this.request.post(`${STUB_URL}/__control`, { data: body });
     expect(res.ok()).toBe(true);
+    return (await res.json()) as { posts: { id: string; title: string }[] };
+  }
+
+  /** The posts the stub holds now (what the web app sent it). */
+  async posts(): Promise<components['schemas']['PostDto'][]> {
+    const res = await this.request.get(`${STUB_URL}/__stats`);
+    return ((await res.json()) as { posts: components['schemas']['PostDto'][] }).posts;
   }
 
   async hits(key: string): Promise<number> {
@@ -65,4 +81,19 @@ export async function signIn(page: Page, persona: keyof typeof PERSONAS): Promis
     data: { tenantId: TENANT_MIRPUR, email: PERSONAS[persona], password: PASSWORD },
   });
   expect(res.status()).toBe(200);
+}
+
+/**
+ * Signs a seller in on the public site the way a seller does — the login
+ * page, phone, then the SMS code — so the session cookies land in the
+ * browser for that area's host. (Not page.request: Node can't resolve
+ * *.localhost the way Chromium does.)
+ */
+export async function signInSeller(page: Page, slug = 'mirpur'): Promise<void> {
+  await page.goto(tenantUrl(slug, '/login?next=/me/posts'));
+  await page.getByLabel('মোবাইল নম্বর').fill(SELLER_PHONE);
+  await page.getByRole('button', { name: 'কোড পাঠান' }).click();
+  await page.getByLabel('এসএমএস-এ পাওয়া কোড').fill(OTP_CODE);
+  await page.getByRole('button', { name: 'লগইন করুন' }).click();
+  await expect(page).toHaveURL(tenantUrl(slug, '/me/posts'));
 }
