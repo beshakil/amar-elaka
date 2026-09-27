@@ -21,6 +21,7 @@ class TenantConfig {
     required this.enabledCategories,
     required this.emergencyNumbers,
     required this.support,
+    this.moderation = TenantModeration.fallback,
   });
 
   factory TenantConfig.fromJson(Map<String, dynamic> json) =>
@@ -39,7 +40,27 @@ class TenantConfig {
   final List<EmergencyNumber> emergencyNumbers;
   final TenantSupport support;
 
+  /// Defaults for a response from before the field existed.
+  final TenantModeration moderation;
+
   Map<String, dynamic> toJson() => _$TenantConfigToJson(this);
+}
+
+@JsonSerializable()
+class TenantModeration {
+  const TenantModeration({required this.typicalReviewHours});
+
+  /// The seeded default (moderation_typical_review_hours, 0029), for a
+  /// config cached or served before the field existed.
+  static const fallback = TenantModeration(typicalReviewHours: 12);
+
+  factory TenantModeration.fromJson(Map<String, dynamic> json) =>
+      _$TenantModerationFromJson(json);
+
+  /// "Under review, usually within X hours" (moderation_typical_review_hours).
+  final int typicalReviewHours;
+
+  Map<String, dynamic> toJson() => _$TenantModerationToJson(this);
 }
 
 @JsonSerializable()
