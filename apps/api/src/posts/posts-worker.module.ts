@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { EngagementWorkerModule } from '../engagement/engagement-worker.module';
 import { JobRunnerModule } from '../jobs/job-runner.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { SettingsModule } from '../settings/settings.module';
@@ -9,9 +10,9 @@ import { PostsRepository } from './posts.repository';
 import { PostsSchedule } from './posts-schedule';
 import { PostsProcessor } from './posts.processor';
 
-/** The worker side of posts (WorkerModule only): expiry, expiry reminders and stale-draft cleanup (ADR 031). */
+/** The worker side of posts (WorkerModule only): expiry, expiry reminders and stale-draft cleanup (ADR 031), view-count flush (ADR 036). */
 @Module({
-  imports: [JobRunnerModule, NotificationsModule, SettingsModule],
+  imports: [EngagementWorkerModule, JobRunnerModule, NotificationsModule, SettingsModule],
   providers: [
     PostsRepository,
     PostExpiryService,

@@ -13,6 +13,7 @@ const decimal = z.number().nonnegative();
 // Money is a JSON string with exactly two decimals, never a JSON number (§0.2).
 const money = z.string().regex(/^\d+\.\d{2}$/);
 const textArray = z.array(z.string());
+const flag = z.boolean();
 
 export const SETTING_DEFINITIONS = {
   // Tenant lifecycle (§13.30)
@@ -189,6 +190,16 @@ export const SETTING_DEFINITIONS = {
   feed_emergency_card_items: wholeNumber,
   feed_cache_ttl_seconds: wholeNumber,
   feed_cache_geohash_precision: wholeNumber,
+
+  // Post detail, contacts, views, share, reports (ADR 036, migration 0031)
+  view_dedupe_hours: wholeNumber,
+  post_similar_max: wholeNumber,
+  post_similar_radius_km: decimal,
+  contact_reveals_per_user_per_day: wholeNumber,
+  require_login_for_contact: flag,
+  share_code_length: wholeNumber,
+  report_details_max_length: wholeNumber,
+  reports_per_user_per_day: wholeNumber,
 } as const satisfies Record<string, z.ZodTypeAny>;
 
 export type SettingKey = keyof typeof SETTING_DEFINITIONS;

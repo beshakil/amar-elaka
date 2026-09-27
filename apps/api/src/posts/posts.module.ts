@@ -32,5 +32,6 @@ import { PostsService } from './posts.service';
     PostOwnershipService,
     { provide: POST_IDEMPOTENCY_STORE, useClass: RedisPostIdempotencyStore },
   ],
+  exports: [PostsService, PostsRepository, PostOwnershipService],
 })
 export class PostsModule {}

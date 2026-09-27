@@ -7,10 +7,12 @@ import {
   deadLetterQueueName,
   JOB_CLEAN_STALE_DRAFTS,
   JOB_EXPIRE_POSTS,
+  JOB_FLUSH_POST_VIEWS,
   JOB_REMIND_EXPIRING_POSTS,
   QUEUE_POSTS,
   type ScheduledJobData,
 } from '../queue/queue.types';
+import { PostViewsFlushService } from '../engagement/post-views-flush.service';
 import { DraftCleanupService } from './draft-cleanup.service';
 import { PostExpiryReminderService } from './post-expiry-reminder.service';
 import { PostExpiryService } from './post-expiry.service';
@@ -23,6 +25,7 @@ export class PostsProcessor extends WorkerHost {
     private readonly expiry: PostExpiryService,
     private readonly reminders: PostExpiryReminderService,
     private readonly drafts: DraftCleanupService,
+    private readonly views: PostViewsFlushService,
     @InjectQueue(deadLetterQueueName(QUEUE_POSTS)) private readonly dlq: Queue,
     private readonly logger: PinoLogger,
   ) {
@@ -44,6 +47,10 @@ export class PostsProcessor extends WorkerHost {
       case JOB_CLEAN_STALE_DRAFTS:
         return this.runner.run(JOB_CLEAN_STALE_DRAFTS, job.data, queueJobId, (budget) =>
           this.drafts.cleanStale(budget),
+        );
+      case JOB_FLUSH_POST_VIEWS:
+        return this.runner.run(JOB_FLUSH_POST_VIEWS, job.data, queueJobId, (budget) =>
+          this.views.flush(budget),
         );
       default:
         throw new Error(`posts queue: unknown job ${job.name}`);

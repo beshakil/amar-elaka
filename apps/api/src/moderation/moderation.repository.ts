@@ -4,7 +4,8 @@ import { z } from 'zod';
 import type { DatabaseTransaction } from '../database/database.client';
 import { POST_STATUSES } from '../posts/post-state-machine';
 
-export type QueueSource = 'submission' | 'sample' | 'rereview';
+export const QUEUE_SOURCES = ['submission', 'sample', 'rereview', 'report'] as const;
+export type QueueSource = (typeof QUEUE_SOURCES)[number];
 export type QueueResolution = 'approved' | 'rejected' | 'removed' | 'hard_removed' | 'withdrawn';
 
 const MODERATED_POST = z.object({
@@ -24,7 +25,7 @@ export type ModeratedPost = z.infer<typeof MODERATED_POST>;
 const QUEUE_ROW = z.object({
   id: z.string(),
   post_id: z.string(),
-  source_code: z.enum(['submission', 'sample', 'rereview']),
+  source_code: z.enum(QUEUE_SOURCES),
   reasons: z.array(z.string()),
   author_trust_score: z.number().nullable(),
   created_at: z.coerce.date(),
@@ -167,17 +168,43 @@ export class ModerationRepository {
   async openItem(
     tx: DatabaseTransaction,
     postId: string,
-  ): Promise<{ id: string; source: QueueSource } | undefined> {
+  ): Promise<{ id: string; source: QueueSource; reasons: string[] } | undefined> {
     const rows = await tx.execute(sql`
-      select id, source_code from public.moderation_queue_items
+      select id, source_code, reasons from public.moderation_queue_items
       where post_id = ${postId}::uuid and status_code = 'open'`);
     const [row] = z
       .array(
-        z.object({ id: z.string(), source_code: z.enum(['submission', 'sample', 'rereview']) }),
+        z.object({
+          id: z.string(),
+          source_code: z.enum(QUEUE_SOURCES),
+          reasons: z.array(z.string()),
+        }),
       )
       .max(1)
       .parse([...rows]);
-    return row && { id: row.id, source: row.source_code };
+    return row && { id: row.id, source: row.source_code, reasons: row.reasons };
+  }
+
+  /**
+   * Closes the post's open reports with the moderator's decision (ADR 036):
+   * a takedown upholds them (actioned — what trust scores count), an
+   * approval dismisses them. Returns how many were closed.
+   */
+  async closeReports(
+    tx: DatabaseTransaction,
+    postId: string,
+    outcome: 'upheld' | 'dismissed',
+    userId: string,
+  ): Promise<number> {
+    const rows = await tx.execute(sql`
+      update public.reports
+      set status_code = ${outcome === 'upheld' ? 'actioned' : 'dismissed'},
+          resolution_code = ${outcome === 'upheld' ? 'content_removed' : 'no_action'},
+          assigned_to_user_id = coalesce(assigned_to_user_id, ${userId}::uuid),
+          resolved_at = now()
+      where post_id = ${postId}::uuid and status_code in ('open', 'in_review')
+      returning id`);
+    return [...rows].length;
   }
 
   /**

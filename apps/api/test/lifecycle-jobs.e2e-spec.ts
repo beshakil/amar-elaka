@@ -441,6 +441,7 @@ describe('Post lifecycle jobs (e2e)', () => {
         'expire-posts',
         'remind-expiring-posts',
         'clean-stale-drafts',
+        'flush-post-views',
         'clean-orphan-media',
         'purge-deleted-media',
       ]);

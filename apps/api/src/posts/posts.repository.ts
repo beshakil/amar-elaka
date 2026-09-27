@@ -10,6 +10,7 @@ const POST_ROW = z.object({
   id: z.string(),
   tenant_id: z.string(),
   author_member_id: z.string().nullable(),
+  store_id: z.string().nullable(),
   category_id: z.string(),
   field_schema_id: z.string(),
   field_schema_version: z.number().nullable(),
@@ -43,7 +44,7 @@ const POST_ROW = z.object({
 export type PostRow = z.infer<typeof POST_ROW>;
 
 const POST_COLUMNS = sql`
-  p.id, p.tenant_id, p.author_member_id, p.category_id, p.field_schema_id, s.version as field_schema_version,
+  p.id, p.tenant_id, p.author_member_id, p.store_id, p.category_id, p.field_schema_id, s.version as field_schema_version,
   p.title, p.description, p.fields, p.price::text as price,
   st_y(p.location::geometry) as lat, st_x(p.location::geometry) as lng,
   p.geo_area_id, p.outside_boundary, p.ownership_resolution_code, p.show_phone, p.allow_chat,

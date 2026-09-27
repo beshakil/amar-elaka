@@ -93,6 +93,39 @@ export class FeedService {
     return this.cache.forTenant(plan.tenantId).remember(key, ttl, () => this.page(plan));
   }
 
+  /**
+   * "Similar posts" under a post's detail (ADR 036): the same category within
+   * `radiusKm` of the post, ranked exactly like the category feed (weights of
+   * the post's own tenant), without the post itself.
+   */
+  async similarPosts(q: {
+    tenantId: string;
+    origin: Origin;
+    radiusKm: number;
+    categoryId: string;
+    excludeId: string;
+    limit: number;
+  }): Promise<PostCard[]> {
+    if (q.limit <= 0) return [];
+    const rank = await this.rankParams(q.tenantId);
+    const ranked = await this.readOnly((tx) =>
+      this.repo.rankPosts(tx, {
+        origin: q.origin,
+        radiusKm: q.radiusKm,
+        categoryIds: [q.categoryId],
+        shippableOnly: false,
+        fieldFilters: [],
+        boostPlacement: 'category_top',
+        rank,
+        asOf: new Date(),
+        after: null,
+        // One extra: the post itself usually ranks first.
+        limit: q.limit + 1,
+      }),
+    );
+    return this.postCards(ranked.filter((r) => r.id !== q.excludeId).slice(0, q.limit));
+  }
+
   private async plan(query: FeedQuery): Promise<Plan> {
     const tenantId = this.requireTenant();
     const [defaultRadius, maxRadius, pageDefault, pageMax, precision] = await Promise.all([

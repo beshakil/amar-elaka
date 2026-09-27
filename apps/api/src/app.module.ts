@@ -22,6 +22,7 @@ import { PostsModule } from './posts/posts.module';
 import { PlatformJobsModule } from './jobs/platform-jobs.module';
 import { LocationsModule } from './locations/locations.module';
 import { SearchModule } from './search/search.module';
+import { EngagementModule } from './engagement/engagement.module';
 import { FeedModule } from './feed/feed.module';
 import { TenantsModule } from './tenants/tenants.module';
 
@@ -46,6 +47,7 @@ import { TenantsModule } from './tenants/tenants.module';
     ModerationModule,
     SearchModule,
     FeedModule,
+    EngagementModule,
     LocationsModule,
     PlatformJobsModule,
   ],

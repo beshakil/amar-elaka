@@ -606,7 +606,11 @@ describe('Posts (e2e)', () => {
       expect(response.statusCode).toBe(400);
     });
 
-    it('hides the phone from buyers when showPhone is off, never from the owner', async () => {
+    it('never hands buyers the phone (POST /:id/contact does, as a lead), never hides it from the owner', async () => {
+      const shown = await create({ submit: true, showPhone: true, showWhatsapp: true });
+      const shownView = (await call('GET', `/${shown.id}`, 'anon')).json<Contact>();
+      expect(shownView.contact).toMatchObject({ phone: null, whatsapp: true });
+
       const post = await create({ submit: true, showPhone: false, showWhatsapp: true });
       const publicView = (await call('GET', `/${post.id}`, 'anon')).json<Contact>();
       expect(publicView.contact).toMatchObject({ phone: null, whatsapp: false });

@@ -276,6 +276,22 @@ export const savedPosts = pgTable('saved_posts', {
 });
 
 /**
+ * One share code per post (0031, ADR 036): `/s/:code` links. Codes are unique
+ * across tenants; resolve_short_link() finds the post before any tenant
+ * context exists.
+ */
+export const postShortLinks = pgTable('post_short_links', {
+  id: id(),
+  tenantId: uuid('tenant_id')
+    .notNull()
+    .references(() => tenants.id, { onDelete: 'restrict' }),
+  // Composite FK (tenant_id, post_id) -> posts, CASCADE.
+  postId: uuid('post_id').notNull(),
+  code: text('code').notNull(),
+  ...auditColumns(),
+});
+
+/**
  * §4.3 Links a media asset to the thing it illustrates. Polymorphic: exactly
  * one owner column is non-null (enforced by CHECK in SQL). All ten owner
  * columns now have a real composite FK (the last six were closed by 0012,

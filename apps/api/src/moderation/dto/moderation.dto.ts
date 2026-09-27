@@ -31,6 +31,7 @@ export const QUEUE_REASONS = [
   'price_outlier',
   'sample',
   'rereview',
+  'reported',
 ] as const;
 
 const reasonText = z.string().trim().min(1);
@@ -88,7 +89,8 @@ export class BulkDto extends createZodDto(bulkSchema) {}
 export const queueItemSchema = z.object({
   id: z.string(),
   postId: z.string(),
-  source: z.enum(['submission', 'sample', 'rereview']),
+  /** report: community reports reached auto_hide_report_threshold (ADR 036). */
+  source: z.enum(['submission', 'sample', 'rereview', 'report']),
   reasons: z.array(z.string()),
   postStatus: z.string(),
   title: z.string(),

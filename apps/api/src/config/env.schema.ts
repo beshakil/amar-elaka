@@ -108,6 +108,13 @@ export const EnvSchema = z
     // Base domain stripped off the Host header to read a tenant's subdomain,
     // e.g. Host "mirpur.amarelaka.local" -> slug "mirpur".
     APP_ROOT_DOMAIN: z.string().min(1),
+    // Where a tenant's public web app lives, for share links (/s/:code, ADR
+    // 036): `{slug}` is replaced by the tenant slug. Unset, it is
+    // https://{slug}.<APP_ROOT_DOMAIN>; dev sets e.g. http://{slug}.localhost:3000.
+    SHARE_BASE_URL_TEMPLATE: z.preprocess(
+      (v) => (v === '' ? undefined : v),
+      z.string().includes('{slug}').optional(),
+    ),
     // Infrastructure tuning, not a business rule (same treatment as
     // SETTINGS_CACHE_TTL_MS) — how long a resolved tenant stays cached in
     // Redis before the next request re-reads Postgres.

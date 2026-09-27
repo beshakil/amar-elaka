@@ -146,7 +146,11 @@ export const postSchema = z.object({
   showPhone: z.boolean(),
   allowChat: z.boolean(),
   showWhatsapp: z.boolean(),
-  /** What a buyer sees: the phone only when showPhone (always for the owner and staff). */
+  /**
+   * The phone only for the owner and staff. Buyers reveal it through
+   * POST /posts/:id/contact, which records the lead (ADR 036); `whatsapp`
+   * says whether that channel is offered.
+   */
   contact: z.object({
     name: z.string().nullable(),
     phone: z.string().nullable(),

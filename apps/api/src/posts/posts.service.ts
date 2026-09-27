@@ -799,7 +799,11 @@ export class PostsService {
     moderationNote: string | null = null,
   ): PostView {
     const privileged = viewer !== 'public';
-    const phone = privileged || row.show_phone ? row.contact_phone_e164 : null;
+    // The number itself only for the owner and staff: a buyer gets it from
+    // POST /posts/:id/contact, which counts the lead (ADR 036). `whatsapp`
+    // still says whether that channel is on offer.
+    const phone = privileged ? row.contact_phone_e164 : null;
+    const reachable = row.contact_phone_e164 !== null && (privileged || row.show_phone);
     return {
       id: row.id,
       tenantId: row.tenant_id,
@@ -838,7 +842,7 @@ export class PostsService {
       contact: {
         name: row.contact_name,
         phone,
-        whatsapp: row.show_whatsapp && phone !== null,
+        whatsapp: row.show_whatsapp && reachable,
       },
       isSold: row.status_code === 'sold',
       soldAt: row.sold_at?.toISOString() ?? null,

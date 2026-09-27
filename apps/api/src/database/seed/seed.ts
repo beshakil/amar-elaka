@@ -572,6 +572,26 @@ async function seedPosts(
     values ${tx(rows as never)}
     on conflict (id) do nothing`;
   console.log(`posts: ${rows.length}`);
+
+  const postIds = rows.map((row) => row[0] as string);
+  // Buyers reach the author's own number, as a new post defaults to (ADR
+  // 032) — revealed only through POST /posts/:id/contact (ADR 036).
+  await tx`
+    update posts p
+    set contact_phone_e164 = u.phone_e164,
+        contact_name = nullif(btrim(up.display_name), '')
+    from tenant_members tm
+    join users u on u.id = tm.user_id
+    left join user_profiles up on up.user_id = u.id
+    where tm.tenant_id = p.tenant_id and tm.id = p.author_member_id
+      and p.id in ${tx(postIds)}
+      and p.contact_phone_e164 is null`;
+  // A share code per post (/s/:code), stable across re-seeds.
+  await tx`
+    insert into post_short_links (tenant_id, post_id, code)
+    select tenant_id, id, substr(md5(id::text), 1, 8) from posts where id in ${tx(postIds)}
+    on conflict do nothing`;
+  console.log(`post contacts and share links: ${postIds.length}`);
 }
 
 function buildPostContent(

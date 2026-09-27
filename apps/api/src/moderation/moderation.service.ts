@@ -103,11 +103,18 @@ export class ModerationService {
     };
   }
 
-  /** pending → live; for a live post (a sample or re-review) it just clears the item. */
+  /**
+   * pending → live; for a live post (a sample or re-review) it just clears
+   * the item. A post community reports took offline (ADR 036) goes back up
+   * with the listing period it had: the reports were wrong, the seller
+   * shouldn't lose or gain days over them. Its open reports are dismissed.
+   */
   approve(postId: string): Promise<ModerationResult> {
     return this.act(postId, async (post, tx, userId) => {
       if (post.status_code === 'pending') {
         assertTransition('pending', 'live', 'moderator');
+        const item = await this.repo.openItem(tx, post.id);
+        const restoring = post.published_at !== null && item?.reasons.includes('reported') === true;
         const now = new Date();
         const policy = await this.posts.categoryPolicy(tx, post.category_id, post.tenant_id);
         const days =
@@ -118,14 +125,14 @@ export class ModerationService {
           reasonCode: null,
           userId,
           ...(post.published_at ? {} : { publishedAt: now }),
-          expiresAt: new Date(now.getTime() + days * MS_PER_DAY),
+          ...(restoring ? {} : { expiresAt: new Date(now.getTime() + days * MS_PER_DAY) }),
         });
         await this.posts.emit(tx, 'post.live', post.id, {
           tenantId: post.tenant_id,
           actorUserId: userId,
           from: 'pending',
           to: 'live',
-          reason: 'moderator_approved',
+          reason: restoring ? 'reports_dismissed' : 'moderator_approved',
         });
       } else if (post.status_code !== 'live') {
         assertTransition(post.status_code, 'live', 'moderator'); // throws: nothing to approve
@@ -144,6 +151,7 @@ export class ModerationService {
         'approved',
         userId,
       );
+      await this.repo.closeReports(tx, post.id, 'dismissed', userId);
       return {
         status: 'live',
         after:
@@ -178,6 +186,7 @@ export class ModerationService {
         'hard_removed',
         userId,
       );
+      await this.repo.closeReports(tx, post.id, 'upheld', userId);
       await this.repo.recordAction(tx, {
         postId: post.id,
         actorUserId: userId,
@@ -261,6 +270,7 @@ export class ModerationService {
         to,
         userId,
       );
+      await this.repo.closeReports(tx, post.id, 'upheld', userId);
       await this.posts.emit(tx, `post.${to}`, post.id, {
         tenantId: post.tenant_id,
         actorUserId: userId,

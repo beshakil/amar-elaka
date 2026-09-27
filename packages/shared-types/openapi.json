@@ -2053,7 +2053,8 @@
                 "duplicate",
                 "price_outlier",
                 "sample",
-                "rereview"
+                "rereview",
+                "reported"
               ],
               "type": "string"
             }
@@ -2568,6 +2569,190 @@
         ]
       }
     },
+    "/posts/{id}/detail": {
+      "get": {
+        "operationId": "EngagementController_detail",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "lat",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": -90,
+              "maximum": 90,
+              "type": "number"
+            }
+          },
+          {
+            "name": "lng",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": -180,
+              "maximum": 180,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PostDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Engagement"
+        ]
+      }
+    },
+    "/posts/{id}/view": {
+      "post": {
+        "operationId": "EngagementController_view",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Engagement"
+        ]
+      }
+    },
+    "/posts/{id}/contact": {
+      "post": {
+        "operationId": "EngagementController_contact",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContactDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContactRevealDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Engagement"
+        ]
+      }
+    },
+    "/posts/{id}/report": {
+      "post": {
+        "operationId": "EngagementController_report",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportResultDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Engagement"
+        ]
+      }
+    },
+    "/s/{code}": {
+      "get": {
+        "operationId": "ShareController_resolve",
+        "parameters": [
+          {
+            "name": "code",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "pattern": "^[a-z0-9]{4,32}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShortLinkDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Share"
+        ]
+      }
+    },
     "/platform/jobs": {
       "get": {
         "operationId": "PlatformJobsController_health",
@@ -2605,6 +2790,7 @@
                 "expire-posts",
                 "remind-expiring-posts",
                 "clean-stale-drafts",
+                "flush-post-views",
                 "clean-orphan-media",
                 "purge-deleted-media"
               ],
@@ -2645,6 +2831,7 @@
                 "expire-posts",
                 "remind-expiring-posts",
                 "clean-stale-drafts",
+                "flush-post-views",
                 "clean-orphan-media",
                 "purge-deleted-media"
               ],
@@ -5687,7 +5874,8 @@
                   "enum": [
                     "submission",
                     "sample",
-                    "rereview"
+                    "rereview",
+                    "report"
                   ]
                 },
                 "reasons": {
@@ -6760,6 +6948,713 @@
           "radiusKm"
         ]
       },
+      "PostDetailDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "pending",
+              "live",
+              "rejected",
+              "sold",
+              "expired",
+              "removed"
+            ]
+          },
+          "isSold": {
+            "type": "boolean"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "price": {
+            "type": "string",
+            "nullable": true
+          },
+          "priceType": {
+            "type": "string",
+            "nullable": true
+          },
+          "currency": {
+            "type": "string"
+          },
+          "category": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "slug": {
+                "type": "string"
+              },
+              "name": {
+                "type": "object",
+                "properties": {
+                  "bn": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "en": {
+                    "type": "string",
+                    "nullable": true
+                  }
+                },
+                "required": [
+                  "bn",
+                  "en"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "slug",
+              "name"
+            ]
+          },
+          "fieldSchemaVersion": {
+            "type": "number",
+            "nullable": true
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "object",
+                  "properties": {
+                    "bn": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "en": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "bn",
+                    "en"
+                  ]
+                },
+                "value": {},
+                "optionLabels": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "bn": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "en": {
+                        "type": "string",
+                        "nullable": true
+                      }
+                    },
+                    "required": [
+                      "bn",
+                      "en"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "key",
+                "type",
+                "label",
+                "value"
+              ]
+            }
+          },
+          "media": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "thumbhash": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "variants": {
+                  "type": "object",
+                  "properties": {
+                    "thumb": {
+                      "type": "object",
+                      "properties": {
+                        "url": {
+                          "type": "string"
+                        },
+                        "width": {
+                          "type": "number"
+                        },
+                        "height": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "url",
+                        "width",
+                        "height"
+                      ]
+                    },
+                    "card": {
+                      "type": "object",
+                      "properties": {
+                        "url": {
+                          "type": "string"
+                        },
+                        "width": {
+                          "type": "number"
+                        },
+                        "height": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "url",
+                        "width",
+                        "height"
+                      ]
+                    },
+                    "full": {
+                      "type": "object",
+                      "properties": {
+                        "url": {
+                          "type": "string"
+                        },
+                        "width": {
+                          "type": "number"
+                        },
+                        "height": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "url",
+                        "width",
+                        "height"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "thumb",
+                    "card",
+                    "full"
+                  ],
+                  "nullable": true
+                }
+              },
+              "required": [
+                "id",
+                "thumbhash",
+                "variants"
+              ]
+            }
+          },
+          "location": {
+            "type": "object",
+            "properties": {
+              "lat": {
+                "type": "number"
+              },
+              "lng": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "lat",
+              "lng"
+            ],
+            "nullable": true
+          },
+          "area": {
+            "type": "object",
+            "properties": {
+              "bn": {
+                "type": "string",
+                "nullable": true
+              },
+              "en": {
+                "type": "string",
+                "nullable": true
+              }
+            },
+            "required": [
+              "bn",
+              "en"
+            ],
+            "nullable": true
+          },
+          "distanceMeters": {
+            "type": "number",
+            "nullable": true
+          },
+          "seller": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "nullable": true
+              },
+              "memberSince": {
+                "type": "string",
+                "nullable": true
+              },
+              "badges": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "trusted",
+                    "phone_verified",
+                    "verified_store"
+                  ]
+                }
+              },
+              "store": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "slug": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "object",
+                    "properties": {
+                      "bn": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "en": {
+                        "type": "string",
+                        "nullable": true
+                      }
+                    },
+                    "required": [
+                      "bn",
+                      "en"
+                    ]
+                  },
+                  "verified": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "id",
+                  "slug",
+                  "name",
+                  "verified"
+                ],
+                "nullable": true
+              },
+              "responseHint": {
+                "type": "object",
+                "properties": {
+                  "ratePercent": {
+                    "type": "number",
+                    "nullable": true
+                  },
+                  "medianMinutes": {
+                    "type": "number",
+                    "nullable": true
+                  }
+                },
+                "required": [
+                  "ratePercent",
+                  "medianMinutes"
+                ],
+                "nullable": true
+              }
+            },
+            "required": [
+              "name",
+              "memberSince",
+              "badges",
+              "store",
+              "responseHint"
+            ]
+          },
+          "contact": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "nullable": true
+              },
+              "channels": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "call",
+                    "whatsapp",
+                    "sms"
+                  ]
+                }
+              },
+              "allowChat": {
+                "type": "boolean"
+              },
+              "loginRequired": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "name",
+              "channels",
+              "allowChat",
+              "loginRequired"
+            ]
+          },
+          "share": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "url"
+            ],
+            "nullable": true
+          },
+          "similar": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "post"
+                  ]
+                },
+                "id": {
+                  "type": "string"
+                },
+                "tenantId": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "price": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "cover": {
+                  "type": "object",
+                  "properties": {
+                    "url": {
+                      "type": "string"
+                    },
+                    "thumbhash": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "url",
+                    "thumbhash"
+                  ],
+                  "nullable": true
+                },
+                "distanceMeters": {
+                  "type": "number",
+                  "nullable": true
+                },
+                "area": {
+                  "type": "object",
+                  "properties": {
+                    "bn": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "en": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "bn",
+                    "en"
+                  ],
+                  "nullable": true
+                },
+                "badges": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "boosted",
+                      "highlighted",
+                      "verified_store",
+                      "free",
+                      "negotiable"
+                    ]
+                  }
+                },
+                "createdAt": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "id",
+                "tenantId",
+                "title",
+                "price",
+                "cover",
+                "distanceMeters",
+                "area",
+                "badges",
+                "createdAt"
+              ]
+            }
+          },
+          "stats": {
+            "type": "object",
+            "properties": {
+              "views": {
+                "type": "number"
+              },
+              "contacts": {
+                "type": "object",
+                "properties": {
+                  "call": {
+                    "type": "number"
+                  },
+                  "whatsapp": {
+                    "type": "number"
+                  },
+                  "sms": {
+                    "type": "number"
+                  },
+                  "total": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "call",
+                  "whatsapp",
+                  "sms",
+                  "total"
+                ]
+              },
+              "saves": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "views",
+              "contacts",
+              "saves"
+            ]
+          },
+          "isMine": {
+            "type": "boolean"
+          },
+          "publishedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "expiresAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "soldAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "tenantId",
+          "status",
+          "isSold",
+          "title",
+          "description",
+          "price",
+          "priceType",
+          "currency",
+          "category",
+          "fieldSchemaVersion",
+          "fields",
+          "media",
+          "location",
+          "area",
+          "distanceMeters",
+          "seller",
+          "contact",
+          "share",
+          "similar",
+          "isMine",
+          "publishedAt",
+          "expiresAt",
+          "soldAt",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "ContactDto": {
+        "type": "object",
+        "properties": {
+          "channel": {
+            "type": "string",
+            "enum": [
+              "call",
+              "whatsapp",
+              "sms"
+            ]
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "post_detail",
+              "search_result",
+              "store_page",
+              "boosted_slot"
+            ]
+          }
+        },
+        "required": [
+          "channel"
+        ]
+      },
+      "ContactRevealDto": {
+        "type": "object",
+        "properties": {
+          "channel": {
+            "type": "string",
+            "enum": [
+              "call",
+              "whatsapp",
+              "sms"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "phone": {
+            "type": "string"
+          },
+          "href": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "channel",
+          "name",
+          "phone",
+          "href",
+          "message"
+        ]
+      },
+      "ReportDto": {
+        "type": "object",
+        "properties": {
+          "reasonCode": {
+            "type": "string",
+            "enum": [
+              "scam",
+              "fake_listing",
+              "prohibited_item",
+              "harassment",
+              "spam",
+              "wrong_information",
+              "duplicate",
+              "other"
+            ]
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "reasonCode"
+        ]
+      },
+      "ReportResultDto": {
+        "type": "object",
+        "properties": {
+          "reportId": {
+            "type": "string"
+          },
+          "created": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "reportId",
+          "created"
+        ]
+      },
+      "ShortLinkDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "postId": {
+            "type": "string"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "tenantSlug": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "postId",
+          "tenantId",
+          "tenantSlug",
+          "url"
+        ]
+      },
       "JobHealthDto": {
         "type": "object",
         "properties": {
@@ -6769,6 +7664,7 @@
               "expire-posts",
               "remind-expiring-posts",
               "clean-stale-drafts",
+              "flush-post-views",
               "clean-orphan-media",
               "purge-deleted-media"
             ]
@@ -7029,6 +7925,7 @@
               "expire-posts",
               "remind-expiring-posts",
               "clean-stale-drafts",
+              "flush-post-views",
               "clean-orphan-media",
               "purge-deleted-media"
             ]
