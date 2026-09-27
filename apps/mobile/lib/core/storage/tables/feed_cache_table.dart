@@ -1,8 +1,7 @@
 import 'package:drift/drift.dart';
 
-/// Placeholder only: `apps/api` has no feed endpoint yet, so there's no
-/// repository/query built on this table — it exists so the shape is ready
-/// when that feature lands, per the Week 3 client-shell scope.
+/// The first page of each feed query, as the API sent it
+/// (features/feed/data/feed_cache_store.dart): `id` is `<tenant>|<query>`.
 class FeedCache extends Table {
   TextColumn get id => text()();
   TextColumn get tenantId => text()();

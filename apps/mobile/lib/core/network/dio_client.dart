@@ -4,6 +4,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../storage/secure_session_storage.dart';
 import 'api_config.dart';
 import 'interceptors/auth_interceptor.dart';
+import 'interceptors/install_id_interceptor.dart';
 import 'interceptors/refresh_interceptor.dart';
 import 'interceptors/retry_interceptor.dart';
 import 'interceptors/tenant_interceptor.dart';
@@ -37,6 +38,7 @@ Dio dioClient(Ref ref) {
   final dio = Dio(baseOptions);
   dio.interceptors.addAll([
     TenantInterceptor(storage),
+    InstallIdInterceptor(),
     AuthInterceptor(storage),
     RefreshInterceptor(
       refreshDio: refreshDio,

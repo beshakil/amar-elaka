@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app.dart';
 import 'core/design/global_error_fallback.dart';
+import 'core/media/image_memory.dart';
 
 void main() {
   // A widget failing to build shows GlobalErrorFallback, never Flutter's
@@ -21,6 +22,9 @@ void main() {
     if (kDebugMode) debugPrint('Uncaught error: $error\n$stack');
     return true;
   };
+
+  WidgetsFlutterBinding.ensureInitialized();
+  ImageMemory.configure();
 
   runApp(const ProviderScope(child: App()));
 }

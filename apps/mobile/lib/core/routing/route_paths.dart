@@ -22,6 +22,10 @@ abstract final class RoutePaths {
   static const String postResult = '/post-result';
   static const String myPosts = '/my-posts';
 
+  /// A post's detail page (also the notifications' deep link, `/posts/<id>`).
+  static const String postDetail = '/posts';
+  static String postDetailFor(String postId) => '$postDetail/$postId';
+
   static const String designSystem = '/design-system';
   static const String formPreview = '/form-preview';
 }

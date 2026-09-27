@@ -24,9 +24,14 @@ class DynamicFilters extends StatefulWidget {
     required this.schema,
     required this.onChanged,
     super.key,
+    this.initialState = const {},
   });
 
   final CategoryFieldSchema schema;
+
+  /// A state this panel reported earlier (e.g. the feed's filter sheet,
+  /// reopened): shown as it was.
+  final Map<String, Object?> initialState;
   final void Function(Map<String, Object?> state, FilterResult result)
   onChanged;
 
@@ -46,6 +51,7 @@ class _DynamicFiltersState extends State<DynamicFilters> {
   @override
   void initState() {
     super.initState();
+    _state.addAll(widget.initialState);
     for (final key in filterFieldKeys(_schema)) {
       final property = _schema.properties[key]!;
       switch (filterControlOf(property)) {
@@ -60,8 +66,14 @@ class _DynamicFiltersState extends State<DynamicFilters> {
           }
 
           _rangeFocus[key] = (tidyOnLeave(true), tidyOnLeave(false));
+          if (_state[key] case RangeState(:final min, :final max)) {
+            _ranges[key]!.$1.text = min ?? '';
+            _ranges[key]!.$2.text = max ?? '';
+          }
         case FilterControl.text:
-          _texts[key] = TextEditingController();
+          _texts[key] = TextEditingController(
+            text: _state[key] is String ? _state[key]! as String : '',
+          );
         default:
           break;
       }

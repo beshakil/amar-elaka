@@ -15,8 +15,8 @@ import 'tables/tenant_config_table.dart';
 
 part 'app_database.g.dart';
 
-/// Local cache — tenant config, emergency contacts, and a feed-cache
-/// placeholder (see `FeedCache`): cached copies of server responses,
+/// Local cache — tenant config, emergency contacts and each feed query's
+/// first page (`FeedCache`): cached copies of server responses,
 /// refreshed on bootstrap. The one exception is `PostDrafts`, the source of
 /// truth for posts not yet on the server.
 @DriftDatabase(

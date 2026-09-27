@@ -15,6 +15,7 @@ import '../../features/map/presentation/map_screen.dart';
 import '../../features/post/presentation/editor/post_editor_screen.dart';
 import '../../features/post/presentation/editor/post_result_screen.dart';
 import '../../features/post/presentation/my_posts/my_posts_screen.dart';
+import '../../features/post_detail/presentation/post_detail_screen.dart';
 import '../../features/post/presentation/post_screen.dart';
 import '../../features/profile/presentation/profile_completion_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
@@ -101,6 +102,11 @@ GoRouter appRouter(Ref ref) {
       GoRoute(
         path: RoutePaths.myPosts,
         builder: (context, state) => const MyPostsScreen(),
+      ),
+      GoRoute(
+        path: '${RoutePaths.postDetail}/:id',
+        builder: (context, state) =>
+            PostDetailScreen(postId: state.pathParameters['id']!),
       ),
       // Debug-only: `kDebugMode` is a compile-time constant, so this branch
       // (and DesignSystemScreen's tree) is tree-shaken out of release builds.

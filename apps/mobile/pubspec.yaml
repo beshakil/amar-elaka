@@ -36,6 +36,15 @@ dependencies:
   # light on 2 GB phones (lib/core/map/map_config.dart, ADR 033).
   flutter_map: ^8.3.2
   latlong2: ^0.10.1
+  # Feed and detail photos: disk + memory cache, decoded at display size
+  # (memCacheWidth) so lists stay cheap on 2 GB phones.
+  cached_network_image: ^4.0.2
+  # Call / WhatsApp / SMS after the contact reveal (tel:, whatsapp://, wa.me).
+  url_launcher: ^6.3.2
+  # The system share sheet for a post's /s/:code link.
+  share_plus: ^13.3.0
+  # Decodes the API's thumbhash placeholders (pure Dart, tiny).
+  thumbhash: ^0.1.0+1
 
 dev_dependencies:
   flutter_test:
@@ -46,6 +55,10 @@ dev_dependencies:
   drift_dev: ^2.35.0
   # The post flow's happy path on a device (integration_test/).
   integration_test:
+    sdk: flutter
+  # Frame timings for the feed scroll profile (test_driver/perf_driver.dart,
+  # ADR 038). Part of the Flutter SDK, not a pub package.
+  flutter_driver:
     sdk: flutter
 
 flutter:

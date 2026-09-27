@@ -72,5 +72,31 @@ class LocationService {
   }
 }
 
+/// The phone's position only if location is already allowed and on — never
+/// asks (the bootstrap flow owns the rationale and the prompt). Null
+/// otherwise: callers fall back to the area's centre.
+extension QuietPosition on LocationService {
+  Future<LocationGranted?> positionIfAllowed() async {
+    try {
+      if (!await Geolocator.isLocationServiceEnabled()) return null;
+      final permission = await Geolocator.checkPermission();
+      if (permission != LocationPermission.whileInUse &&
+          permission != LocationPermission.always) {
+        return null;
+      }
+      final position =
+          await Geolocator.getLastKnownPosition() ??
+          await Geolocator.getCurrentPosition(
+            locationSettings: const LocationSettings(
+              accuracy: LocationAccuracy.medium,
+            ),
+          );
+      return LocationGranted(position.latitude, position.longitude);
+    } catch (_) {
+      return null;
+    }
+  }
+}
+
 @riverpod
 LocationService locationService(Ref ref) => LocationService();
