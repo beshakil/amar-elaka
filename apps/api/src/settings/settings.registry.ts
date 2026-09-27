@@ -200,6 +200,12 @@ export const SETTING_DEFINITIONS = {
   share_code_length: wholeNumber,
   report_details_max_length: wholeNumber,
   reports_per_user_per_day: wholeNumber,
+
+  // Saved items and store follows (ADR 037, migration 0032)
+  saved_page_size_default: wholeNumber,
+  saved_page_size_max: wholeNumber,
+  store_activity_months_default: wholeNumber,
+  store_activity_months_max: wholeNumber,
 } as const satisfies Record<string, z.ZodTypeAny>;
 
 export type SettingKey = keyof typeof SETTING_DEFINITIONS;

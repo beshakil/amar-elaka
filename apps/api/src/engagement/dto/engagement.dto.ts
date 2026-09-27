@@ -152,6 +152,8 @@ export const postDetailSchema = z.object({
     })
     .optional(),
   isMine: z.boolean(),
+  /** The caller saved this post (false for a guest). */
+  isSaved: z.boolean(),
   publishedAt: z.string().nullable(),
   expiresAt: z.string().nullable(),
   soldAt: z.string().nullable(),

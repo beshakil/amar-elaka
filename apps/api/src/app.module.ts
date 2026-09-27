@@ -15,6 +15,7 @@ import { MailModule } from './mail/mail.module';
 import { QueueModule } from './queue/queue.module';
 import { AuditLogInterceptor } from './rbac/audit-log.interceptor';
 import { RbacModule } from './rbac/rbac.module';
+import { SavedModule } from './saved/saved.module';
 import { SettingsModule } from './settings/settings.module';
 import { MediaModule } from './media/media.module';
 import { ModerationModule } from './moderation/moderation.module';
@@ -22,6 +23,7 @@ import { PostsModule } from './posts/posts.module';
 import { PlatformJobsModule } from './jobs/platform-jobs.module';
 import { LocationsModule } from './locations/locations.module';
 import { SearchModule } from './search/search.module';
+import { AnalyticsModule } from './analytics/analytics.module';
 import { EngagementModule } from './engagement/engagement.module';
 import { FeedModule } from './feed/feed.module';
 import { TenantsModule } from './tenants/tenants.module';
@@ -48,6 +50,8 @@ import { TenantsModule } from './tenants/tenants.module';
     SearchModule,
     FeedModule,
     EngagementModule,
+    SavedModule,
+    AnalyticsModule,
     LocationsModule,
     PlatformJobsModule,
   ],

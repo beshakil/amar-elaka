@@ -101,6 +101,19 @@ export class EngagementRepository {
       .parse([...rows])[0];
   }
 
+  /** Whether the caller saved this post (their own saved_posts rows are visible in any context). */
+  async isSaved(tx: DatabaseTransaction, postId: string): Promise<boolean> {
+    const rows = await tx.execute(sql`
+      select exists (
+        select 1 from public.saved_posts
+        where user_id = public.current_user_id() and post_id = ${postId}::uuid
+      ) as saved`);
+    return z
+      .array(z.object({ saved: z.boolean() }))
+      .length(1)
+      .parse([...rows])[0]!.saved;
+  }
+
   /** post_engagement_counts (0031): only the author or staff get a row. */
   async counts(tx: DatabaseTransaction, postId: string): Promise<EngagementCounts | undefined> {
     const rows = await tx.execute(sql`

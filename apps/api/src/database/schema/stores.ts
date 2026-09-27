@@ -64,6 +64,8 @@ export const stores = pgTable('stores', {
   isVerified: boolean('is_verified').notNull().default(false),
   ratingAvg: numeric('rating_avg', { precision: 3, scale: 2 }),
   ratingCount: integer('rating_count').notNull().default(0),
+  // store_follows rows, kept by trigger (0032).
+  followerCount: integer('follower_count').notNull().default(0),
   searchSyncedAt: timestamptz('search_synced_at'),
   ...softDeleteColumns(),
 });

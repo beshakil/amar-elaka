@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { parseFieldSchema, parseUiSchema, renderFields } from '../categories/field-schema';
 import type { FieldValues } from '../categories/field-schema/fields-validator';
+import { TenantContext } from '../database/tenant-context';
 import { TenantDb } from '../database/tenant-db';
 import { FeedService } from '../feed/feed.service';
 import { parseVariants } from '../media/media.types';
@@ -37,6 +38,7 @@ const SECONDS_PER_MINUTE = 60;
 export class PostDetailService {
   constructor(
     private readonly tenantDb: TenantDb,
+    private readonly context: TenantContext,
     private readonly ownership: PostOwnershipService,
     private readonly posts: PostsRepository,
     private readonly repo: EngagementRepository,
@@ -60,6 +62,7 @@ export class PostDetailService {
       this.settings.get('require_login_for_contact', tenantId),
     ]);
 
+    const signedIn = this.context.current()?.userId !== undefined;
     const found = await this.ownership.inTenant(tenantId, 'lookup', async ({ memberId, role }) => {
       const read = await this.tenantDb.transaction(
         async (tx) => {
@@ -90,6 +93,7 @@ export class PostDetailService {
             seller: await this.repo.sellerCard(tx, postId, trustedMin),
             counts: viewer === 'public' ? undefined : await this.repo.counts(tx, postId),
             slug: await this.repo.tenantSlug(tx, tenantId),
+            saved: signedIn ? await this.repo.isSaved(tx, postId) : false,
           };
         },
         { accessMode: 'read only' },
@@ -102,7 +106,7 @@ export class PostDetailService {
     });
     if (!found) throw new PostNotFoundException();
 
-    const { row, viewer, detail, media, seller, counts, slug, code } = found;
+    const { row, viewer, detail, media, seller, counts, slug, code, saved } = found;
     const similar =
       row.status_code === 'live' && row.lat !== null && row.lng !== null
         ? await this.feed.similarPosts({
@@ -154,6 +158,7 @@ export class PostDetailService {
       similar,
       ...(viewer !== 'public' && counts ? { stats: toStats(counts) } : {}),
       isMine: viewer === 'owner',
+      isSaved: saved,
       publishedAt: row.published_at?.toISOString() ?? null,
       expiresAt: row.expires_at?.toISOString() ?? null,
       soldAt: row.sold_at?.toISOString() ?? null,

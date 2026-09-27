@@ -146,6 +146,8 @@ export const posts = pgTable('posts', {
   bumpedAt: timestamptz('bumped_at'),
   creditsCharged: integer('credits_charged').notNull().default(0),
   viewCount: integer('view_count').notNull().default(0),
+  // saved_posts rows, kept by trigger (0032).
+  savedCount: integer('saved_count').notNull().default(0),
   // Attached photos, kept by the media_attachments_post_photo_count trigger (0030).
   photoCount: smallint('photo_count').notNull().default(0),
   // Non-empty keys of fields, kept by posts_a_maintain_filled_field_count (0030).
@@ -288,6 +290,37 @@ export const postShortLinks = pgTable('post_short_links', {
   // Composite FK (tenant_id, post_id) -> posts, CASCADE.
   postId: uuid('post_id').notNull(),
   code: text('code').notNull(),
+  ...auditColumns(),
+});
+
+/**
+ * §4.7 / §13.29 (0032): a user's saved place. Tenant-scoped in the place's
+ * tenant; the user reads their own rows in any tenant context.
+ */
+export const savedPlaces = pgTable('saved_places', {
+  id: id(),
+  tenantId: uuid('tenant_id')
+    .notNull()
+    .references(() => tenants.id, { onDelete: 'restrict' }),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  // Composite FK (tenant_id, place_id) -> places, RESTRICT.
+  placeId: uuid('place_id').notNull(),
+  ...auditColumns(),
+});
+
+/** §13.29 (0032): a user's saved store, as saved_places. Following is store_follows. */
+export const savedStores = pgTable('saved_stores', {
+  id: id(),
+  tenantId: uuid('tenant_id')
+    .notNull()
+    .references(() => tenants.id, { onDelete: 'restrict' }),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  // Composite FK (tenant_id, store_id) -> stores, RESTRICT.
+  storeId: uuid('store_id').notNull(),
   ...auditColumns(),
 });
 

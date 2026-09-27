@@ -2753,6 +2753,227 @@
         ]
       }
     },
+    "/saved": {
+      "get": {
+        "operationId": "SavedController_list",
+        "parameters": [
+          {
+            "name": "type",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "post",
+                "place",
+                "store"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedPageDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Saved"
+        ]
+      }
+    },
+    "/saved/{itemType}/{itemId}": {
+      "post": {
+        "operationId": "SavedController_save",
+        "parameters": [
+          {
+            "name": "itemType",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "enum": [
+                "post",
+                "place",
+                "store"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "itemId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SaveResultDto"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Saved"
+        ]
+      },
+      "delete": {
+        "operationId": "SavedController_unsave",
+        "parameters": [
+          {
+            "name": "itemType",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "enum": [
+                "post",
+                "place",
+                "store"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "itemId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Saved"
+        ]
+      }
+    },
+    "/stores/{id}/follow": {
+      "post": {
+        "operationId": "StoreFollowsController_follow",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FollowResultDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "StoreFollows"
+        ]
+      },
+      "delete": {
+        "operationId": "StoreFollowsController_unfollow",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FollowResultDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "StoreFollows"
+        ]
+      }
+    },
+    "/tenant/analytics/store-activity": {
+      "get": {
+        "operationId": "AnalyticsController_storeActivity",
+        "parameters": [
+          {
+            "name": "months",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreActivityDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Analytics"
+        ]
+      }
+    },
     "/platform/jobs": {
       "get": {
         "operationId": "PlatformJobsController_health",
@@ -7482,6 +7703,9 @@
           "isMine": {
             "type": "boolean"
           },
+          "isSaved": {
+            "type": "boolean"
+          },
           "publishedAt": {
             "type": "string",
             "nullable": true
@@ -7523,6 +7747,7 @@
           "share",
           "similar",
           "isMine",
+          "isSaved",
           "publishedAt",
           "expiresAt",
           "soldAt",
@@ -7653,6 +7878,227 @@
           "tenantId",
           "tenantSlug",
           "url"
+        ]
+      },
+      "SavedPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "itemType": {
+                  "type": "string",
+                  "enum": [
+                    "post",
+                    "place",
+                    "store"
+                  ]
+                },
+                "itemId": {
+                  "type": "string"
+                },
+                "tenantId": {
+                  "type": "string"
+                },
+                "savedAt": {
+                  "type": "string"
+                },
+                "state": {
+                  "type": "string",
+                  "enum": [
+                    "available",
+                    "sold",
+                    "expired",
+                    "unavailable",
+                    "deleted",
+                    "removed",
+                    "temporarily_closed",
+                    "closed"
+                  ]
+                },
+                "name": {
+                  "type": "object",
+                  "properties": {
+                    "bn": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "en": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "bn",
+                    "en"
+                  ],
+                  "nullable": true
+                },
+                "slug": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "price": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "priceType": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "cover": {
+                  "type": "object",
+                  "properties": {
+                    "url": {
+                      "type": "string"
+                    },
+                    "thumbhash": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "url",
+                    "thumbhash"
+                  ],
+                  "nullable": true
+                },
+                "area": {
+                  "type": "object",
+                  "properties": {
+                    "bn": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "en": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "bn",
+                    "en"
+                  ],
+                  "nullable": true
+                }
+              },
+              "required": [
+                "itemType",
+                "itemId",
+                "tenantId",
+                "savedAt",
+                "state",
+                "name",
+                "slug",
+                "price",
+                "priceType",
+                "cover",
+                "area"
+              ]
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ]
+      },
+      "SaveResultDto": {
+        "type": "object",
+        "properties": {
+          "itemType": {
+            "type": "string",
+            "enum": [
+              "post",
+              "place",
+              "store"
+            ]
+          },
+          "itemId": {
+            "type": "string"
+          },
+          "savedAt": {
+            "type": "string"
+          },
+          "created": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "itemType",
+          "itemId",
+          "savedAt",
+          "created"
+        ]
+      },
+      "FollowResultDto": {
+        "type": "object",
+        "properties": {
+          "storeId": {
+            "type": "string"
+          },
+          "following": {
+            "type": "boolean"
+          },
+          "followerCount": {
+            "type": "number",
+            "nullable": true
+          }
+        },
+        "required": [
+          "storeId",
+          "following",
+          "followerCount"
+        ]
+      },
+      "StoreActivityDto": {
+        "type": "object",
+        "properties": {
+          "months": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "month": {
+                  "type": "string"
+                },
+                "activeStores": {
+                  "type": "number"
+                },
+                "postingStores": {
+                  "type": "number"
+                },
+                "storePosts": {
+                  "type": "number"
+                },
+                "avgPostsPerActiveStore": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "avgPostsPerPostingStore": {
+                  "type": "string",
+                  "nullable": true
+                }
+              },
+              "required": [
+                "month",
+                "activeStores",
+                "postingStores",
+                "storePosts",
+                "avgPostsPerActiveStore",
+                "avgPostsPerPostingStore"
+              ]
+            }
+          }
+        },
+        "required": [
+          "months"
         ]
       },
       "JobHealthDto": {

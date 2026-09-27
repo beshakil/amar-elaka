@@ -306,6 +306,7 @@ function detailOf(post: Schemas['PostDto']): Schemas['PostDetailDto'] {
     share: { code, url: `http://${tenant.slug}.localhost:3001/s/${code}` },
     similar: [],
     isMine: false,
+    isSaved: false,
     publishedAt: post.publishedAt,
     expiresAt: post.expiresAt,
     soldAt: post.soldAt,

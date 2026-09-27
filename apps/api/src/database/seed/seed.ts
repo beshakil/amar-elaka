@@ -65,6 +65,7 @@ async function main(): Promise<void> {
       const storeIds = await seedStores(tx, tenantIds, memberIds);
       await seedPosts(tx, tenantIds, memberIds, storeIds, categoryIds, geoAreaIdBySlug);
       await seedPlaces(tx, tenantIds, memberIds, categoryIds, geoAreaIdBySlug);
+      await seedSavedAndFollows(tx, userIds.get('buyer')!);
       await seedEmergencyContacts(tx, tenantIds);
       await seedBloodDonors(tx, tenantIds, memberIds);
       await seedBazarPrices(
@@ -614,6 +615,44 @@ function buildPostContent(
           ? 'negotiable'
           : 'fixed';
   return { title, fields, priceTypeCode };
+}
+
+// ---------------------------------------------------------------------------
+// Saved items and follows (ADR 037)
+// ---------------------------------------------------------------------------
+
+/**
+ * The buyer's saved list, across both tenants: a few posts, places and a
+ * store, and two followed stores. Each row lives in its target's tenant
+ * (§13.29); the counters (saved_count, follower_count) follow by trigger.
+ */
+async function seedSavedAndFollows(tx: TransactionSql, buyerId: string): Promise<void> {
+  const savedPosts = await tx`
+    insert into saved_posts (tenant_id, user_id, post_id)
+    select p.tenant_id, ${buyerId}, p.id from posts p
+    where p.id in ${tx([0, 5, 12, 21].map((i) => seedId(`post:${i}`)))}
+    on conflict do nothing`;
+  const savedPlaces = await tx`
+    insert into saved_places (tenant_id, user_id, place_id)
+    select pl.tenant_id, ${buyerId}, pl.id from places pl
+    where pl.status_code = 'published' and pl.deleted_at is null
+    order by pl.id limit 2
+    on conflict do nothing`;
+  const savedStores = await tx`
+    insert into saved_stores (tenant_id, user_id, store_id)
+    select st.tenant_id, ${buyerId}, st.id from stores st
+    where st.status_code = 'active' and st.deleted_at is null
+    order by st.id limit 1
+    on conflict do nothing`;
+  const follows = await tx`
+    insert into store_follows (tenant_id, user_id, store_id)
+    select st.tenant_id, ${buyerId}, st.id from stores st
+    where st.status_code = 'active' and st.deleted_at is null
+    order by st.id limit 2
+    on conflict do nothing`;
+  console.log(
+    `saved: ${savedPosts.count} posts, ${savedPlaces.count} places, ${savedStores.count} stores; follows: ${follows.count}`,
+  );
 }
 
 // ---------------------------------------------------------------------------
