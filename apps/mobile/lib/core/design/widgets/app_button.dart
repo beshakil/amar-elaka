@@ -72,7 +72,8 @@ class _Label extends StatelessWidget {
       children: [
         Icon(icon, size: 18),
         const SizedBox(width: AppSpacing.xs),
-        Text(label),
+        // Long Bengali labels on a narrow phone wrap instead of overflowing.
+        Flexible(child: Text(label, textAlign: TextAlign.center)),
       ],
     );
   }

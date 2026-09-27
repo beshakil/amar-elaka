@@ -34,8 +34,21 @@ int compressionBound(
 }
 
 class PluginImageCompressor implements ImageCompressor {
+  /// One compression at a time across the app, whatever the upload
+  /// concurrency: decoding a 12–48 MP photo takes tens of MB of native memory,
+  /// and two at once is what gets the app killed on a 2 GB Android 8 phone.
+  /// Uploads (network-bound) still overlap.
+  static Future<void> _last = Future<void>.value();
+
   @override
-  Future<int> compress(String sourcePath, String targetPath) async {
+  Future<int> compress(String sourcePath, String targetPath) {
+    final previous = _last;
+    final done = previous.then((_) => _compress(sourcePath, targetPath));
+    _last = done.then<void>((_) {}, onError: (_) {});
+    return done;
+  }
+
+  Future<int> _compress(String sourcePath, String targetPath) async {
     final (width, height) = await _dimensions(sourcePath);
     final bound = compressionBound(width, height);
     final result = await FlutterImageCompress.compressAndGetFile(

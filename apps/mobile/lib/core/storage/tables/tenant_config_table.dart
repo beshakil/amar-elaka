@@ -42,6 +42,9 @@ class TenantConfigCache extends Table {
   TextColumn get supportPhone => text().nullable()();
   TextColumn get supportEmail => text().nullable()();
   TextColumn get supportWhatsapp => text().nullable()();
+
+  /// "Under review, usually within X hours" (schema v2).
+  IntColumn get typicalReviewHours => integer().nullable()();
   DateTimeColumn get cachedAt => dateTime()();
 
   @override

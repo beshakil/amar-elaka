@@ -12,6 +12,9 @@ import '../../features/form_preview/form_preview_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
 import '../../features/info/presentation/info_screen.dart';
 import '../../features/map/presentation/map_screen.dart';
+import '../../features/post/presentation/editor/post_editor_screen.dart';
+import '../../features/post/presentation/editor/post_result_screen.dart';
+import '../../features/post/presentation/my_posts/my_posts_screen.dart';
 import '../../features/post/presentation/post_screen.dart';
 import '../../features/profile/presentation/profile_completion_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
@@ -83,6 +86,21 @@ GoRouter appRouter(Ref ref) {
       GoRoute(
         path: RoutePaths.profileCompletion,
         builder: (context, state) => const ProfileCompletionScreen(),
+      ),
+      // Post flows sit above the tab shell: full screen, no bottom nav.
+      GoRoute(
+        path: '${RoutePaths.postEditor}/:draftId',
+        builder: (context, state) =>
+            PostEditorScreen(draftId: state.pathParameters['draftId']!),
+      ),
+      GoRoute(
+        path: RoutePaths.postResult,
+        builder: (context, state) =>
+            PostResultScreen(args: state.extra! as PostResultArgs),
+      ),
+      GoRoute(
+        path: RoutePaths.myPosts,
+        builder: (context, state) => const MyPostsScreen(),
       ),
       // Debug-only: `kDebugMode` is a compile-time constant, so this branch
       // (and DesignSystemScreen's tree) is tree-shaken out of release builds.

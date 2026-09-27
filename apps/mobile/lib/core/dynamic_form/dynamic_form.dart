@@ -24,18 +24,36 @@ import 'form_values.dart';
 class DynamicForm extends StatefulWidget {
   const DynamicForm({
     required this.schema,
-    required this.onSubmit,
     super.key,
+    this.onSubmit,
     this.initialValues,
+    this.initialState,
+    this.onStateChanged,
+    this.controller,
     this.validationContext,
     this.submitLabel,
-  });
+  }) : assert(
+         onSubmit != null || controller != null,
+         'Either submit with its own button (onSubmit) or from outside (controller).',
+       );
 
   final CategoryFieldSchema schema;
-  final ValueChanged<Map<String, Object>> onSubmit;
+
+  /// Shows the form's own submit button. Without it, a [controller] submits.
+  final ValueChanged<Map<String, Object>>? onSubmit;
 
   /// Stored values to edit (a post's `fields`).
   final Map<String, Object?>? initialValues;
+
+  /// What the user had typed, exactly (from [onStateChanged]): wins over
+  /// [initialValues], so a half-typed "১২ হাজ" survives an app kill too.
+  final Map<String, Object?>? initialState;
+
+  /// Every change, as typed (JSON-safe: strings, bools, lists) — for drafts.
+  final ValueChanged<Map<String, Object?>>? onStateChanged;
+
+  /// For a form inside a stepper: validate and read values from outside.
+  final DynamicFormController? controller;
 
   /// "Today" and the current year; defaults to now in Asia/Dhaka.
   final ValidationContext? validationContext;
@@ -43,6 +61,18 @@ class DynamicForm extends StatefulWidget {
 
   @override
   State<DynamicForm> createState() => _DynamicFormState();
+}
+
+/// Drives a [DynamicForm] from outside — e.g. the post editor's "next" button.
+class DynamicFormController {
+  _DynamicFormState? _state;
+
+  /// Shows every error and moves focus to the first; returns the API-shaped
+  /// values when the form is valid, else null.
+  Map<String, Object>? validate() => _state?._validate();
+
+  /// The current values, valid or not (API shape).
+  Map<String, Object> get values => _state?._values ?? const {};
 }
 
 /// Selects with this many options or fewer render as one-tap chips.
@@ -76,6 +106,12 @@ class _DynamicFormState extends State<DynamicForm> {
     _state.addAll(
       valuesToFormState(_schema, widget.initialValues ?? const {}, _locale!),
     );
+    if (widget.initialState case final saved?) {
+      for (final MapEntry(:key, :value) in saved.entries) {
+        if (_schema.properties.containsKey(key)) _state[key] = value;
+      }
+    }
+    widget.controller?._state = this;
     for (final MapEntry(:key, value: property) in _schema.properties.entries) {
       final node = FocusNode(debugLabel: key)
         ..addListener(() {
@@ -91,7 +127,19 @@ class _DynamicFormState extends State<DynamicForm> {
   }
 
   @override
+  void didUpdateWidget(DynamicForm oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      if (oldWidget.controller?._state == this) {
+        oldWidget.controller!._state = null;
+      }
+      widget.controller?._state = this;
+    }
+  }
+
+  @override
   void dispose() {
+    if (widget.controller?._state == this) widget.controller!._state = null;
     for (final c in _controllers.values) {
       c.dispose();
     }
@@ -121,6 +169,7 @@ class _DynamicFormState extends State<DynamicForm> {
       if (tidy != null && tidy != text) {
         controller.text = tidy;
         _state[key] = tidy;
+        _notifyState();
       }
     }
     setState(() => _touched.add(key));
@@ -131,18 +180,24 @@ class _DynamicFormState extends State<DynamicForm> {
       _state[key] = value;
       if (touch) _touched.add(key);
     });
+    _notifyState();
   }
+
+  void _notifyState() =>
+      widget.onStateChanged?.call(Map<String, Object?>.unmodifiable(_state));
+
+  Map<String, Object> get _values => formStateToValues(_schema, _state);
 
   List<FieldIssue> get _issues =>
       formFieldIssues(_schema, formStateToValues(_schema, _state), _context);
 
-  void _submit(AppLocalizations l10n) {
+  /// Shows every error; returns the values when valid, else null (and focuses
+  /// the first invalid field, announcing how many need fixing).
+  Map<String, Object>? _validate() {
+    final l10n = AppLocalizations.of(context)!;
     final issues = _issues;
     setState(() => _submitted = true);
-    if (issues.isEmpty) {
-      widget.onSubmit(formStateToValues(_schema, _state));
-      return;
-    }
+    if (issues.isEmpty) return _values;
     final invalid = issues.map((i) => i.key).toSet();
     SemanticsService.sendAnnouncement(
       View.of(context),
@@ -154,6 +209,11 @@ class _DynamicFormState extends State<DynamicForm> {
     );
     final first = _schema.formFieldKeys.where(invalid.contains).firstOrNull;
     if (first != null) _focusNodes[first]?.requestFocus();
+    return null;
+  }
+
+  void _submit() {
+    if (_validate() case final values?) widget.onSubmit!(values);
   }
 
   @override
@@ -178,10 +238,11 @@ class _DynamicFormState extends State<DynamicForm> {
           _field(key, l10n, locale, errors[key]),
           const SizedBox(height: AppSpacing.md),
         ],
-        AppButton(
-          label: widget.submitLabel ?? l10n.dynamicFormSubmit,
-          onPressed: () => _submit(l10n),
-        ),
+        if (widget.onSubmit != null)
+          AppButton(
+            label: widget.submitLabel ?? l10n.dynamicFormSubmit,
+            onPressed: _submit,
+          ),
       ],
     );
   }

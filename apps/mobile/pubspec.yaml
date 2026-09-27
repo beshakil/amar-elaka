@@ -32,6 +32,10 @@ dependencies:
   # Persistent upload queue files survive an app restart.
   path_provider: ^2.1.5
   crypto: ^3.0.7
+  # Post location picker: pure-Flutter raster map, light on 2 GB phones, any
+  # tile provider (MAP_TILE_URL dart-define; see lib/core/map/map_config.dart).
+  flutter_map: ^8.3.2
+  latlong2: ^0.10.1
 
 dev_dependencies:
   flutter_test:
@@ -40,6 +44,9 @@ dev_dependencies:
   riverpod_generator: ^4.0.9
   build_runner: ^2.15.1
   drift_dev: ^2.35.0
+  # The post flow's happy path on a device (integration_test/).
+  integration_test:
+    sdk: flutter
 
 flutter:
   uses-material-design: true

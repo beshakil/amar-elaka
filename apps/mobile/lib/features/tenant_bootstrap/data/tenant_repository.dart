@@ -142,6 +142,10 @@ class TenantRepository {
         email: row.supportEmail,
         whatsappE164: row.supportWhatsapp,
       ),
+      moderation: switch (row.typicalReviewHours) {
+        final int hours => TenantModeration(typicalReviewHours: hours),
+        null => TenantModeration.fallback,
+      },
     );
   }
 
@@ -163,6 +167,7 @@ class TenantRepository {
             supportPhone: Value(config.support.phoneE164),
             supportEmail: Value(config.support.email),
             supportWhatsapp: Value(config.support.whatsappE164),
+            typicalReviewHours: Value(config.moderation.typicalReviewHours),
             cachedAt: DateTime.now(),
           ),
         );

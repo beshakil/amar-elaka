@@ -16,6 +16,12 @@ abstract final class RoutePaths {
   static const String info = '/info';
   static const String profile = '/profile';
 
+  /// Post flows (full-screen, above the tab shell).
+  static const String postEditor = '/post-editor';
+  static String postEditorFor(String draftId) => '$postEditor/$draftId';
+  static const String postResult = '/post-result';
+  static const String myPosts = '/my-posts';
+
   static const String designSystem = '/design-system';
   static const String formPreview = '/form-preview';
 }

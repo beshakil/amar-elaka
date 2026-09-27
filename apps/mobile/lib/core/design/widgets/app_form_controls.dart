@@ -49,17 +49,20 @@ class AppSwitchTile extends StatelessWidget {
 
   final String label;
   final bool value;
-  final ValueChanged<bool> onChanged;
+
+  /// Null disables the switch (e.g. it depends on another one being on).
+  final ValueChanged<bool>? onChanged;
   final String? errorText;
 
   @override
   Widget build(BuildContext context) {
+    final onChanged = this.onChanged;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         MergeSemantics(
           child: InkWell(
-            onTap: () => onChanged(!value),
+            onTap: onChanged == null ? null : () => onChanged(!value),
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
               child: Row(

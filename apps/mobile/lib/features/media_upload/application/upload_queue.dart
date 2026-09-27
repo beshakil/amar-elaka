@@ -115,6 +115,28 @@ class UploadQueue extends ChangeNotifier {
     _pump();
   }
 
+  /// Drops every item and its compressed file — once the post that used them
+  /// is on the server (its media ids are attached there).
+  Future<void> clear() async {
+    final items = _items;
+    for (final token in _cancelTokens.values) {
+      token.cancel();
+    }
+    _cancelTokens.clear();
+    _items = [];
+    await _save();
+    for (final item in items) {
+      await _store.deleteFile(item.compressedPath);
+    }
+  }
+
+  /// True while any photo is still on its way (not done, not failed).
+  bool get isBusy => _items.any(
+    (i) => i.status != UploadStatus.done && i.status != UploadStatus.failed,
+  );
+
+  bool get hasFailures => _items.any((i) => i.status == UploadStatus.failed);
+
   /// Moves an item so it ends up at [newIndex] (`onReorderItem` semantics).
   Future<void> reorder(int oldIndex, int newIndex) async {
     final items = [..._items];
