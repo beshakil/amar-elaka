@@ -2,7 +2,9 @@ import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
 import { MapPin, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { LogoutButton } from '@/components/logout-button';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { readSession } from '@/lib/auth/session';
 import type { TenantConfig } from '@/lib/api/schemas';
 import { storageUrl } from '@/lib/env';
 import type { ThemePreference } from '@/lib/theme';
@@ -24,6 +26,8 @@ export async function SiteHeader({
   const tNav = await getTranslations('nav');
   const tArea = await getTranslations('areaSwitcher');
   const logoKey = tenant?.branding.logoStorageKey;
+  // Whether a session cookie exists (the pages behind it check it properly).
+  const signedIn = tenant !== null && (await readSession()) !== null;
 
   return (
     <header className="border-b border-border bg-card">
@@ -70,6 +74,28 @@ export async function SiteHeader({
               {tNav(item.key)}
             </Link>
           ))}
+          {tenant && (
+            <>
+              <Link
+                href="/post/new"
+                className="rounded-md bg-brand px-2 py-1 text-brand-foreground hover:opacity-90"
+              >
+                {tNav('post')}
+              </Link>
+              {signedIn ? (
+                <>
+                  <a href="/me/posts" className="rounded-md px-2 py-1 hover:bg-muted">
+                    {tNav('myPosts')}
+                  </a>
+                  <LogoutButton label={tNav('logout')} />
+                </>
+              ) : (
+                <a href="/login" className="rounded-md px-2 py-1 hover:bg-muted">
+                  {tNav('login')}
+                </a>
+              )}
+            </>
+          )}
         </nav>
 
         <ThemeToggle current={theme} />

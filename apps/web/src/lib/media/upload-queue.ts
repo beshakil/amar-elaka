@@ -81,6 +81,24 @@ export class UploadQueue {
     return this.items.flatMap((i) => (i.status === 'done' && i.mediaId ? [i.mediaId] : []));
   }
 
+  /** True while any photo is still on its way (not done, not failed). */
+  get isBusy(): boolean {
+    return this.items.some((i) => i.status !== 'done' && i.status !== 'failed');
+  }
+
+  /** Resolves once no photo is on its way (each has either finished or failed). */
+  settled(): Promise<void> {
+    if (!this.isBusy) return Promise.resolve();
+    return new Promise((resolve) => {
+      const unsubscribe = this.subscribe(() => {
+        if (!this.isBusy) {
+          unsubscribe();
+          resolve();
+        }
+      });
+    });
+  }
+
   get isComplete(): boolean {
     return this.items.length > 0 && this.items.every((i) => i.status === 'done');
   }
@@ -191,21 +209,23 @@ export class UploadQueue {
 
     const controller = new AbortController();
     this.controllers.set(id, controller);
+    let mediaId = target.mediaId;
     try {
-      await this.options.transport.put(
+      const sent = await this.options.transport.put(
         target,
         body,
         (progress) => this.update(id, { progress }),
         controller.signal,
       );
+      if (sent) mediaId = sent.mediaId;
     } finally {
       this.controllers.delete(id);
     }
     if (!this.find(id)) return;
 
     this.update(id, { status: 'confirming', progress: 1 });
-    await this.options.transport.confirm(target.mediaId);
-    this.update(id, { status: 'done', mediaId: target.mediaId, errorCode: undefined });
+    await this.options.transport.confirm(mediaId);
+    this.update(id, { status: 'done', mediaId, errorCode: undefined });
   }
 
   private find(id: string): UploadItem | undefined {

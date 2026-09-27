@@ -19,12 +19,16 @@ export interface PresignInput {
 
 export interface UploadTransport {
   presign(input: PresignInput): Promise<PresignedTarget>;
+  /**
+   * Sends the bytes. A transport that learns the media id only here (the
+   * one-trip web transport) returns it; otherwise the presign's id is used.
+   */
   put(
     target: PresignedTarget,
     body: Blob,
     onProgress: (fraction: number) => void,
     signal: AbortSignal,
-  ): Promise<void>;
+  ): Promise<void | { mediaId: string }>;
   confirm(mediaId: string): Promise<void>;
 }
 

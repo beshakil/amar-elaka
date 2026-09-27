@@ -92,6 +92,45 @@ describe('UploadQueue', () => {
     expect(notified.length).toBeGreaterThan(3);
   });
 
+  it('takes the media id from put when the transport only learns it there (one-trip web upload)', async () => {
+    const inner = new FakeTransport();
+    const oneTrip: UploadTransport = {
+      presign: (input) => inner.presign(input),
+      put: async (...args) => {
+        await inner.put(...args);
+        return { mediaId: 'server-id' };
+      },
+      confirm: (mediaId) => inner.confirm(mediaId),
+    };
+    const queue = new UploadQueue({ transport: oneTrip, compress: webp, newId: () => 'item1' });
+    queue.add([photo('a')]);
+    for (let i = 0; i < 200 && queue.getSnapshot()[0]?.status !== 'done'; i++) {
+      await new Promise((r) => setTimeout(r, 0));
+    }
+    expect(queue.mediaIds).toEqual(['server-id']);
+    expect(inner.confirmed).toEqual(['server-id']);
+  });
+
+  it('settled() waits for photos on their way, so a submit never races an upload', async () => {
+    const transport = new FakeTransport();
+    let open!: () => void;
+    transport.gate = new Promise((r) => (open = r));
+    const { queue } = setup(transport);
+    await queue.settled(); // nothing queued: resolves at once
+    queue.add([photo('a'), photo('b')]);
+    expect(queue.isBusy).toBe(true);
+
+    let done = false;
+    const waiting = queue.settled().then(() => (done = true));
+    await new Promise((r) => setTimeout(r, 0));
+    expect(done).toBe(false);
+
+    open();
+    await waiting;
+    expect(queue.isBusy).toBe(false);
+    expect(queue.getSnapshot().map((i) => i.status)).toEqual(['done', 'done']);
+  });
+
   it('retries a retryable failure with backoff, reusing the compressed file', async () => {
     const transport = new FakeTransport();
     transport.putFailures = [new UploadFailure('network', true)];
