@@ -28,6 +28,7 @@ import type {
 } from './dto/posts.dto';
 import { POST_IDEMPOTENCY_STORE, type PostIdempotencyStore } from './post-idempotency.store';
 import { PostOwnershipService } from './post-ownership.service';
+import { isPriceDrop } from './price-drop';
 import { assertTransition, type PostStatus } from './post-state-machine';
 import { isStaffRole, visibilityOf, type PostViewer } from './post-visibility';
 import {
@@ -420,6 +421,23 @@ export class PostsService {
         changed: [...changed],
         rereview: post.status_code === 'live' && rereview,
       });
+      // Price-drop groundwork (ADR 037): savers are told in week 11. Only for
+      // a post buyers can still see: live, not hidden, not sent back to review.
+      const newPrice = patch.fields !== undefined ? priceOf(patch.fields) : priceOf(post.fields);
+      if (
+        post.status_code === 'live' &&
+        !sentBack &&
+        !post.hidden_by_owner &&
+        isPriceDrop(priceOf(post.fields), newPrice)
+      ) {
+        await this.repo.emit(tx, 'post.price_dropped', id, {
+          tenantId: post.tenant_id,
+          actorUserId: userId,
+          from: priceOf(post.fields),
+          to: newPrice,
+          categoryId: patch.categoryId ?? post.category_id,
+        });
+      }
       if (sentBack) {
         await this.repo.emit(tx, 'post.submitted', id, {
           tenantId: post.tenant_id,
