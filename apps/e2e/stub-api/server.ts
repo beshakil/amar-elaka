@@ -238,6 +238,82 @@ const phoneCategory: Schemas['CatalogCategoryDto'] = {
   },
 };
 
+/** A post's share code in the stub: its id's first 8 hex digits (the API mints random ones). */
+const shortCodeOf = (postId: string) => postId.replace(/-/g, '').slice(0, 8);
+
+/** GET /posts/:id/detail, from a stored post — without the number, as the API (ADR 036). */
+function detailOf(post: Schemas['PostDto']): Schemas['PostDetailDto'] {
+  const ui = phoneCategory.fieldSchema!.uiSchema as {
+    order: string[];
+    labels: Record<string, { bn: string; en: string }>;
+    options: Record<string, Record<string, { bn: string; en: string }>>;
+  };
+  const tenant = tenants.find((t) => t.id === post.tenantId) ?? tenants[0]!;
+  const code = shortCodeOf(post.id);
+  return {
+    id: post.id,
+    tenantId: post.tenantId,
+    status: post.status,
+    isSold: post.isSold,
+    title: post.title,
+    description: post.description,
+    price: post.price,
+    priceType: 'negotiable',
+    currency: 'BDT',
+    category: { id: PHONE_CATEGORY_ID, slug: phoneCategory.slug, name: phoneCategory.name },
+    fieldSchemaVersion: 1,
+    fields: ui.order.flatMap((key) => {
+      const value = post.fields[key];
+      if (value === undefined) return [];
+      const option = typeof value === 'string' ? ui.options[key]?.[value] : undefined;
+      return [
+        {
+          key,
+          type: key === 'price' ? 'money' : 'select',
+          label: ui.labels[key]!,
+          value,
+          ...(option ? { optionLabels: [option] } : {}),
+        },
+      ];
+    }),
+    media: post.media.map((m) => ({
+      id: m.id,
+      thumbhash: null,
+      variants: m.cardUrl
+        ? {
+            thumb: { url: m.thumbUrl ?? m.cardUrl, width: 200, height: 150 },
+            card: { url: m.cardUrl, width: 600, height: 450 },
+            full: { url: m.fullUrl ?? m.cardUrl, width: 1200, height: 900 },
+          }
+        : null,
+    })),
+    location: post.location,
+    area: { bn: 'মিরপুর ১০', en: 'Mirpur 10' },
+    distanceMeters: null,
+    seller: {
+      name: post.contact.name,
+      memberSince: '2026-01-15T00:00:00.000Z',
+      badges: ['trusted', 'phone_verified'],
+      store: null,
+      responseHint: null,
+    },
+    contact: {
+      name: post.contact.name,
+      channels: post.showPhone ? ['call', 'sms'] : [],
+      allowChat: post.allowChat,
+      loginRequired: false,
+    },
+    share: { code, url: `http://${tenant.slug}.localhost:3001/s/${code}` },
+    similar: [],
+    isMine: false,
+    publishedAt: post.publishedAt,
+    expiresAt: post.expiresAt,
+    soldAt: post.soldAt,
+    createdAt: post.createdAt,
+    updatedAt: post.updatedAt,
+  };
+}
+
 /** A seeded post, for my-posts tests; `status` and extras as the test needs. */
 function seedPost(overrides: Partial<Schemas['PostDto']>): Schemas['PostDto'] {
   const now = new Date().toISOString();
@@ -513,6 +589,30 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
   }
   if (req.method === 'GET' && path === '/categories') return send(res, 200, [phoneCategory]);
 
+  // Public (ADR 036): a share link and a post's detail need no session.
+  const shareMatch = /^\/s\/([a-z0-9]+)$/.exec(path);
+  if (req.method === 'GET' && shareMatch) {
+    const post = [...state.posts.values()].find((p) => shortCodeOf(p.id) === shareMatch[1]);
+    if (!post || post.status !== 'live') return fail(res, 404, 'SHORT_LINK_NOT_FOUND');
+    const detail = detailOf(post);
+    const tenant = tenants.find((t) => t.id === post.tenantId) ?? tenants[0]!;
+    const link: Schemas['ShortLinkDto'] = {
+      code: shareMatch[1]!,
+      postId: post.id,
+      tenantId: post.tenantId,
+      tenantSlug: tenant.slug,
+      url: detail.share!.url,
+    };
+    return send(res, 200, link);
+  }
+  const detailMatch = /^\/posts\/([^/]+)\/detail$/.exec(path);
+  if (req.method === 'GET' && detailMatch) {
+    const post = state.posts.get(detailMatch[1] ?? '');
+    if (!post || (post.status !== 'live' && post.status !== 'sold')) {
+      return fail(res, 404, 'POST_NOT_FOUND');
+    }
+    return send(res, 200, detailOf(post));
+  }
   const viewer = viewerOf(req);
   if (!viewer) return fail(res, 401, 'UNAUTHENTICATED');
 

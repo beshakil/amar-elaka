@@ -226,3 +226,55 @@ export type _PostContract = [
   Assert<Accepts<MyPostCounts, Api['MyPostCountsDto']>>,
   Assert<Accepts<Ownership, Api['OwnershipDto']>>,
 ];
+
+// ---- post detail and share links (ADR 036) -----------------------------------
+
+const localizedText = z.object({ bn: z.string().nullable(), en: z.string().nullable() });
+const mediaVariant = z.object({ url: z.string(), width: z.number(), height: z.number() });
+
+export const shortLinkSchema = z.object({
+  code: z.string(),
+  postId: z.string(),
+  tenantId: z.string(),
+  tenantSlug: z.string(),
+  url: z.string(),
+});
+export type ShortLink = z.infer<typeof shortLinkSchema>;
+
+/** What the share page reads of GET /posts/:id/detail (never a phone number: the API has none there). */
+export const postDetailSchema = z.object({
+  id: z.string(),
+  status: z.enum(POST_STATUSES),
+  isSold: z.boolean(),
+  title: z.string(),
+  description: z.string().nullable(),
+  price: z.string().nullable(),
+  priceType: z.string().nullable(),
+  category: z.object({ slug: z.string(), name: localizedText }),
+  fields: z.array(
+    z.object({
+      key: z.string(),
+      type: z.string(),
+      label: localizedText,
+      value: z.unknown(),
+      optionLabels: z.array(localizedText).optional(),
+    }),
+  ),
+  media: z.array(
+    z.object({
+      id: z.string(),
+      variants: z
+        .object({ thumb: mediaVariant, card: mediaVariant, full: mediaVariant })
+        .nullable(),
+    }),
+  ),
+  area: localizedText.nullable(),
+  seller: z.object({ name: z.string().nullable(), badges: z.array(z.string()) }),
+  share: z.object({ code: z.string(), url: z.string() }).nullable(),
+});
+export type PostDetail = z.infer<typeof postDetailSchema>;
+
+export type _PostDetailContract = [
+  Assert<Accepts<ShortLink, Api['ShortLinkDto']>>,
+  Assert<Accepts<PostDetail, Api['PostDetailDto']>>,
+];
