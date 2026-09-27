@@ -50,9 +50,8 @@ Windows (Windows 11 22H2+):
    asks for. On the phone, `http://<that IP>:3000/health/live` in a browser
    should answer before you launch.
 
-**Map tiles** come from `--dart-define=MAP_TILE_URL=https://…/{z}/{x}/{y}.png`
-(and `MAP_ATTRIBUTION`); the default is OpenStreetMap's public server, fine
-for development only. Release builds pass their provider's URL.
+**Maps** are OpenStreetMap tiles, free and keyless, in every build
+(`lib/core/map/map_config.dart`, ADR 033). Keep the attribution on every map.
 
 ## Post flows: tests
 

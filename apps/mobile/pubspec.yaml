@@ -32,8 +32,8 @@ dependencies:
   # Persistent upload queue files survive an app restart.
   path_provider: ^2.1.5
   crypto: ^3.0.7
-  # Post location picker: pure-Flutter raster map, light on 2 GB phones, any
-  # tile provider (MAP_TILE_URL dart-define; see lib/core/map/map_config.dart).
+  # Post location picker: pure-Flutter raster map on OpenStreetMap tiles,
+  # light on 2 GB phones (lib/core/map/map_config.dart, ADR 033).
   flutter_map: ^8.3.2
   latlong2: ^0.10.1
 

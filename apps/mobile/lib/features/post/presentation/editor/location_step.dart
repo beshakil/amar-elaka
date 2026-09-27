@@ -286,6 +286,7 @@ class _LocationStepState extends ConsumerState<LocationStep> {
                 options: MapOptions(
                   initialCenter: _start,
                   initialZoom: _initialZoom,
+                  maxZoom: MapConfig.maxZoom.toDouble(),
                   onPositionChanged: _onMapMoved,
                   interactionOptions: const InteractionOptions(
                     flags:
@@ -299,6 +300,7 @@ class _LocationStepState extends ConsumerState<LocationStep> {
                     TileLayer(
                       urlTemplate: MapConfig.tileUrl,
                       userAgentPackageName: MapConfig.userAgentPackageName,
+                      maxNativeZoom: MapConfig.maxZoom,
                       // Fewer tiles held in memory: this runs on 2 GB phones.
                       keepBuffer: 1,
                       panBuffer: 0,

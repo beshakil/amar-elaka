@@ -47,8 +47,7 @@ config (`moderation_typical_review_hours`, tenant-overridable).
 
 **6. Location.**
 
-- `flutter_map` with raster tiles. The URL comes from `--dart-define=MAP_TILE_URL`, defaulting to OSM for development.
-  Production passes a keyed provider (Barikoi, MapTiler, …), with no code change.
+- `flutter_map` with OpenStreetMap raster tiles, in every build (ADR 033).
 - The pin stays centred while the map moves under it.
 - Each resting point gets `/geocode/reverse` (address) and `/posts/ownership` (boundary).
 - Outside the area's boundary is a warning naming the area, never a block. The server places the post (ADR 029), and a
