@@ -50,6 +50,19 @@ Windows (Windows 11 22H2+):
    asks for. On the phone, `http://<that IP>:3000/health/live` in a browser
    should answer before you launch.
 
+**Map tiles** come from `--dart-define=MAP_TILE_URL=https://…/{z}/{x}/{y}.png`
+(and `MAP_ATTRIBUTION`); the default is OpenStreetMap's public server, fine
+for development only. Release builds pass their provider's URL.
+
+## Post flows: tests
+
+`flutter test` covers every step, my posts, drafts and error messages, the
+full happy path headless, and golden images of the post card and preview in
+Bengali (regenerate on Linux: `flutter test --update-goldens
+test/features/post/goldens`). On an emulator or phone:
+`flutter test integration_test/post_happy_path_test.dart`. The low-RAM
+checklist for the photo step is in docs/decisions/032-mobile-post-flows.md.
+
 Plain `http://` works in debug and profile builds only
 (`android:usesCleartextTraffic` in `android/app/src/{debug,profile}`); release
 builds need HTTPS.
