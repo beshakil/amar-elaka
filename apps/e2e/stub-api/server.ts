@@ -73,6 +73,7 @@ function tenantConfig(tenant: Schemas['TenantSummaryDto']): Schemas['TenantConfi
           ]
         : [],
     support: { phoneE164: '+8801700000000', email: `help@${tenant.slug}.test`, whatsappE164: null },
+    moderation: { typicalReviewHours: 12 },
   };
 }
 
