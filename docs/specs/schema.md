@@ -3213,7 +3213,7 @@ seen for the first time starts at "now".
 | `last_post_id`      | `uuid`        | NO   | —       |         |
 | `<audit>`           |               |      |         |         |
 
-**Keys:** PK `tenant_id → tenants` RESTRICT. **RLS:** `system` and platform admin only.
+**Keys:** PK `tenant_id → tenants` CASCADE (0037: bookkeeping that goes with its tenant; RESTRICT blocked deleting any tenant the matcher had seen). **RLS:** `system` and platform admin only.
 
 ### 8.15 `unmet_demand` (materialized view)
 

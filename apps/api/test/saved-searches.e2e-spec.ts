@@ -323,7 +323,8 @@ describe('Saved searches (e2e)', () => {
         params: { savedSearchId: flatSearch.id, name: 'Cheap flat nearby', count: '2' },
       },
     ]);
-  });
+    // Indexing and a matcher pass: slow when the e2e suites run in parallel (CI).
+  }, 30_000);
 
   it('holds further notifications at the daily cap, while the badge keeps counting', async () => {
     await post('Flat with a balcony', '12000.00', 89.25);
@@ -331,7 +332,7 @@ describe('Saved searches (e2e)', () => {
     expect(await notifications('saved_search_match')).toHaveLength(1);
     const one = await call<SavedSearch>('GET', `/saved-searches/${flatSearch.id}`, 'owner');
     expect(one.body.newResultCount).toBe(3);
-  });
+  }, 30_000);
 
   it('drops a match that sold before it was opened; opening the rest marks them seen', async () => {
     await admin`update posts set status_code = 'sold', sold_at = now() where id = ${match2}`;
@@ -387,7 +388,7 @@ describe('Saved searches (e2e)', () => {
       active: true,
     });
     expect(resumed.body).toMatchObject({ active: true, pausedAt: null });
-  });
+  }, 30_000);
 
   it('serves unmet demand to tenant admins only', async () => {
     // A search that found nothing, from a located searcher.

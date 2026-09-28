@@ -254,6 +254,14 @@ describe('Saved searches and unmet demand (0035)', () => {
     expect(await read(SYSTEM)).toHaveLength(1);
   });
 
+  it('saved_search_watermarks: never blocks deleting a tenant (0037)', async () => {
+    // The matcher bookmarks every tenant it meets; RESTRICT made any of them undeletable.
+    const [fk] = await admin<{ rule: string }[]>`
+      select confdeltype::text as rule from pg_constraint
+      where conname = 'saved_search_watermarks_tenant_id_fk'`;
+    expect(fk?.rule).toBe('c');
+  });
+
   describe('unmet_demand', () => {
     const forTenant = (context: Context) =>
       as(

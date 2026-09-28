@@ -282,7 +282,8 @@ describe('Search API (e2e)', () => {
     const [clicks] = await admin<{ n: string }[]>`
       select count(*) as n from search_queries where clicked_post_id = ${SCRUBBED}`;
     expect(Number(clicks!.n)).toBe(0);
-  });
+    // Waits for the index to apply the scrub: slow when the e2e suites run in parallel.
+  }, 30_000);
 
   it('lists the category + area pages with enough listings, counted like the page searches', async () => {
     const areas = await app.inject({

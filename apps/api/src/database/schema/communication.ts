@@ -339,7 +339,7 @@ export const savedSearchMatches = pgTable('saved_search_matches', {
 export const savedSearchWatermarks = pgTable('saved_search_watermarks', {
   tenantId: uuid('tenant_id')
     .primaryKey()
-    .references(() => tenants.id, { onDelete: 'restrict' }),
+    .references(() => tenants.id, { onDelete: 'cascade' }),
   lastPublishedAt: timestamptz('last_published_at').notNull(),
   lastPostId: uuid('last_post_id').notNull(),
   ...auditColumns(),
