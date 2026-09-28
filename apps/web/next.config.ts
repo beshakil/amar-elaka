@@ -8,6 +8,15 @@ const nextConfig: NextConfig = {
   // Deployed as a container image (Coolify/Docker), not on a serverless platform.
   output: 'standalone',
   typedRoutes: true,
+  // Metadata (title, description, canonical, robots) always in <head>, never
+  // streamed in after it: crawlers and link previews all read the head
+  // (ADR 039). Our pages' metadata is a few cached reads, so blocking is cheap.
+  htmlLimitedBots: /.*/,
+  experimental: {
+    // `radix-ui` is a barrel of every primitive; without this, importing
+    // just Slot (components/ui/button) put all of them in every page's JS.
+    optimizePackageImports: ['radix-ui'],
+  },
   // Workspace packages shipped as TypeScript source (packages/dynamic-form,
   // and packages/shared-types' runtime constants such as ./map).
   transpilePackages: ['@amar-elaka/dynamic-form', '@amar-elaka/shared-types'],

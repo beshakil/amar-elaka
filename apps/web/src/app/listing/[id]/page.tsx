@@ -1,42 +1,19 @@
-import type { Metadata } from 'next';
-import { getTranslations } from 'next-intl/server';
-import { NoCoverage } from '@/components/no-coverage';
-import { PlaceholderPage } from '@/components/placeholder-page';
-import { currentTenantConfig, tenantConfigForChrome } from '@/lib/tenant';
+import type { Route } from 'next';
+import { notFound, permanentRedirect } from 'next/navigation';
+import { listingStatus } from '@/lib/listings/load';
+import { listingPath } from '@/lib/seo/slug';
+import { currentTenantConfig } from '@/lib/tenant';
 
-interface Props {
-  params: Promise<{ id: string }>;
-}
-
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { id } = await params;
-  const tenant = await tenantConfigForChrome();
-
-  return {
-    title: id,
-    description: tenant?.nameBn,
-    alternates: { canonical: `/listing/${id}` },
-    // Nothing real is served here yet; keep placeholders out of the index.
-    robots: { index: false, follow: true },
-  };
-}
-
-export default async function ListingPage({ params }: Props) {
+/**
+ * /listing/<id> without its slug: middleware.ts redirects it (308) to the
+ * canonical /listing/<id>/<slug>. This page is the fallback for when the
+ * middleware couldn't reach the API.
+ */
+export default async function ListingWithoutSlug({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const tenant = await currentTenantConfig();
-  if (!tenant) return <NoCoverage />;
-
-  const t = await getTranslations('placeholder');
-  const tNav = await getTranslations('nav');
-
-  return (
-    <PlaceholderPage
-      title={id}
-      body={t('listing')}
-      breadcrumbs={[
-        { name: tNav('home'), path: '/' },
-        { name: id, path: `/listing/${id}` },
-      ]}
-    />
-  );
+  if (!tenant) notFound();
+  const status = await listingStatus(tenant, id);
+  if ((status.state !== 'live' && status.state !== 'sold') || !status.title) notFound();
+  permanentRedirect(listingPath(id, status.title) as Route);
 }

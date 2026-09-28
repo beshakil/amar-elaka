@@ -5,6 +5,7 @@ import {
   REFRESH_COOKIE_MAX_AGE,
   REFRESH_TOKEN_COOKIE,
 } from '@/lib/auth/session';
+import { publicPageGate } from '@/lib/seo/public-gate';
 import {
   TENANT_ID_HEADER,
   TENANT_RESOLUTION_HEADER,
@@ -62,8 +63,15 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
   const isProtected = PROTECTED_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );
-  if (!isProtected) return NextResponse.next({ request: { headers } });
-  return gate(request, headers, resolution);
+  if (isProtected) return gate(request, headers, resolution);
+
+  // Listing, category and store URLs: 410 / 404 / canonical redirects (ADR 039).
+  const answer = await publicPageGate(
+    request,
+    headers,
+    resolution.kind === 'resolved' ? resolution.tenantId : null,
+  );
+  return answer ?? NextResponse.next({ request: { headers } });
 }
 
 /**

@@ -54,6 +54,20 @@ export const tenantConfigSchema = z.object({
   }),
   /** Optional: a cached/older API may not send it (then 12 h, the seeded default). */
   moderation: z.object({ typicalReviewHours: z.number() }).optional(),
+  /**
+   * The public pages' cache windows and SEO rules (settings, ADR 039).
+   * Optional: an older cached config may not carry it — then nothing is
+   * cached and sitemaps use the protocol's own cap.
+   */
+  web: z
+    .object({
+      homeRevalidateSeconds: z.number(),
+      categoryRevalidateSeconds: z.number(),
+      listingRevalidateSeconds: z.number(),
+      soldNoindexDays: z.number(),
+      sitemapUrlsPerFile: z.number(),
+    })
+    .optional(),
 });
 export type TenantConfig = z.infer<typeof tenantConfigSchema>;
 
@@ -242,15 +256,32 @@ export const shortLinkSchema = z.object({
 export type ShortLink = z.infer<typeof shortLinkSchema>;
 
 /** What the share page reads of GET /posts/:id/detail (never a phone number: the API has none there). */
+/** A post card as the feed, search-free lists and "similar posts" send it. */
+export const postCardSchema = z.object({
+  id: z.string(),
+  tenantId: z.string(),
+  title: z.string(),
+  price: z.string().nullable(),
+  cover: z.object({ url: z.string(), thumbhash: z.string().nullable() }).nullable(),
+  distanceMeters: z.number().nullable(),
+  area: localizedText.nullable(),
+  badges: z.array(z.string()),
+  createdAt: z.string(),
+});
+export type PostCard = z.infer<typeof postCardSchema>;
+
+/** GET /posts/:id/detail as the public pages read it (never a phone number: the API has none there). */
 export const postDetailSchema = z.object({
   id: z.string(),
+  tenantId: z.string(),
   status: z.enum(POST_STATUSES),
   isSold: z.boolean(),
   title: z.string(),
   description: z.string().nullable(),
   price: z.string().nullable(),
   priceType: z.string().nullable(),
-  category: z.object({ slug: z.string(), name: localizedText }),
+  currency: z.string(),
+  category: z.object({ id: z.string(), slug: z.string(), name: localizedText }),
   fields: z.array(
     z.object({
       key: z.string(),
@@ -263,18 +294,154 @@ export const postDetailSchema = z.object({
   media: z.array(
     z.object({
       id: z.string(),
+      thumbhash: z.string().nullable(),
       variants: z
         .object({ thumb: mediaVariant, card: mediaVariant, full: mediaVariant })
         .nullable(),
     }),
   ),
+  location: point.nullable(),
   area: localizedText.nullable(),
-  seller: z.object({ name: z.string().nullable(), badges: z.array(z.string()) }),
+  seller: z.object({
+    name: z.string().nullable(),
+    memberSince: z.string().nullable(),
+    badges: z.array(z.string()),
+    store: z
+      .object({ id: z.string(), slug: z.string(), name: localizedText, verified: z.boolean() })
+      .nullable(),
+  }),
+  contact: z.object({
+    name: z.string().nullable(),
+    channels: z.array(z.string()),
+    allowChat: z.boolean(),
+    loginRequired: z.boolean(),
+  }),
   share: z.object({ code: z.string(), url: z.string() }).nullable(),
+  similar: z.array(postCardSchema),
+  publishedAt: z.string().nullable(),
+  soldAt: z.string().nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
 });
 export type PostDetail = z.infer<typeof postDetailSchema>;
 
 export type _PostDetailContract = [
   Assert<Accepts<ShortLink, Api['ShortLinkDto']>>,
   Assert<Accepts<PostDetail, Api['PostDetailDto']>>,
+];
+
+// ---- public listing pages (ADR 039) ---------------------------------------------
+
+export const listingStatusSchema = z.object({
+  state: z.enum(['live', 'sold', 'gone', 'not_found']),
+  tenantId: z.string().nullable(),
+  tenantSlug: z.string().nullable(),
+  title: z.string().nullable(),
+  indexable: z.boolean(),
+  soldAt: z.string().nullable(),
+  updatedAt: z.string().nullable(),
+});
+export type ListingStatus = z.infer<typeof listingStatusSchema>;
+
+export const sitemapSummarySchema = z.object({
+  posts: z.number(),
+  stores: z.number(),
+  urlsPerFile: z.number(),
+});
+export const sitemapPostsSchema = z.object({
+  items: z.array(z.object({ id: z.string(), title: z.string(), updatedAt: z.string() })),
+});
+export const sitemapStoresSchema = z.object({
+  items: z.array(z.object({ slug: z.string(), updatedAt: z.string() })),
+});
+
+const image = z.object({ url: z.string(), thumbhash: z.string().nullable() }).nullable();
+
+export const storePageSchema = z.object({
+  id: z.string(),
+  tenantId: z.string(),
+  slug: z.string(),
+  name: localizedText,
+  description: z.string().nullable(),
+  addressText: z.string().nullable(),
+  area: localizedText.nullable(),
+  location: point.nullable(),
+  logo: image,
+  cover: image,
+  isVerified: z.boolean(),
+  rating: z.number().nullable(),
+  ratingCount: z.number(),
+  followerCount: z.number(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  posts: z.array(postCardSchema),
+  nextCursor: z.string().nullable(),
+});
+export type StorePage = z.infer<typeof storePageSchema>;
+
+/** GET /search (posts), as the category page and "recent" read it. */
+export const searchHitSchema = z.object({
+  id: z.string(),
+  name: localizedText,
+  area: localizedText.nullable(),
+  category: z.object({ id: z.string(), slug: z.string(), name: localizedText }).nullable(),
+  isBoosted: z.boolean(),
+  publishedAt: z.string(),
+  price: z.string().nullable(),
+  cover: z.object({ thumbUrl: z.string(), thumbhash: z.string().nullable() }).nullable(),
+  isVerified: z.boolean(),
+});
+export type SearchHit = z.infer<typeof searchHitSchema>;
+
+export const searchResponseSchema = z.object({
+  hits: z.array(searchHitSchema),
+  page: z.number(),
+  limit: z.number(),
+  totalHits: z.number(),
+  degraded: z.boolean(),
+});
+export type SearchResponse = z.infer<typeof searchResponseSchema>;
+
+/** The feed's info cards (the home page shows them); other kinds are skipped. */
+export const bazarCardSchema = z.object({
+  kind: z.literal('bazar_prices'),
+  date: z.string(),
+  items: z.array(
+    z.object({
+      commodity: z.string(),
+      name: localizedText,
+      unit: z.string(),
+      minPrice: z.string(),
+      maxPrice: z.string(),
+    }),
+  ),
+});
+export const emergencyCardSchema = z.object({
+  kind: z.literal('emergency'),
+  hotlines: z.array(z.object({ serviceType: z.string(), name: localizedText, dial: z.string() })),
+});
+export type BazarCard = z.infer<typeof bazarCardSchema>;
+export type EmergencyCard = z.infer<typeof emergencyCardSchema>;
+
+/** The feed page as the home reads it: each item is checked by its own kind's schema (infoCards). */
+export const feedInfoSchema = z.object({ items: z.array(z.unknown()) });
+
+export const contactRevealSchema = z.object({
+  channel: z.string(),
+  name: z.string().nullable(),
+  phone: z.string(),
+  href: z.string(),
+  message: z.string().nullable(),
+});
+export type ContactReveal = z.infer<typeof contactRevealSchema>;
+
+export type _PublicPagesContract = [
+  Assert<Accepts<ListingStatus, Api['ListingStatusDto']>>,
+  Assert<Accepts<z.infer<typeof sitemapSummarySchema>, Api['SitemapSummaryDto']>>,
+  Assert<Accepts<z.infer<typeof sitemapPostsSchema>, Api['SitemapPostsDto']>>,
+  Assert<Accepts<z.infer<typeof sitemapStoresSchema>, Api['SitemapStoresDto']>>,
+  Assert<Accepts<StorePage, Api['StorePageDto']>>,
+  Assert<Accepts<SearchResponse, Api['SearchResponseDto']>>,
+  Assert<Accepts<ContactReveal, Api['ContactRevealDto']>>,
+  Assert<Accepts<TenantConfig, Api['TenantConfigDto']>>,
 ];

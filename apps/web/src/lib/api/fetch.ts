@@ -20,7 +20,7 @@ interface ApiRequest<TSchema extends z.ZodTypeAny> {
   /** Extra request headers, e.g. Idempotency-Key. */
   headers?: Record<string, string>;
   /** Seconds for Next's data cache; omit for an uncached request. */
-  revalidate?: number;
+  revalidate?: number | undefined;
 }
 
 /**

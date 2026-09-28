@@ -30,8 +30,22 @@
   },
   "home": {
     "heading": "{tenant}-এর জন্য স্বাগতম",
-    "body": "এখানে শিগগিরই আপনার এলাকার বিজ্ঞাপন, দোকান ও সেবা দেখতে পাবেন।",
-    "categoriesHeading": "ক্যাটাগরি"
+    "body": "আপনার এলাকার বিজ্ঞাপন, দোকান আর দরকারি তথ্য — কাছের মানুষের সাথে সরাসরি কেনাবেচা।",
+    "categoriesHeading": "ক্যাটাগরি",
+    "recentHeading": "নতুন বিজ্ঞাপন",
+    "seeAll": "সব দেখুন",
+    "noRecent": "এখনো কোনো বিজ্ঞাপন নেই — প্রথম বিজ্ঞাপনটি আপনিই দিন।",
+    "bazarHeading": "আজকের বাজারদর",
+    "bazarRange": "৳ {min}–{max}/{unit}",
+    "emergencyHeading": "জরুরি নম্বর",
+    "units": {
+      "kg": "কেজি",
+      "litre": "লিটার",
+      "piece": "পিস",
+      "dozen": "ডজন",
+      "hali": "হালি",
+      "hundred": "শ"
+    }
   },
   "placeholder": {
     "comingSoon": "শিগগিরই আসছে",
@@ -309,5 +323,94 @@
     "photoAlt": "{title} — ছবি {number}",
     "yes": "হ্যাঁ",
     "no": "না"
+  },
+  "seo": {
+    "homeTitle": "{tenant}-এ কেনাবেচা, ভাড়া ও স্থানীয় তথ্য | আমার এলাকা",
+    "homeDescription": "{tenant}-এর কাছের মানুষের বিজ্ঞাপন: মোবাইল, বাসা ভাড়া, গাড়ি, সেবা আর আজকের বাজারদর — এক জায়গায়, আমার এলাকা-তে।",
+    "listingTitle": "{title} — {price} টাকা | {area}, {tenant}",
+    "listingTitleNoPrice": "{title} | {area}, {tenant}",
+    "listingDescription": "{category}: {title}। দাম {price} টাকা। {area}, {tenant}-এ বিক্রেতার সাথে সরাসরি যোগাযোগ করুন — আমার এলাকা।",
+    "listingDescriptionNoPrice": "{category}: {title}। {area}, {tenant}-এ বিক্রেতার সাথে সরাসরি যোগাযোগ করুন — আমার এলাকা।",
+    "listingSoldSuffix": " (বিক্রি হয়ে গেছে)",
+    "categoryTitle": "{category} — {tenant}-এর বিজ্ঞাপন | আমার এলাকা",
+    "categoryTitlePage": "{category} — {tenant}-এর বিজ্ঞাপন, পাতা {page} | আমার এলাকা",
+    "categoryDescription": "{tenant} ও আশেপাশে {category}: {count}টি বিজ্ঞাপন, দাম আর ছবিসহ। বিক্রেতার সাথে সরাসরি যোগাযোগ করুন — আমার এলাকা।",
+    "storeTitle": "{store} — {area}, {tenant} | আমার এলাকা",
+    "storeDescription": "{store}, {area}: {count}টি বিজ্ঞাপন। দোকানের ঠিকানা আর সব পণ্য এক জায়গায় — আমার এলাকা।",
+    "goneTitle": "বিজ্ঞাপনটি আর নেই | আমার এলাকা"
+  },
+  "listing": {
+    "home": "হোম",
+    "sold": "বিক্রি হয়ে গেছে",
+    "soldNote": "এই জিনিসটি বিক্রি হয়ে গেছে। একই রকম আরও বিজ্ঞাপন নিচে দেখুন।",
+    "free": "ফ্রি",
+    "priceOnRequest": "দাম জানতে যোগাযোগ করুন",
+    "negotiable": "আলোচনা সাপেক্ষে",
+    "perMonth": "/মাস",
+    "details": "বিস্তারিত",
+    "description": "বিবরণ",
+    "seller": "বিক্রেতা",
+    "memberSince": "{date} থেকে সদস্য",
+    "store": "দোকান",
+    "similar": "একই রকম আরও বিজ্ঞাপন",
+    "photo": "{title} — ছবি {number}",
+    "yes": "হ্যাঁ",
+    "no": "না",
+    "badges": {
+      "trusted": "বিশ্বস্ত বিক্রেতা",
+      "phone_verified": "ফোন যাচাই করা",
+      "verified_store": "যাচাই করা দোকান",
+      "boosted": "বুস্টেড",
+      "negotiable": "আলোচনা সাপেক্ষে",
+      "free": "ফ্রি",
+      "highlighted": "হাইলাইট"
+    },
+    "contact": {
+      "call": "কল করুন",
+      "whatsapp": "হোয়াটসঅ্যাপ",
+      "sms": "এসএমএস",
+      "showNumber": "নম্বর দেখুন",
+      "revealing": "অপেক্ষা করুন…",
+      "numberIs": "বিক্রেতার নম্বর",
+      "callNow": "এখনই কল করুন",
+      "copy": "কপি করুন",
+      "copied": "কপি হয়েছে",
+      "unavailable": "বিক্রেতা ফোনে যোগাযোগ নিচ্ছেন না।",
+      "soldNoContact": "বিক্রি হয়ে গেছে — যোগাযোগ বন্ধ।",
+      "loginRequired": "বিক্রেতার নম্বর দেখতে আগে লগইন করুন।",
+      "limit": "আজ অনেকগুলো নম্বর দেখেছেন ({max}টি)। কাল আবার চেষ্টা করুন।",
+      "channelOff": "বিক্রেতা এভাবে যোগাযোগ নিচ্ছেন না।",
+      "ownPost": "এটি আপনার নিজের বিজ্ঞাপন।",
+      "failed": "যোগাযোগ করা যায়নি — আবার চেষ্টা করুন।"
+    }
+  },
+  "category": {
+    "heading": "{category}",
+    "count": "{count}টি বিজ্ঞাপন",
+    "filters": "ফিল্টার",
+    "apply": "ফলাফল দেখুন",
+    "clear": "সব মুছুন",
+    "min": "সর্বনিম্ন",
+    "max": "সর্বোচ্চ",
+    "empty": "এই ক্যাটাগরিতে এখনো কোনো বিজ্ঞাপন নেই।",
+    "emptyFiltered": "এই ফিল্টারে কোনো বিজ্ঞাপন মেলেনি — ফিল্টার বদলে দেখুন।",
+    "previous": "← আগের পাতা",
+    "next": "পরের পাতা →",
+    "page": "পাতা {page} / {total}",
+    "pagination": "পাতাগুলো"
+  },
+  "store": {
+    "verified": "যাচাই করা দোকান",
+    "followers": "{count} জন অনুসরণ করছেন",
+    "listings": "এই দোকানের বিজ্ঞাপন",
+    "empty": "এই দোকানে এখন কোনো বিজ্ঞাপন নেই।",
+    "address": "ঠিকানা",
+    "stores": "দোকান",
+    "more": "আরও দেখুন"
+  },
+  "gone": {
+    "title": "বিজ্ঞাপনটি আর নেই",
+    "body": "এটির মেয়াদ শেষ হয়েছে বা বিক্রেতা সরিয়ে নিয়েছেন। এলাকার আরও বিজ্ঞাপন দেখুন।",
+    "home": "হোমে যান"
   }
 }

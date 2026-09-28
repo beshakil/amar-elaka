@@ -10,7 +10,7 @@ import { storageUrl } from '../env';
  * structured data must describe the site the crawler is actually on.
  */
 
-interface JsonLd {
+export interface JsonLd {
   '@context': 'https://schema.org';
   '@type': string;
   [key: string]: unknown;
