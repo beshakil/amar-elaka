@@ -21,6 +21,7 @@ import {
   PERSONAS,
   PHONE_CATEGORY_ID,
   SELLER_PHONE,
+  STORE_SLUG,
   STUB_PORT,
   STUB_URL,
   TENANT_MIRPUR,
@@ -32,6 +33,8 @@ type Role = Schemas['RoleDto'];
 type Grant = Role['permissions'][number];
 
 const PREFIX = '/api/v1';
+/** sold_noindex_days, as seeded. */
+const SOLD_NOINDEX_DAYS = 90;
 
 const tenants: Schemas['TenantSummaryDto'][] = [
   {
@@ -69,6 +72,7 @@ function tenantConfig(tenant: Schemas['TenantSummaryDto']): Schemas['TenantConfi
     enabledCategories: [
       { slug: 'electronics', nameBn: 'ইলেকট্রনিক্স', nameEn: 'Electronics', iconKey: null },
       { slug: 'food', nameBn: 'খাবার', nameEn: 'Food', iconKey: 'food' },
+      { slug: 'mobile-phones', nameBn: 'মোবাইল ফোন', nameEn: 'Mobile phones', iconKey: null },
     ],
     emergencyNumbers:
       tenant.id === TENANT_MIRPUR
@@ -84,6 +88,15 @@ function tenantConfig(tenant: Schemas['TenantSummaryDto']): Schemas['TenantConfi
         : [],
     support: { phoneE164: '+8801700000000', email: `help@${tenant.slug}.test`, whatsappE164: null },
     moderation: { typicalReviewHours: 12 },
+    // The shortest cache windows, so tests see their own changes after one
+    // stale response (Next serves stale while it refreshes).
+    web: {
+      homeRevalidateSeconds: 1,
+      categoryRevalidateSeconds: 1,
+      listingRevalidateSeconds: 1,
+      soldNoindexDays: SOLD_NOINDEX_DAYS,
+      sitemapUrlsPerFile: state.sitemapUrlsPerFile,
+    },
   };
 }
 
@@ -172,6 +185,12 @@ interface State {
   idempotency: Map<string, string>;
   /** Uploads by media id: whether the bytes arrived at the storage URL. */
   media: Map<string, { stored: boolean }>;
+  /** Posts deleted in this run: their public URLs answer 410 (ADR 039). */
+  gone: Set<string>;
+  /** sitemap_urls_per_file, lowered by tests to see the sitemap split. */
+  sitemapUrlsPerFile: number;
+  /** The last /search query the web made, for asserting filters. */
+  lastSearch: Record<string, string> | null;
 }
 
 function freshState(): State {
@@ -187,6 +206,9 @@ function freshState(): State {
     posts: new Map(),
     idempotency: new Map(),
     media: new Map(),
+    gone: new Set(),
+    sitemapUrlsPerFile: 10_000,
+    lastSearch: null,
   };
 }
 let state = freshState();
@@ -356,6 +378,261 @@ function seedPost(overrides: Partial<Schemas['PostDto']>): Schemas['PostDto'] {
   return post;
 }
 
+// ---------------------------------------------------------------------------
+// The public pages (ADR 039): status, search, store, sitemaps, info cards.
+// ---------------------------------------------------------------------------
+
+const SEARCH_PAGE_SIZE = 20;
+/** A 1×1 PNG: what the web's OG proxy passes through. */
+const PNG_1X1 = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+  'base64',
+);
+
+const isPublic = (post: Schemas['PostDto']) =>
+  !post.hiddenByOwner && (post.status === 'live' || post.status === 'sold');
+
+const isIndexable = (post: Schemas['PostDto']) =>
+  post.status === 'live' ||
+  (post.status === 'sold' &&
+    post.soldAt !== null &&
+    Date.now() - Date.parse(post.soldAt) < SOLD_NOINDEX_DAYS * 86_400_000);
+
+function listingStatusOf(id: string): Schemas['ListingStatusDto'] {
+  const post = state.posts.get(id);
+  const empty = { tenantId: null, tenantSlug: null, title: null, soldAt: null, updatedAt: null };
+  if (!post)
+    return { state: state.gone.has(id) ? 'gone' : 'not_found', indexable: false, ...empty };
+  if (post.status === 'expired' || post.status === 'removed') {
+    return { state: 'gone', indexable: false, ...empty, tenantId: post.tenantId };
+  }
+  if (!isPublic(post)) return { state: 'not_found', indexable: false, ...empty };
+  return {
+    state: post.status === 'sold' ? 'sold' : 'live',
+    tenantId: post.tenantId,
+    tenantSlug: tenants.find((t) => t.id === post.tenantId)?.slug ?? null,
+    title: post.title,
+    indexable: isIndexable(post),
+    soldAt: post.soldAt,
+    updatedAt: post.updatedAt,
+  };
+}
+
+function cardOf(post: Schemas['PostDto']): Schemas['StorePageDto']['posts'][number] {
+  const media = post.media[0];
+  return {
+    kind: 'post',
+    id: post.id,
+    tenantId: post.tenantId,
+    title: post.title,
+    price: post.price,
+    cover: media?.cardUrl ? { url: media.cardUrl, thumbhash: null } : null,
+    distanceMeters: null,
+    area: { bn: 'মিরপুর ১০', en: 'Mirpur 10' },
+    badges: ['negotiable'],
+    createdAt: post.createdAt,
+    isSaved: false,
+  };
+}
+
+function hitOf(post: Schemas['PostDto']): Schemas['SearchResponseDto']['hits'][number] {
+  const media = post.media[0];
+  return {
+    id: post.id,
+    type: 'posts',
+    tenantId: post.tenantId,
+    name: { bn: post.title, en: null },
+    nameTranslit: '',
+    description: post.description,
+    category: { id: PHONE_CATEGORY_ID, slug: phoneCategory.slug, name: phoneCategory.name },
+    area: { bn: 'মিরপুর ১০', en: 'Mirpur 10' },
+    location: post.location,
+    distanceMeters: null,
+    isBoosted: false,
+    publishedAt: post.publishedAt ?? post.createdAt,
+    price: post.price,
+    cardFields: {},
+    rating: null,
+    slug: null,
+    cover: media?.thumbUrl ? { thumbUrl: media.thumbUrl, thumbhash: null } : null,
+    isVerified: false,
+    isLandmark: false,
+  };
+}
+
+/** The live posts a tenant's pages list, newest first. */
+const livePosts = (tenantId: string) =>
+  [...state.posts.values()]
+    .filter((p) => p.tenantId === tenantId && p.status === 'live' && !p.hiddenByOwner)
+    .reverse();
+
+function storeOf(tenantId: string): Schemas['StorePageDto'] | null {
+  if (tenantId !== TENANT_MIRPUR) return null;
+  return {
+    id: '0191e3a0-0000-7000-8000-0000000051e0',
+    tenantId,
+    slug: STORE_SLUG,
+    name: { bn: 'রহিম ইলেকট্রনিক্স', en: 'Rahim Electronics' },
+    description: 'মিরপুর ১০-এর পুরোনো মোবাইলের দোকান।',
+    addressText: 'দোকান ১২, মিরপুর ১০ গোলচত্বর',
+    area: { bn: 'মিরপুর ১০', en: 'Mirpur 10' },
+    location: { lat: 23.8069, lng: 90.3687 },
+    logo: null,
+    cover: null,
+    isVerified: true,
+    rating: 4.5,
+    ratingCount: 12,
+    followerCount: 30,
+    createdAt: '2026-01-15T00:00:00.000Z',
+    updatedAt: '2026-09-01T00:00:00.000Z',
+    posts: livePosts(tenantId).map(cardOf),
+    nextCursor: null,
+  };
+}
+
+/** The public pages' endpoints; true when it answered. */
+async function handlePublic(
+  req: IncomingMessage,
+  res: ServerResponse,
+  url: URL,
+  path: string,
+  tenantId: string,
+): Promise<boolean> {
+  const statusMatch = /^\/seo\/listing-status\/([^/]+)$/.exec(path);
+  if (req.method === 'GET' && statusMatch) {
+    send(res, 200, listingStatusOf(statusMatch[1] ?? ''));
+    return true;
+  }
+  const indexed = () =>
+    [...state.posts.values()].filter(
+      (p) => p.tenantId === tenantId && isPublic(p) && isIndexable(p),
+    );
+  if (req.method === 'GET' && path === '/seo/sitemap/summary') {
+    const summary: Schemas['SitemapSummaryDto'] = {
+      posts: indexed().length,
+      stores: storeOf(tenantId) ? 1 : 0,
+      urlsPerFile: state.sitemapUrlsPerFile,
+    };
+    send(res, 200, summary);
+    return true;
+  }
+  const offset = Number(url.searchParams.get('offset') ?? '0');
+  const limit = Number(url.searchParams.get('limit') ?? String(state.sitemapUrlsPerFile));
+  if (req.method === 'GET' && path === '/seo/sitemap/posts') {
+    const page: Schemas['SitemapPostsDto'] = {
+      items: indexed()
+        .slice(offset, offset + limit)
+        .map((p) => ({ id: p.id, title: p.title, updatedAt: p.updatedAt })),
+    };
+    send(res, 200, page);
+    return true;
+  }
+  if (req.method === 'GET' && path === '/seo/sitemap/stores') {
+    const store = storeOf(tenantId);
+    const page: Schemas['SitemapStoresDto'] = {
+      items: store && offset === 0 ? [{ slug: store.slug, updatedAt: store.updatedAt }] : [],
+    };
+    send(res, 200, page);
+    return true;
+  }
+  const storeMatch = /^\/stores\/([a-z0-9-]+)$/.exec(path);
+  if (req.method === 'GET' && storeMatch) {
+    const store = storeOf(tenantId);
+    if (!store || store.slug !== storeMatch[1]) fail(res, 404, 'STORE_NOT_FOUND');
+    else send(res, 200, store);
+    return true;
+  }
+  if (req.method === 'GET' && path === '/search') {
+    state.lastSearch = Object.fromEntries(url.searchParams);
+    const category = url.searchParams.get('category');
+    const page = Math.max(1, Number(url.searchParams.get('page') ?? '1'));
+    // Every stub post is a phone: another category is empty.
+    const all = !category || category === phoneCategory.slug ? livePosts(tenantId) : [];
+    const found: Schemas['SearchResponseDto'] = {
+      query: url.searchParams.get('q') ?? '',
+      hits: all.slice((page - 1) * SEARCH_PAGE_SIZE, page * SEARCH_PAGE_SIZE).map(hitOf),
+      page,
+      limit: SEARCH_PAGE_SIZE,
+      totalHits: all.length,
+      facets: { categories: [], fields: {} },
+      degraded: false,
+    };
+    send(res, 200, found);
+    return true;
+  }
+  if (req.method === 'GET' && path === '/feed') {
+    const feed: Schemas['FeedResponseDto'] = {
+      items: [
+        {
+          kind: 'bazar_prices',
+          date: '2026-09-28',
+          items: [
+            {
+              commodity: 'rice_coarse',
+              name: { bn: 'মোটা চাল', en: 'Coarse rice' },
+              unit: 'kg',
+              minPrice: '52.00',
+              maxPrice: '56.00',
+            },
+          ],
+        },
+        {
+          kind: 'emergency',
+          hotlines: [
+            {
+              serviceType: 'police',
+              name: { bn: 'মিরপুর থানা', en: null },
+              dial: '+8801320000000',
+            },
+          ],
+        },
+      ],
+      nextCursor: null,
+      scope: 'area',
+      radiusKm: 6.5,
+    };
+    send(res, 200, feed);
+    return true;
+  }
+  const actionMatch = /^\/posts\/([^/]+)\/(contact|view|og\.png)$/.exec(path);
+  if (!actionMatch) return false;
+  const post = state.posts.get(actionMatch[1] ?? '');
+  if (req.method === 'GET' && actionMatch[2] === 'og.png') {
+    if (!post || !isPublic(post)) fail(res, 404, 'OG_IMAGE_NOT_FOUND');
+    else {
+      res.writeHead(200, { 'content-type': 'image/png' });
+      res.end(PNG_1X1);
+    }
+    return true;
+  }
+  if (req.method !== 'POST') return false;
+  if (actionMatch[2] === 'view') {
+    send(res, 204);
+    return true;
+  }
+  const body = await readJson(req);
+  const channel = body?.channel;
+  if (!post || post.status !== 'live') {
+    fail(res, 404, 'POST_NOT_FOUND');
+  } else if (
+    (channel !== 'call' && channel !== 'sms' && channel !== 'whatsapp') ||
+    !detailOf(post).contact.channels.includes(channel)
+  ) {
+    fail(res, 400, 'CONTACT_CHANNEL_UNAVAILABLE');
+  } else {
+    const phone = post.contact.phone ?? '';
+    const reveal: Schemas['ContactRevealDto'] = {
+      channel,
+      name: post.contact.name,
+      phone,
+      href: channel === 'call' ? `tel:${phone}` : `sms:${phone}`,
+      message: null,
+    };
+    send(res, 200, reveal);
+  }
+  return true;
+}
+
 function postFromBody(
   body: Record<string, unknown>,
   existing?: Schemas['PostDto'],
@@ -502,6 +779,9 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
     if (body.reset === true) state = freshState();
     if (typeof body.down === 'boolean') state.down = body.down;
     if (typeof body.accessTtlSeconds === 'number') state.accessTtlSeconds = body.accessTtlSeconds;
+    if (typeof body.sitemapUrlsPerFile === 'number') {
+      state.sitemapUrlsPerFile = body.sitemapUrlsPerFile;
+    }
     if (Array.isArray(body.seedPosts)) {
       for (const post of body.seedPosts as Partial<Schemas['PostDto']>[]) seedPost(post);
     }
@@ -511,7 +791,11 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
     });
   }
   if (url.pathname === '/__stats') {
-    return send(res, 200, { hits: state.hits, posts: [...state.posts.values()] });
+    return send(res, 200, {
+      hits: state.hits,
+      posts: [...state.posts.values()],
+      lastSearch: state.lastSearch,
+    });
   }
   // The presigned upload target (what object storage is in a real deployment).
   const storageMatch = /^\/storage\/([^/]+)$/.exec(url.pathname);
@@ -614,6 +898,7 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
     }
     return send(res, 200, detailOf(post));
   }
+  if (await handlePublic(req, res, url, path, tenantId)) return;
   const viewer = viewerOf(req);
   if (!viewer) return fail(res, 401, 'UNAUTHENTICATED');
 
@@ -770,6 +1055,7 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
     if (req.method === 'DELETE' && !action) {
       if (post.status === 'sold') return fail(res, 409, 'POST_NOT_EDITABLE');
       state.posts.delete(post.id);
+      state.gone.add(post.id);
       return send(res, 204);
     }
     if (req.method === 'PATCH' && !action) {

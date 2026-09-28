@@ -19,3 +19,6 @@ export const PERSONAS = {
 export const SELLER_PHONE = '01711111111';
 export const OTP_CODE = '123456';
 export const PHONE_CATEGORY_ID = '0191e3a0-0000-7000-8000-00000000c001';
+
+/** The one public store (in Mirpur) the stub serves at /stores/:slug. */
+export const STORE_SLUG = 'rahim-electronics';

@@ -61,7 +61,7 @@ test.describe('tenant resolution', () => {
 test.describe('pages', () => {
   test('category pages use the tenant category name', async ({ page }) => {
     await page.goto(tenantUrl('mirpur', '/category/electronics'));
-    await expect(page).toHaveTitle('ইলেকট্রনিক্স | মিরপুর');
+    await expect(page).toHaveTitle('ইলেকট্রনিক্স — মিরপুর-এর বিজ্ঞাপন | আমার এলাকা');
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('ইলেকট্রনিক্স');
   });
 
@@ -131,17 +131,22 @@ test.describe('SEO', () => {
     );
   });
 
-  test('placeholder detail pages are noindex', async ({ page }) => {
-    await page.goto(tenantUrl('mirpur', '/listing/abc'));
-    await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'noindex, follow');
-  });
-
   test("the sitemap is per tenant and only lists that tenant's URLs", async ({ request }) => {
     const { body: mirpur } = await serverResponse(request, 'mirpur.localhost:3001', '/sitemap.xml');
-    expect(mirpur).toContain('<loc>http://mirpur.localhost:3001/category/electronics</loc>');
+    expect(mirpur).toContain('<loc>http://mirpur.localhost:3001/sitemaps/pages.xml</loc>');
     expect(mirpur).not.toContain('savar');
+    const { body: pages } = await serverResponse(
+      request,
+      'mirpur.localhost:3001',
+      '/sitemaps/pages.xml',
+    );
+    expect(pages).toContain('<loc>http://mirpur.localhost:3001/category/electronics</loc>');
 
-    const { body: savar } = await serverResponse(request, 'savar.localhost:3001', '/sitemap.xml');
+    const { body: savar } = await serverResponse(
+      request,
+      'savar.localhost:3001',
+      '/sitemaps/pages.xml',
+    );
     expect(savar).toContain('<loc>http://savar.localhost:3001/</loc>');
 
     const { body: unknown } = await serverResponse(
@@ -155,7 +160,9 @@ test.describe('SEO', () => {
   test("robots.txt points at the tenant's own sitemap", async ({ request }) => {
     const { body: robots } = await serverResponse(request, 'mirpur.localhost:3001', '/robots.txt');
     expect(robots).toContain('Sitemap: http://mirpur.localhost:3001/sitemap.xml');
-    expect(robots).toContain('Disallow: /listing/');
+    // Listings and stores are the content; sign-in and seller pages are not.
+    expect(robots).not.toContain('Disallow: /listing');
+    expect(robots).toContain('Disallow: /me/');
   });
 });
 

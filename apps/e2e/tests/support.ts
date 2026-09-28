@@ -36,6 +36,7 @@ export class Stub {
     reset?: boolean;
     down?: boolean;
     accessTtlSeconds?: number;
+    sitemapUrlsPerFile?: number;
     seedPosts?: Partial<components['schemas']['PostDto']>[];
   }): Promise<{ posts: { id: string; title: string }[] }> {
     const res = await this.request.post(`${STUB_URL}/__control`, { data: body });
@@ -47,6 +48,12 @@ export class Stub {
   async posts(): Promise<components['schemas']['PostDto'][]> {
     const res = await this.request.get(`${STUB_URL}/__stats`);
     return ((await res.json()) as { posts: components['schemas']['PostDto'][] }).posts;
+  }
+
+  /** The query of the last /search the web made (the category page's filters). */
+  async lastSearch(): Promise<Record<string, string> | null> {
+    const res = await this.request.get(`${STUB_URL}/__stats`);
+    return ((await res.json()) as { lastSearch: Record<string, string> | null }).lastSearch;
   }
 
   async hits(key: string): Promise<number> {
