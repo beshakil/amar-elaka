@@ -60,6 +60,12 @@ const INFRASTRUCTURE_PATHS: ReadonlyArray<{ prefix: string; reason: string }> = 
       'time): batch sizes, ADR 003 simplification tolerances, pcode string offsets.',
   },
   {
+    prefix: 'seo/og-image/layout.ts',
+    reason:
+      "The share image's pixel layout: Open Graph's 1200×630 canvas, block positions, font " +
+      'sizes and colours — presentation, not platform behaviour.',
+  },
+  {
     prefix: 'database/seed/',
     reason:
       'Dev-only fixture data (db:seed) — row counts, fake price ranges, blood-group indices ' +

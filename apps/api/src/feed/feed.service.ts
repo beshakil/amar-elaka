@@ -314,6 +314,24 @@ export class FeedService {
   // ---- cards ----------------------------------------------------------------
 
   /** Cards in rank order; a post hidden or sold since ranking just drops out. */
+  /**
+   * Cards for posts picked elsewhere (a store's listings, ADR 039), in the
+   * given order, read in each owner's tenant as `anon` like the feed's own.
+   */
+  async cardsFor(refs: readonly { id: string; tenant_id: string }[]): Promise<PostCard[]> {
+    return this.withSaved(
+      await this.postCards(
+        refs.map((ref) => ({
+          ...ref,
+          score: 0,
+          distance_m: null,
+          is_boosted: false,
+          is_highlighted: false,
+        })),
+      ),
+    );
+  }
+
   private async postCards(ranked: readonly RankedPost[]): Promise<PostCard[]> {
     const rows = await this.inOwners(ranked, (tx, ids) => this.repo.postCards(tx, ids));
     const byId = new Map(rows.map((row) => [row.id, row]));

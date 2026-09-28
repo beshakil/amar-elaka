@@ -144,6 +144,13 @@ export class TenantsService {
           'moderation_typical_review_hours',
           tenant.id,
         );
+        const [home, category, listing, soldNoindexDays, sitemapUrlsPerFile] = await Promise.all([
+          this.settings.get('web_home_revalidate_seconds', tenant.id),
+          this.settings.get('web_category_revalidate_seconds', tenant.id),
+          this.settings.get('web_listing_revalidate_seconds', tenant.id),
+          this.settings.get('sold_noindex_days', tenant.id),
+          this.settings.get('sitemap_urls_per_file', tenant.id),
+        ]);
 
         return {
           id: tenant.id,
@@ -163,6 +170,13 @@ export class TenantsService {
             whatsappE164: settingsRow?.whatsappE164 ?? null,
           },
           moderation: { typicalReviewHours },
+          web: {
+            homeRevalidateSeconds: home,
+            categoryRevalidateSeconds: category,
+            listingRevalidateSeconds: listing,
+            soldNoindexDays,
+            sitemapUrlsPerFile,
+          },
         };
       },
       { accessMode: 'read only' },

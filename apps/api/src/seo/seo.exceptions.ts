@@ -1,0 +1,21 @@
+import { HttpStatus } from '@nestjs/common';
+import { DomainException } from '../common/exceptions/domain-exception';
+
+export class StoreNotFoundPublicException extends DomainException {
+  readonly code = 'STORE_NOT_FOUND';
+  readonly httpStatus = HttpStatus.NOT_FOUND;
+
+  constructor() {
+    super('Store not found.');
+  }
+}
+
+/** No shareable image for a post the public can't see. */
+export class OgImageNotFoundException extends DomainException {
+  readonly code = 'OG_IMAGE_NOT_FOUND';
+  readonly httpStatus = HttpStatus.NOT_FOUND;
+
+  constructor() {
+    super('No image for this listing.');
+  }
+}

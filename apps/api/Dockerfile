@@ -31,6 +31,8 @@ RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nestjs
 
 COPY --from=builder --chown=nestjs:nodejs /app/apps/api/dist ./apps/api/dist
 COPY --from=builder --chown=nestjs:nodejs /app/apps/api/package.json ./apps/api/package.json
+# The Bengali font the share images are drawn with (seo/og-image, ADR 039).
+COPY --from=builder --chown=nestjs:nodejs /app/apps/api/assets ./apps/api/assets
 # pnpm symlinks each workspace package's own deps into its own node_modules,
 # pointing back into the root .pnpm store — both directories are needed for
 # Node's module resolution to actually find them at runtime.

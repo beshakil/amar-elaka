@@ -2974,6 +2974,208 @@
         ]
       }
     },
+    "/seo/listing-status/{id}": {
+      "get": {
+        "operationId": "SeoController_listingStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingStatusDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Seo"
+        ]
+      }
+    },
+    "/seo/sitemap/summary": {
+      "get": {
+        "operationId": "SeoController_summary",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SitemapSummaryDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Seo"
+        ]
+      }
+    },
+    "/seo/sitemap/posts": {
+      "get": {
+        "operationId": "SeoController_posts",
+        "parameters": [
+          {
+            "name": "offset",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SitemapPostsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Seo"
+        ]
+      }
+    },
+    "/seo/sitemap/stores": {
+      "get": {
+        "operationId": "SeoController_stores",
+        "parameters": [
+          {
+            "name": "offset",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SitemapStoresDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Seo"
+        ]
+      }
+    },
+    "/stores/{slug}": {
+      "get": {
+        "operationId": "PublicStoresController_store",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StorePageDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "PublicStores"
+        ]
+      }
+    },
+    "/posts/{id}/og.png": {
+      "get": {
+        "operationId": "OgImageController_image",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A 1200×630 PNG."
+          }
+        },
+        "tags": [
+          "OgImage"
+        ]
+      }
+    },
     "/platform/jobs": {
       "get": {
         "operationId": "PlatformJobsController_health",
@@ -3567,6 +3769,33 @@
             "required": [
               "typicalReviewHours"
             ]
+          },
+          "web": {
+            "type": "object",
+            "properties": {
+              "homeRevalidateSeconds": {
+                "type": "number"
+              },
+              "categoryRevalidateSeconds": {
+                "type": "number"
+              },
+              "listingRevalidateSeconds": {
+                "type": "number"
+              },
+              "soldNoindexDays": {
+                "type": "number"
+              },
+              "sitemapUrlsPerFile": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "homeRevalidateSeconds",
+              "categoryRevalidateSeconds",
+              "listingRevalidateSeconds",
+              "soldNoindexDays",
+              "sitemapUrlsPerFile"
+            ]
           }
         },
         "required": [
@@ -3582,7 +3811,8 @@
           "enabledCategories",
           "emergencyNumbers",
           "support",
-          "moderation"
+          "moderation",
+          "web"
         ]
       },
       "TenantSummaryDto": {
@@ -8107,6 +8337,375 @@
         },
         "required": [
           "months"
+        ]
+      },
+      "ListingStatusDto": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": [
+              "live",
+              "sold",
+              "gone",
+              "not_found"
+            ]
+          },
+          "tenantId": {
+            "type": "string",
+            "nullable": true
+          },
+          "tenantSlug": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "indexable": {
+            "type": "boolean"
+          },
+          "soldAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "updatedAt": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "state",
+          "tenantId",
+          "tenantSlug",
+          "title",
+          "indexable",
+          "soldAt",
+          "updatedAt"
+        ]
+      },
+      "SitemapSummaryDto": {
+        "type": "object",
+        "properties": {
+          "posts": {
+            "type": "number"
+          },
+          "stores": {
+            "type": "number"
+          },
+          "urlsPerFile": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "posts",
+          "stores",
+          "urlsPerFile"
+        ]
+      },
+      "SitemapPostsDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "updatedAt": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "title",
+                "updatedAt"
+              ]
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "SitemapStoresDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "slug": {
+                  "type": "string"
+                },
+                "updatedAt": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "slug",
+                "updatedAt"
+              ]
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "StorePageDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "name": {
+            "type": "object",
+            "properties": {
+              "bn": {
+                "type": "string",
+                "nullable": true
+              },
+              "en": {
+                "type": "string",
+                "nullable": true
+              }
+            },
+            "required": [
+              "bn",
+              "en"
+            ]
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "addressText": {
+            "type": "string",
+            "nullable": true
+          },
+          "area": {
+            "type": "object",
+            "properties": {
+              "bn": {
+                "type": "string",
+                "nullable": true
+              },
+              "en": {
+                "type": "string",
+                "nullable": true
+              }
+            },
+            "required": [
+              "bn",
+              "en"
+            ],
+            "nullable": true
+          },
+          "location": {
+            "type": "object",
+            "properties": {
+              "lat": {
+                "type": "number"
+              },
+              "lng": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "lat",
+              "lng"
+            ],
+            "nullable": true
+          },
+          "logo": {
+            "type": "object",
+            "properties": {
+              "url": {
+                "type": "string"
+              },
+              "thumbhash": {
+                "type": "string",
+                "nullable": true
+              }
+            },
+            "required": [
+              "url",
+              "thumbhash"
+            ],
+            "nullable": true
+          },
+          "cover": {
+            "type": "object",
+            "properties": {
+              "url": {
+                "type": "string"
+              },
+              "thumbhash": {
+                "type": "string",
+                "nullable": true
+              }
+            },
+            "required": [
+              "url",
+              "thumbhash"
+            ],
+            "nullable": true
+          },
+          "isVerified": {
+            "type": "boolean"
+          },
+          "rating": {
+            "type": "number",
+            "nullable": true
+          },
+          "ratingCount": {
+            "type": "number"
+          },
+          "followerCount": {
+            "type": "number"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          },
+          "posts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "post"
+                  ]
+                },
+                "id": {
+                  "type": "string"
+                },
+                "tenantId": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "price": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "cover": {
+                  "type": "object",
+                  "properties": {
+                    "url": {
+                      "type": "string"
+                    },
+                    "thumbhash": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "url",
+                    "thumbhash"
+                  ],
+                  "nullable": true
+                },
+                "distanceMeters": {
+                  "type": "number",
+                  "nullable": true
+                },
+                "area": {
+                  "type": "object",
+                  "properties": {
+                    "bn": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "en": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "bn",
+                    "en"
+                  ],
+                  "nullable": true
+                },
+                "badges": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "boosted",
+                      "highlighted",
+                      "verified_store",
+                      "free",
+                      "negotiable"
+                    ]
+                  }
+                },
+                "createdAt": {
+                  "type": "string"
+                },
+                "isSaved": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "kind",
+                "id",
+                "tenantId",
+                "title",
+                "price",
+                "cover",
+                "distanceMeters",
+                "area",
+                "badges",
+                "createdAt",
+                "isSaved"
+              ]
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "tenantId",
+          "slug",
+          "name",
+          "description",
+          "addressText",
+          "area",
+          "location",
+          "logo",
+          "cover",
+          "isVerified",
+          "rating",
+          "ratingCount",
+          "followerCount",
+          "createdAt",
+          "updatedAt",
+          "posts",
+          "nextCursor"
         ]
       },
       "JobHealthDto": {

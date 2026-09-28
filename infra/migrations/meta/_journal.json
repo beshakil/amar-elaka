@@ -232,6 +232,13 @@
       "when": 1790537002333,
       "tag": "0032_saved_items_and_follows",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1790544352481,
+      "tag": "0033_public_listing_seo",
+      "breakpoints": true
     }
   ]
 }

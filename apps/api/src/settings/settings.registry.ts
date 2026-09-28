@@ -206,6 +206,13 @@ export const SETTING_DEFINITIONS = {
   saved_page_size_max: wholeNumber,
   store_activity_months_default: wholeNumber,
   store_activity_months_max: wholeNumber,
+
+  // Public web listing pages (ADR 039, migration 0033)
+  sold_noindex_days: wholeNumber,
+  web_home_revalidate_seconds: wholeNumber,
+  web_category_revalidate_seconds: wholeNumber,
+  web_listing_revalidate_seconds: wholeNumber,
+  sitemap_urls_per_file: wholeNumber,
 } as const satisfies Record<string, z.ZodTypeAny>;
 
 export type SettingKey = keyof typeof SETTING_DEFINITIONS;

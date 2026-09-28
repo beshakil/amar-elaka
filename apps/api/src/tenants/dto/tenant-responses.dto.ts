@@ -56,6 +56,14 @@ export const tenantConfigSchema = z.object({
   }),
   /** What a seller is promised after submitting a post that waits for review. */
   moderation: z.object({ typicalReviewHours: z.number() }),
+  /** The public web's cache windows (seconds) and SEO rules (ADR 039). */
+  web: z.object({
+    homeRevalidateSeconds: z.number(),
+    categoryRevalidateSeconds: z.number(),
+    listingRevalidateSeconds: z.number(),
+    soldNoindexDays: z.number(),
+    sitemapUrlsPerFile: z.number(),
+  }),
 });
 export type TenantConfig = z.infer<typeof tenantConfigSchema>;
 export class TenantConfigDto extends createZodDto(tenantConfigSchema) {}
