@@ -53,6 +53,7 @@ const row: PostRow = {
   lng: 90.3687,
   published_at: 1_790_000_000,
   is_boosted: true,
+  is_shippable: false,
   cover_thumb_key: 't1/image/x.thumb.webp',
   cover_thumbhash: 'abc=',
   rating_avg: null,

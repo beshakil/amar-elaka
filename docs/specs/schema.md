@@ -459,11 +459,11 @@ G = GLOBAL (no `tenant_id`), G/t? = GLOBAL with a **nullable** `tenant_id` (only
 | 6.23 | `credit_liability_settlements` | G     | 6.24  | `boost_vouchers`                | T     |
 | 11.9 | `legal_holds`                  | G     | 7.12  | `platform_share_rate_backfills` | T     |
 | 2.17 | `platform_counters`            | G     | 11.10 | `agent_cash_remittances`        | T     |
-| 2.18 | `vat_rates`                    | G     |       |                                 |       |
-| 2.19 | `roles`                        | G/t?  |       |                                 |       |
-| 2.20 | `role_permissions`             | G     |       |                                 |       |
+| 2.18 | `vat_rates`                    | G     | 8.12  | `search_queries`                | T     |
+| 2.19 | `roles`                        | G/t?  | 8.13  | `saved_search_matches`          | G     |
+| 2.20 | `role_permissions`             | G     | 8.14  | `saved_search_watermarks`       | T     |
 
-That's 114 entity tables plus the 130 enum tables in §12.
+That's 117 entity tables plus the 130 enum tables in §12.
 
 ---
 
@@ -1125,23 +1125,25 @@ Bangladesh administrative boundaries from **HDX COD-AB (sourced from BBS), ADM0�
 Informal named places people actually use: para, mohalla, bazar, village, landmark areas. They are curated per tenant.
 **Scope:** TENANT-SCOPED
 
-| column         | type                    | null | default | comment                                                                                              |
-| -------------- | ----------------------- | ---- | ------- | ---------------------------------------------------------------------------------------------------- |
-| `<pk>`         |                         |      |         |                                                                                                      |
-| `<tenant>`     |                         |      |         |                                                                                                      |
-| `geo_area_id`  | `uuid`                  | YES  | —       | The union/ward/pourashava it sits in. Trigger: must descend from the tenant's area (`ancestor_ids`). |
-| `name_bn`      | `text`                  | NO   | —       |                                                                                                      |
-| `name_en`      | `text`                  | YES  | —       |                                                                                                      |
-| `aliases`      | `text[]`                | NO   | `'{}'`  | Spelling variants and Banglish ("Sadar Bazar", "sodor bazar"). Pushed to Meilisearch as synonyms.    |
-| `center`       | `geography(Point,4326)` | YES  | —       |                                                                                                      |
-| `sort_order`   | `integer`               | NO   | `0`     |                                                                                                      |
-| `is_active`    | `boolean`               | NO   | `true`  |                                                                                                      |
-| `<audit+soft>` |                         |      |         |                                                                                                      |
+| column         | type                    | null | default | comment                                                                                                      |
+| -------------- | ----------------------- | ---- | ------- | ------------------------------------------------------------------------------------------------------------ |
+| `<pk>`         |                         |      |         |                                                                                                              |
+| `<tenant>`     |                         |      |         |                                                                                                              |
+| `geo_area_id`  | `uuid`                  | YES  | —       | The union/ward/pourashava it sits in. Trigger: must descend from the tenant's area (`ancestor_ids`).         |
+| `name_bn`      | `text`                  | NO   | —       |                                                                                                              |
+| `name_en`      | `text`                  | YES  | —       |                                                                                                              |
+| `aliases`      | `text[]`                | NO   | `'{}'`  | Spelling variants and Banglish ("Sadar Bazar", "sodor bazar"). Pushed to Meilisearch as synonyms.            |
+| `slug`         | `text`                  | NO   | trigger | URL segment of the area's landing pages (ADR 042): from `name_en`, set on insert, never rewritten on rename. |
+| `center`       | `geography(Point,4326)` | YES  | —       |                                                                                                              |
+| `sort_order`   | `integer`               | NO   | `0`     |                                                                                                              |
+| `is_active`    | `boolean`               | NO   | `true`  |                                                                                                              |
+| `<audit+soft>` |                         |      |         |                                                                                                              |
 
 **Keys:** PK `id`. `geo_area_id → geo_areas` RESTRICT.
 **Indexes:**
 
 - `unique (tenant_id, name_bn) where deleted_at is null`: no duplicate localities.
+- `unique (tenant_id, slug)`: one landing-page URL per area (`localities_tenant_slug_uq`; CHECK `localities_slug_ck` keeps it lowercase-hyphenated).
 - `(tenant_id, is_active, sort_order)`: locality picker.
 - `GIST (center)`: nearest-locality suggestion from GPS.
   **RLS:** T-PUBLIC-READ (active rows). Writes: `moderator`, `tenant_admin`, `agent`.
@@ -3128,7 +3130,101 @@ A saved radius search with optional alerts ("cows for sale within 10 km, under �
 - `GIST (center) where is_active and alert_frequency_code = 'instant' and deleted_at is null`: on `post.published` (outbox), find searches with `ST_DWithin(center, post.location, 50 km)` (the max radius), then filter by each row's own `radius_km`.
 - `(alert_frequency_code, last_alerted_at) where is_active and paused_at is null and alert_frequency_code = 'daily'`: daily digest job.
 - `(last_engaged_at) where is_active and paused_at is null`: auto-pause job.
+- `GIST (center) where is_active and paused_at is null and deleted_at is null` (0035): the matcher's candidates.
   **RLS:** G-OWNER. The matching job runs as `system`.
+
+**Added in 0035 (ADR 041):** `notify_day date` and `notify_count smallint NOT NULL DEFAULT 0` (CHECK ≥ 0): notifications
+sent on that Asia/Dhaka day, for the `saved_search_notify_per_day` cap. `filters` holds `{ "fields": { field: { op: value } } }`
+(the search API's field filters as an object); `category_id`, `price_min` and `price_max` hold the rest. Matching is a
+scheduled job (`match-saved-searches`), never a trigger or the outbox: see ADR 041. The GIST index on `instant` searches
+above predates it and is kept for the per-post lookups it describes.
+
+### 8.12 `search_queries`
+
+One search, logged for trending, synonym tuning and unmet-demand analytics (migration 0034, ADR 040). Only the
+normalized query is ever stored, never the raw text. Written by `GET /search` for the first page of a text search
+(not degraded ones).
+**Scope:** TENANT-SCOPED
+
+| column            | type      | null | default               | comment                                                                                                                               |
+| ----------------- | --------- | ---- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `<pk>`            |           |      |                       |                                                                                                                                       |
+| `tenant_id`       | `uuid`    | NO   | `current_tenant_id()` | The tenant searched from (not the owners of the results).                                                                             |
+| `user_id`         | `uuid`    | YES  | —                     | Only for a signed-in searcher. SET NULL when the account goes.                                                                        |
+| `searcher_hash`   | `text`    | NO   | —                     | HMAC of the searcher (user, install or IP + agent) and the UTC day; 64 hex. Counts distinct searchers; changes daily, not reversible. |
+| `q_normalized`    | `text`    | NO   | —                     | `normalizeSearchText(q)`: NFC, zero-width marks removed, Bengali digits as ASCII, Latin lower-cased. 1–200 characters.                |
+| `filters_hash`    | `text`    | NO   | —                     | 16 hex: digest of type, scope, category, custom filters and price range (not the location).                                           |
+| `result_count`    | `integer` | NO   | —                     | Hits found (Meilisearch's estimate). CHECK ≥ 0. 0 feeds the zero-result report.                                                       |
+| `clicked_post_id` | `uuid`    | YES  | —                     | The result the searcher opened (`record_search_click`). Cleared when the post is scrubbed.                                            |
+| `<audit>`         |           |      |                       |                                                                                                                                       |
+
+**Keys:** PK `id`. `tenant_id → tenants` RESTRICT. `user_id → users` SET NULL. `clicked_post_id → posts (id)` SET NULL (a
+plain FK: results cross tenants).
+**Indexes:** `(tenant_id, created_at desc)`: trending and popular queries. `(created_at desc) where result_count = 0`:
+the zero-result report. `(user_id) where user_id is not null`, `(clicked_post_id) where clicked_post_id is not null`.
+**Functions:** `record_search_click(search, post, window_minutes)`: the searcher's own (same user, or anonymous) search in
+the current tenant, not yet clicked, within `search_click_window_minutes`, for a live or sold post that isn't
+scrubbed or deleted. `search_popular_queries(since, min_searchers, limit)`: the current tenant's queries that found
+something, ranked by distinct searchers, with at least `search_trending_min_searchers`; aggregates only.
+**Triggers:** `posts_scrub_forget_search_clicks` clears `clicked_post_id` when a post is scrubbed.
+**RLS:** insert by anyone in the tenant, as themselves or anonymously, with no click set. Read by the tenant's admins
+(`tenant_admin`, `partner_owner`), platform staff and `system`. No update or delete grant; clicks go through the
+SECURITY DEFINER function.
+
+**Added in 0035 (ADR 041):** `category_id uuid → categories` SET NULL (the searched category) and
+`origin geography(Point,4326)`, the searcher's location rounded to `search_log_origin_decimals` (≈ 1 km), NULL when
+they shared none. GIST on `origin`; `(category_id) where category_id is not null`. Both feed `unmet_demand` (§8.15).
+
+### 8.13 `saved_search_matches`
+
+A post a saved search matched (0035, ADR 041). Unseen rows are the search's "new results" and its badge count;
+`notified_at` groups them into one notification per search.
+**Scope:** GLOBAL (the user's, like `saved_searches`)
+
+| column            | type          | null | default | comment                                                   |
+| ----------------- | ------------- | ---- | ------- | --------------------------------------------------------- |
+| `<pk>`            |               |      |         |                                                           |
+| `saved_search_id` | `uuid`        | NO   | —       |                                                           |
+| `user_id`         | `uuid`        | NO   | —       | The search's owner, denormalised for RLS and the badge.   |
+| `post_id`         | `uuid`        | NO   | —       |                                                           |
+| `post_tenant_id`  | `uuid`        | NO   | —       | Where the post lives: its card is read in that tenant.    |
+| `notified_at`     | `timestamptz` | YES  | —       | Covered by a delivered `saved_search_match` notification. |
+| `seen_at`         | `timestamptz` | YES  | —       | Opened through `GET /saved-searches/:id/new-results`.     |
+| `<audit>`         |               |      |         |                                                           |
+
+**Keys:** PK `id`; UNIQUE `(saved_search_id, post_id)`. `saved_search_id → saved_searches` CASCADE, `user_id → users`
+CASCADE, `(post_tenant_id, post_id) → posts` CASCADE.
+**Indexes:** `(saved_search_id, id desc) where seen_at is null` (list, badge); `(saved_search_id) where notified_at is
+null and seen_at is null` (notifier); `(user_id)`; `(post_tenant_id, post_id)`.
+**Triggers:** a post leaving live (sold, removed, hidden, deleted) deletes its unseen matches; a scrubbed post deletes
+all of them. Both SECURITY DEFINER.
+**RLS:** G-OWNER read; the owner may update only `seen_at`/`notified_at` (column grants); `system` writes; platform admin.
+
+### 8.14 `saved_search_watermarks`
+
+The matcher's position per tenant: the last post (by `published_at`, `id`) it has looked at (0035, ADR 041). A tenant
+seen for the first time starts at "now".
+**Scope:** TENANT-SCOPED
+
+| column              | type          | null | default | comment |
+| ------------------- | ------------- | ---- | ------- | ------- |
+| `tenant_id`         | `uuid`        | NO   | —       | PK.     |
+| `last_published_at` | `timestamptz` | NO   | —       |         |
+| `last_post_id`      | `uuid`        | NO   | —       |         |
+| `<audit>`           |               |      |         |         |
+
+**Keys:** PK `tenant_id → tenants` RESTRICT. **RLS:** `system` and platform admin only.
+
+### 8.15 `unmet_demand` (materialized view)
+
+Per tenant × category × geo_area: `active_saved_searches` (active saved searches whose centre the tenant owns,
+`resolve_owning_tenant`) and `weak_searches` (searches of the last `unmet_demand_window_days` that found fewer than
+`unmet_demand_result_threshold` results), with `refreshed_at`. `geo_area_id` is the finest area holding the point
+(NULL without one); `category_id` NULL = no category. Settings are read at each refresh.
+**Access:** a view has no RLS, so it is owned by `ae_rls_bypass` and readable by nobody else.
+`unmet_demand_for_tenant()` returns the current tenant's rows (with category and area names) to tenant admins and
+platform staff; `refresh_unmet_demand()` (system only) refreshes it `CONCURRENTLY` (unique index on
+`(tenant_id, category_id, geo_area_id) NULLS NOT DISTINCT`). Refreshed hourly by `refresh-unmet-demand`.
 
 ---
 

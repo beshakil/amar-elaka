@@ -1,8 +1,13 @@
 {
   "site": {
     "tagline": "আপনার এলাকার সবকিছু, এক জায়গায়",
-    "searchPlaceholder": "এলাকায় খুঁজুন",
-    "skipToContent": "মূল অংশে যান"
+    "searchPlaceholder": "খুঁজুন: ডাক্তার, basa vara, mobile…",
+    "skipToContent": "মূল অংশে যান",
+    "searchSubmit": "সার্চ করুন",
+    "suggestCategories": "ক্যাটাগরি",
+    "suggestQueries": "জনপ্রিয় সার্চ",
+    "suggestListings": "বিজ্ঞাপন",
+    "suggestCount": "{count}টি পরামর্শ"
   },
   "nav": {
     "home": "হোম",
@@ -337,7 +342,12 @@
     "categoryDescription": "{tenant} ও আশেপাশে {category}: {count}টি বিজ্ঞাপন, দাম আর ছবিসহ। বিক্রেতার সাথে সরাসরি যোগাযোগ করুন — আমার এলাকা।",
     "storeTitle": "{store} — {area}, {tenant} | আমার এলাকা",
     "storeDescription": "{store}, {area}: {count}টি বিজ্ঞাপন। দোকানের ঠিকানা আর সব পণ্য এক জায়গায় — আমার এলাকা।",
-    "goneTitle": "বিজ্ঞাপনটি আর নেই | আমার এলাকা"
+    "goneTitle": "বিজ্ঞাপনটি আর নেই | আমার এলাকা",
+    "searchTitle": "“{query}” — খোঁজার ফলাফল | {tenant}",
+    "searchTitleNoQuery": "খুঁজুন — {tenant} | আমার এলাকা",
+    "categoryAreaTitle": "{area}-এ {category} — {tenant} | আমার এলাকা",
+    "categoryAreaTitlePage": "{area}-এ {category} — {tenant}, পাতা {page} | আমার এলাকা",
+    "categoryAreaDescription": "{area}, {tenant}-এ {category}: {count}টি বিজ্ঞাপন, দাম আর ছবিসহ। বিক্রেতার সাথে সরাসরি যোগাযোগ করুন — আমার এলাকা।"
   },
   "listing": {
     "home": "হোম",
@@ -397,7 +407,10 @@
     "previous": "← আগের পাতা",
     "next": "পরের পাতা →",
     "page": "পাতা {page} / {total}",
-    "pagination": "পাতাগুলো"
+    "pagination": "পাতাগুলো",
+    "byArea": "এলাকা অনুযায়ী {category}",
+    "areaHeading": "{area}-এ {category}",
+    "otherAreas": "অন্য এলাকায় {category}"
   },
   "store": {
     "verified": "যাচাই করা দোকান",
@@ -412,5 +425,54 @@
     "title": "বিজ্ঞাপনটি আর নেই",
     "body": "এটির মেয়াদ শেষ হয়েছে বা বিক্রেতা সরিয়ে নিয়েছেন। এলাকার আরও বিজ্ঞাপন দেখুন।",
     "home": "হোমে যান"
+  },
+  "search": {
+    "heading": "“{query}”-এর ফলাফল",
+    "headingNoQuery": "সব বিজ্ঞাপন",
+    "count": "প্রায় {count}টি ফলাফল",
+    "radius": "{km} কিমির মধ্যে",
+    "sort": "সাজান",
+    "sorts": {
+      "relevance": "সবচেয়ে মিল",
+      "newest": "নতুন আগে",
+      "price_asc": "দাম: কম থেকে বেশি",
+      "price_desc": "দাম: বেশি থেকে কম"
+    },
+    "filters": "ফিল্টার",
+    "category": "ক্যাটাগরি",
+    "allCategories": "সব ক্যাটাগরি",
+    "price": "দাম",
+    "anyPrice": "যেকোনো দাম",
+    "priceRange": "৳ {min}–{max}",
+    "priceFrom": "৳ {min}+",
+    "facet": "{label} ({count})",
+    "activeFilters": "চালু ফিল্টার",
+    "remove": "{filter} সরান",
+    "clearAll": "সব ফিল্টার মুছুন",
+    "degraded": "সার্চ এখন সীমিত — শুধু এই এলাকার ফলাফল দেখাচ্ছে।",
+    "emptyTitle": "“{query}”-এর জন্য কিছু পাওয়া যায়নি",
+    "emptyTitleNoQuery": "এই ফিল্টারে কিছু পাওয়া যায়নি",
+    "emptyBody": "এগুলোর যেকোনো একটি চেষ্টা করুন:",
+    "emptyRemove": "“{filter}” ছাড়া খুঁজুন",
+    "emptyEverywhere": "সব ক্যাটাগরিতে “{query}” খুঁজুন",
+    "emptySave": "সার্চটি সেভ করুন — নতুন কিছু এলে জানাব",
+    "save": "এই সার্চ সেভ করুন",
+    "saveTitle": "সার্চ সেভ করুন",
+    "saveName": "নাম",
+    "saveFrequency": "কখন জানাব?",
+    "frequency": {
+      "instant": "সাথে সাথে",
+      "daily": "দিনে একবার",
+      "off": "জানাবেন না, শুধু তালিকায় রাখুন"
+    },
+    "saveSubmit": "সেভ করুন",
+    "saveLogin": "সার্চ সেভ করতে লগইন করুন",
+    "saved": "সার্চ সেভ হয়েছে — নতুন কিছু এলে জানাব।",
+    "saveLimit": "একসাথে সর্বোচ্চ {max}টি সার্চ চালু রাখা যায়। অ্যাপ থেকে একটি বন্ধ করে আবার চেষ্টা করুন।",
+    "saveFailed": "সার্চটি সেভ করা যায়নি — আবার চেষ্টা করুন।",
+    "previous": "← আগের পাতা",
+    "next": "পরের পাতা →",
+    "page": "পাতা {page}",
+    "pagination": "ফলাফলের পাতা"
   }
 }

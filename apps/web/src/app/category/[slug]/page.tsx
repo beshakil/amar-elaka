@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { localizeDigits, type CategoryFieldSchema } from '@amar-elaka/dynamic-form';
 import { NoCoverage } from '@/components/no-coverage';
+import { AreaLinks } from '@/components/listings/area-links';
 import { Breadcrumbs } from '@/components/listings/breadcrumbs';
 import { CategoryFilters } from '@/components/listings/category-filters';
 import { ListingGrid } from '@/components/listings/listing-grid';
@@ -11,6 +12,7 @@ import { cardFromHit, type PriceWords } from '@/lib/listings/format';
 import { catalog, categoryListings } from '@/lib/listings/load';
 import { breadcrumbJsonLd, jsonLdScript } from '@/lib/seo/json-ld';
 import { itemListJsonLd } from '@/lib/seo/listing-jsonld';
+import { categoryAreas } from '@/lib/search/load';
 import { currentOrigin, currentTenantConfig } from '@/lib/tenant';
 
 type Query = Record<string, string | string[] | undefined>;
@@ -105,6 +107,11 @@ export default async function CategoryPage(props: Props) {
     return search ? `${base}?${search}` : base;
   };
   const firstPosition = (page - 1) * results.limit + 1;
+  // Its area pages (ADR 042). Optional: if they can't be listed now, the
+  // category page still renders.
+  const areas = await categoryAreas(loaded.tenant)
+    .then((pairs) => pairs.items.filter((i) => i.category.slug === slug))
+    .catch(() => []);
 
   return (
     <>
@@ -160,6 +167,15 @@ export default async function CategoryPage(props: Props) {
           soldLabel={tl('sold')}
           titleLevel={2}
         />
+      )}
+
+      {areas.length > 0 && page === 1 && (
+        <section className="mb-6">
+          <h2 className="mb-2 text-sm font-semibold text-muted-foreground">
+            {t('byArea', { category: name })}
+          </h2>
+          <AreaLinks slug={slug} items={areas} />
+        </section>
       )}
 
       {totalPages > 1 && (

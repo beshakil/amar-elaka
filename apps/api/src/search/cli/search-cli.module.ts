@@ -5,8 +5,13 @@ import type { Env } from '../../config/env.schema';
 import { DatabaseModule } from '../../database/database.module';
 import { buildPinoHttpOptions } from '../../logging/pino-http-options';
 import { SearchIndexingModule } from '../indexing/search-indexing.module';
+import { SearchQueryRepository } from '../query/search-query.repository';
+import { SettingsModule } from '../../settings/settings.module';
 
-/** Just enough of the app for `search:reindex`: config, database, settings, the indexer. */
+/**
+ * Just enough of the app for `search:reindex` and `search:zero-results`:
+ * config, database, settings, the indexer and the query-log reads.
+ */
 @Module({
   imports: [
     ConfigModule,
@@ -16,6 +21,8 @@ import { SearchIndexingModule } from '../indexing/search-indexing.module';
       useFactory: (env: Env) => ({ pinoHttp: buildPinoHttpOptions(env) }),
     }),
     SearchIndexingModule,
+    SettingsModule,
   ],
+  providers: [SearchQueryRepository],
 })
 export class SearchCliModule {}

@@ -161,7 +161,7 @@ describe('Search sync outbox triggers (0020)', () => {
     expect(row?.in_sync).toBe(true);
   });
 
-  it('a boost starting or ending re-syncs its post', async () => {
+  it('a boost starting or ending re-syncs its post, and its category for the slot cap (0034)', async () => {
     const [boostType] = await admin<
       { id: string }[]
     >`select id from boost_types order by id limit 1`;
@@ -174,6 +174,11 @@ describe('Search sync outbox triggers (0020)', () => {
         event_type: 'search.sync',
         aggregate_table: 'posts',
         aggregate_id: POST,
+      }),
+      expect.objectContaining({
+        event_type: 'search.resync',
+        aggregate_table: 'boosts',
+        payload: { scope: 'boost_post', tenant_id: TENANT, post_id: POST },
       }),
     ]);
   });
@@ -285,17 +290,32 @@ describe('Search sync outbox triggers (0020)', () => {
       { key: string }[]
     >`select key from platform_settings where key like 'search_%' order by key`;
     expect(rows.map((r) => r.key)).toEqual([
+      'search_click_window_minutes',
       'search_default_radius_km',
+      'search_facet_fields_max',
       'search_facet_values_max',
+      'search_landmarks_max',
+      'search_list_cache_seconds',
+      'search_log_origin_decimals',
       'search_max_radius_km',
       'search_max_total_hits',
       'search_outbox_max_attempts',
       'search_page_size_default',
       'search_page_size_max',
+      'search_popular_pool_size',
+      'search_popular_window_days',
+      'search_price_bucket_count',
+      'search_suggest_categories_max',
       'search_suggest_limit',
+      'search_suggest_listings_max',
       'search_suggest_min_chars',
+      'search_suggest_queries_max',
+      'search_trending_limit',
+      'search_trending_min_searchers',
       'search_typo_one_typo_min_chars',
       'search_typo_two_typos_min_chars',
+      'search_zero_result_report_days',
+      'search_zero_result_report_limit',
     ]);
   });
 });

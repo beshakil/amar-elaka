@@ -4,7 +4,12 @@ import type { Queue } from 'bullmq';
 import { UnauthenticatedException } from '../auth/exceptions/auth.exceptions';
 import { TenantContext } from '../database/tenant-context';
 import { TenantDb } from '../database/tenant-db';
-import { QUEUE_MEDIA, QUEUE_POSTS, type ScheduledJobData } from '../queue/queue.types';
+import {
+  QUEUE_MEDIA,
+  QUEUE_POSTS,
+  QUEUE_SAVED_SEARCHES,
+  type ScheduledJobData,
+} from '../queue/queue.types';
 import { SettingsService } from '../settings/settings.service';
 import type { JobHealth, JobRun, JobTriggered } from './dto/platform-jobs.dto';
 import { JobRunsRepository, type JobRunRow } from './job-runs.repository';
@@ -27,8 +32,13 @@ export class PlatformJobsService {
     private readonly settings: SettingsService,
     @InjectQueue(QUEUE_POSTS) postsQueue: Queue<ScheduledJobData>,
     @InjectQueue(QUEUE_MEDIA) mediaQueue: Queue<ScheduledJobData>,
+    @InjectQueue(QUEUE_SAVED_SEARCHES) savedSearchesQueue: Queue<ScheduledJobData>,
   ) {
-    this.queues = { [QUEUE_POSTS]: postsQueue, [QUEUE_MEDIA]: mediaQueue };
+    this.queues = {
+      [QUEUE_POSTS]: postsQueue,
+      [QUEUE_MEDIA]: mediaQueue,
+      [QUEUE_SAVED_SEARCHES]: savedSearchesQueue,
+    };
   }
 
   async health(): Promise<JobHealth[]> {

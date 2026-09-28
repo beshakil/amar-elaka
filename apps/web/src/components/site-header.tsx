@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
-import { MapPin, Search } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+import { Suspense } from 'react';
+import { MapPin } from 'lucide-react';
+import { SearchBox } from '@/components/search/search-box';
 import { LogoutButton } from '@/components/logout-button';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { readSession } from '@/lib/auth/session';
@@ -51,22 +52,18 @@ export async function SiteHeader({
           </Link>
         ) : null}
 
-        <form
-          action="/"
-          className="order-last flex min-w-0 flex-1 items-center gap-2 sm:order-none"
-        >
-          <div className="relative w-full">
-            <Search
-              className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-muted-foreground"
-              aria-hidden
-            />
-            <Input
-              name="q"
-              placeholder={t('searchPlaceholder')}
-              aria-label={t('searchPlaceholder')}
-            />
-          </div>
-        </form>
+        <Suspense fallback={<div className="order-last min-w-0 flex-1 sm:order-none" />}>
+          <SearchBox
+            labels={{
+              placeholder: t('searchPlaceholder'),
+              submit: t('searchSubmit'),
+              categories: t('suggestCategories'),
+              queries: t('suggestQueries'),
+              listings: t('suggestListings'),
+              announce: t.raw('suggestCount') as string,
+            }}
+          />
+        </Suspense>
 
         <nav className="flex items-center gap-1 text-sm">
           {NAV.map((item) => (

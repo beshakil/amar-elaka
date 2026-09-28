@@ -7,6 +7,8 @@ export const QUEUE_SEARCH = 'search';
 /** Post upkeep (expiry, expiry reminders, stale drafts, view counts): one queue, one processor (posts/posts.processor.ts). */
 export const QUEUE_POSTS = 'posts';
 
+export const QUEUE_SAVED_SEARCHES = 'saved-searches';
+
 /** BullMQ has no built-in dead-letter concept — a job that exhausts its retries is relayed onto `<queue>-dlq` instead (queue/dlq.util.ts). */
 export function deadLetterQueueName(queueName: string): string {
   return `${queueName}-dlq`;
@@ -25,6 +27,9 @@ export const JOB_EXPIRE_POSTS = 'expire-posts';
 export const JOB_REMIND_EXPIRING_POSTS = 'remind-expiring-posts';
 export const JOB_CLEAN_STALE_DRAFTS = 'clean-stale-drafts';
 export const JOB_FLUSH_POST_VIEWS = 'flush-post-views';
+export const JOB_MATCH_SAVED_SEARCHES = 'match-saved-searches';
+export const JOB_PAUSE_IDLE_SAVED_SEARCHES = 'pause-idle-saved-searches';
+export const JOB_REFRESH_UNMET_DEMAND = 'refresh-unmet-demand';
 
 export interface SendEmailJob {
   to: string;
@@ -74,6 +79,11 @@ export interface QueueJobs {
     [JOB_REMIND_EXPIRING_POSTS]: ScheduledJobData;
     [JOB_CLEAN_STALE_DRAFTS]: ScheduledJobData;
     [JOB_FLUSH_POST_VIEWS]: ScheduledJobData;
+  };
+  [QUEUE_SAVED_SEARCHES]: {
+    [JOB_MATCH_SAVED_SEARCHES]: ScheduledJobData;
+    [JOB_PAUSE_IDLE_SAVED_SEARCHES]: ScheduledJobData;
+    [JOB_REFRESH_UNMET_DEMAND]: ScheduledJobData;
   };
   [QUEUE_SEARCH]: {
     [JOB_RELAY_SEARCH_OUTBOX]: SearchJob;

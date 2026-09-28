@@ -25,3 +25,30 @@ export const storeActivitySchema = z.object({
 });
 export type StoreActivity = z.infer<typeof storeActivitySchema>;
 export class StoreActivityDto extends createZodDto(storeActivitySchema) {}
+
+const localized = z.object({ bn: z.string().nullable(), en: z.string().nullable() });
+
+/** GET /analytics/unmet-demand (ADR 041): the tenant's demand nothing answers yet. */
+export const unmetDemandSchema = z.object({
+  /** When the view was last refreshed; null before the first refresh saw any demand. */
+  refreshedAt: z.string().nullable(),
+  /** unmet_demand_result_threshold and unmet_demand_window_days at the time of the request. */
+  resultThreshold: z.number().int(),
+  windowDays: z.number().int(),
+  rows: z.array(
+    z.object({
+      /** Null: searches with no category. */
+      category: z
+        .object({ id: z.string(), slug: z.string().nullable(), name: localized })
+        .nullable(),
+      /** The finest area holding the search; null when the searcher shared no location. */
+      geoArea: z.object({ id: z.string(), name: localized }).nullable(),
+      /** Active saved searches here: people waiting to be told when something appears. */
+      activeSavedSearches: z.number().int(),
+      /** Searches in the window that found fewer than the threshold. */
+      weakSearches: z.number().int(),
+    }),
+  ),
+});
+export type UnmetDemand = z.infer<typeof unmetDemandSchema>;
+export class UnmetDemandDto extends createZodDto(unmetDemandSchema) {}

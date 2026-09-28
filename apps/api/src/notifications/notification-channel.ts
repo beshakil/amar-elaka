@@ -1,5 +1,11 @@
 /** A notification type code (lookup `notification_types`). */
-export type NotificationType = 'post_approved' | 'post_rejected' | 'post_removed' | 'post_expiring';
+export type NotificationType =
+  | 'post_approved'
+  | 'post_rejected'
+  | 'post_removed'
+  | 'post_expiring'
+  | 'saved_search_match'
+  | 'saved_search_paused';
 
 export interface OutgoingNotification {
   userId: string;

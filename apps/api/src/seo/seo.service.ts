@@ -4,10 +4,14 @@ import { TenantContext } from '../database/tenant-context';
 import { TenantRequiredException } from '../database/tenant.exceptions';
 import { TenantDb } from '../database/tenant-db';
 import { FeedService } from '../feed/feed.service';
+import { SearchUnavailableError } from '../search/engine/search-engine.port';
+import { SearchMatcher, type SearchCriteria } from '../search/query/search-matcher';
+import { SearchQueryRepository } from '../search/query/search-query.repository';
 import { parseVariants } from '../media/media.types';
 import { SettingsService } from '../settings/settings.service';
 import { STORAGE_SERVICE, type StorageService } from '../storage/storage.ports';
 import type {
+  CategoryAreas,
   ListingStatus,
   SitemapPageQuery,
   SitemapPosts,
@@ -16,7 +20,7 @@ import type {
   StorePage,
   StorePostsQuery,
 } from './dto/seo.dto';
-import { StoreNotFoundPublicException } from './seo.exceptions';
+import { SeoSearchUnavailableException, StoreNotFoundPublicException } from './seo.exceptions';
 import { SeoRepository } from './seo.repository';
 
 // settings-exempt: unit conversion (the window itself is sold_noindex_days)
@@ -35,7 +39,69 @@ export class SeoService {
     private readonly feed: FeedService,
     private readonly settings: SettingsService,
     @Inject(STORAGE_SERVICE) private readonly storage: StorageService,
+    private readonly matcher: SearchMatcher,
+    private readonly searchRepo: SearchQueryRepository,
   ) {}
+
+  /**
+   * The category + area landing pages that exist (ADR 042): every enabled
+   * category × active area of the host tenant with at least
+   * seo_area_page_min_listings listings. Counted per area with exactly the
+   * criteria the page itself searches with (the area's centre, the area
+   * radius, the area filter, the category's tree), through the shared
+   * SearchMatcher — so the sitemap, the 404 gate and the page agree.
+   */
+  async categoryAreas(): Promise<CategoryAreas> {
+    const tenantId = this.requireTenant();
+    const [minListings, radiusKm] = await Promise.all([
+      this.settings.get('seo_area_page_min_listings', tenantId),
+      this.settings.get('search_default_radius_km', tenantId),
+    ]);
+    const [areas, categories, tenantCenter] = await this.readOnly(async (tx) =>
+      Promise.all([
+        this.repo.activeAreas(tx),
+        this.repo.enabledCategoryTrees(tx),
+        this.searchRepo.tenantCenter(tx, tenantId),
+      ]),
+    );
+    const located = areas.filter((a) => (a.lat !== null && a.lng !== null) || tenantCenter);
+    if (located.length === 0 || categories.length === 0) return { minListings, items: [] };
+
+    const criteria: SearchCriteria[] = located.map((area) => ({
+      type: 'posts',
+      q: '',
+      origin:
+        area.lat !== null && area.lng !== null ? { lat: area.lat, lng: area.lng } : tenantCenter!,
+      radiusKm,
+      shippableOnly: false,
+      localityId: area.id,
+      categoryIds: null,
+      fieldFilters: [],
+      price: null,
+    }));
+    let counts: Record<string, number>[];
+    try {
+      counts = await this.matcher.facetCountsEach(criteria, 'category_id');
+    } catch (error) {
+      if (error instanceof SearchUnavailableError) throw new SeoSearchUnavailableException();
+      throw error;
+    }
+
+    const items: CategoryAreas['items'] = [];
+    located.forEach((area, i) => {
+      for (const category of categories) {
+        const count = category.ids.reduce((sum, id) => sum + (counts[i]?.[id] ?? 0), 0);
+        if (count < minListings) continue;
+        items.push({
+          category: { slug: category.slug, name: { bn: category.name_bn, en: category.name_en } },
+          area: { slug: area.slug, name: { bn: area.name_bn, en: area.name_en } },
+          count,
+        });
+      }
+    });
+    items.sort((a, b) => b.count - a.count || a.area.slug.localeCompare(b.area.slug));
+    return { minListings, items };
+  }
 
   /** live/sold → render (indexable unless sold longer than sold_noindex_days), gone → 410, not_found → 404. */
   async listingStatus(postId: string): Promise<ListingStatus> {

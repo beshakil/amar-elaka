@@ -10,6 +10,16 @@ export class StoreNotFoundPublicException extends DomainException {
   }
 }
 
+/** The search engine couldn't count listings; the landing-page list is unknown right now. */
+export class SeoSearchUnavailableException extends DomainException {
+  readonly code = 'SEARCH_UNAVAILABLE';
+  readonly httpStatus = HttpStatus.SERVICE_UNAVAILABLE;
+
+  constructor() {
+    super('Listing counts are unavailable right now.');
+  }
+}
+
 /** No shareable image for a post the public can't see. */
 export class OgImageNotFoundException extends DomainException {
   readonly code = 'OG_IMAGE_NOT_FOUND';

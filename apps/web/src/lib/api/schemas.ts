@@ -393,11 +393,46 @@ export const searchHitSchema = z.object({
 });
 export type SearchHit = z.infer<typeof searchHitSchema>;
 
+const facetCount = z.object({ value: z.string(), count: z.number() });
+
+/** The filter UI's facets (ADR 040): counts beside every choice. */
+export const searchFacetsSchema = z.object({
+  categories: z.array(z.object({ slug: z.string(), count: z.number() })),
+  price: z
+    .object({
+      min: z.string(),
+      max: z.string(),
+      buckets: z.array(
+        z.object({ min: z.string(), max: z.string().nullable(), count: z.number() }),
+      ),
+    })
+    .nullable(),
+  fields: z.record(
+    z.discriminatedUnion('kind', [
+      z.object({ kind: z.literal('values'), values: z.array(facetCount) }),
+      z.object({
+        kind: z.literal('range'),
+        min: z.union([z.number(), z.string()]),
+        max: z.union([z.number(), z.string()]),
+      }),
+    ]),
+  ),
+});
+export type SearchFacets = z.infer<typeof searchFacetsSchema>;
+
 export const searchResponseSchema = z.object({
   hits: z.array(searchHitSchema),
+  /** For POST /search/click; null when nothing was logged. */
+  searchId: z.string().nullable(),
   page: z.number(),
   limit: z.number(),
   totalHits: z.number(),
+  radiusKm: z.number().nullable(),
+  /** The area of an area search (landing pages, ADR 042). */
+  area: z
+    .object({ slug: z.string(), name: z.object({ bn: z.string(), en: z.string().nullable() }) })
+    .nullable(),
+  facets: searchFacetsSchema,
   degraded: z.boolean(),
 });
 export type SearchResponse = z.infer<typeof searchResponseSchema>;
@@ -435,6 +470,45 @@ export const contactRevealSchema = z.object({
 });
 export type ContactReveal = z.infer<typeof contactRevealSchema>;
 
+/** GET /search/suggest (ADR 040), as the header's dropdown reads it. */
+export const suggestResponseSchema = z.object({
+  query: z.string(),
+  categories: z.array(z.object({ slug: z.string(), name: localizedText })),
+  queries: z.array(z.object({ query: z.string() })),
+  listings: z.array(
+    z.object({
+      id: z.string(),
+      tenantId: z.string(),
+      title: localizedText,
+      categorySlug: z.string().nullable(),
+    }),
+  ),
+  degraded: z.boolean(),
+});
+export type SuggestResponse = z.infer<typeof suggestResponseSchema>;
+
+/** GET /seo/category-areas (ADR 042): the category + area landing pages that exist. */
+export const categoryAreasSchema = z.object({
+  minListings: z.number(),
+  items: z.array(
+    z.object({
+      category: z.object({
+        slug: z.string(),
+        name: z.object({ bn: z.string(), en: z.string().nullable() }),
+      }),
+      area: z.object({
+        slug: z.string(),
+        name: z.object({ bn: z.string(), en: z.string().nullable() }),
+      }),
+      count: z.number(),
+    }),
+  ),
+});
+export type CategoryAreas = z.infer<typeof categoryAreasSchema>;
+
+/** POST /saved-searches' answer: only what the page confirms with. */
+export const savedSearchCreatedSchema = z.object({ id: z.string(), name: z.string() });
+
 export type _PublicPagesContract = [
   Assert<Accepts<ListingStatus, Api['ListingStatusDto']>>,
   Assert<Accepts<z.infer<typeof sitemapSummarySchema>, Api['SitemapSummaryDto']>>,
@@ -442,6 +516,9 @@ export type _PublicPagesContract = [
   Assert<Accepts<z.infer<typeof sitemapStoresSchema>, Api['SitemapStoresDto']>>,
   Assert<Accepts<StorePage, Api['StorePageDto']>>,
   Assert<Accepts<SearchResponse, Api['SearchResponseDto']>>,
+  Assert<Accepts<SuggestResponse, Api['SuggestResponseDto']>>,
+  Assert<Accepts<CategoryAreas, Api['CategoryAreasDto']>>,
+  Assert<Accepts<z.infer<typeof savedSearchCreatedSchema>, Api['SavedSearchDto']>>,
   Assert<Accepts<ContactReveal, Api['ContactRevealDto']>>,
   Assert<Accepts<TenantConfig, Api['TenantConfigDto']>>,
 ];

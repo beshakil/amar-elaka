@@ -29,6 +29,7 @@ export interface BaseRow {
   lng: number | null;
   published_at: number;
   is_boosted: boolean;
+  is_shippable: boolean;
   cover_thumb_key: string | null;
   cover_thumbhash: string | null;
   rating_avg: string | null;
@@ -165,6 +166,7 @@ function base(row: BaseRow, terms: SearchTerms) {
     area_translit: terms.translit(areaBn),
     _geo: row.lat !== null && row.lng !== null ? { lat: row.lat, lng: row.lng } : null,
     is_boosted: row.is_boosted ? (1 as const) : (0 as const),
+    is_shippable: row.is_shippable,
     published_at: row.published_at,
     fields: indexedFields(row),
     card_fields: cardFields(row),

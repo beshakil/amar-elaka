@@ -2,6 +2,7 @@ import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
 import { ApiOkResponse } from '@nestjs/swagger';
 import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import {
+  CategoryAreasDto,
   ListingIdParamDto,
   ListingStatusDto,
   SitemapPageQueryDto,
@@ -11,6 +12,7 @@ import {
   StorePageDto,
   StorePostsQueryDto,
   StoreSlugParamDto,
+  type CategoryAreas,
   type ListingStatus,
   type SitemapPosts,
   type SitemapStores,
@@ -42,6 +44,13 @@ export class SeoController {
   @ApiOkResponse({ type: SitemapPostsDto })
   posts(@Query() query: SitemapPageQueryDto): Promise<SitemapPosts> {
     return this.seo.sitemapPosts(query);
+  }
+
+  /** The category + area landing pages with enough listings (ADR 042). */
+  @Get('category-areas')
+  @ApiOkResponse({ type: CategoryAreasDto })
+  categoryAreas(): Promise<CategoryAreas> {
+    return this.seo.categoryAreas();
   }
 
   @Get('sitemap/stores')

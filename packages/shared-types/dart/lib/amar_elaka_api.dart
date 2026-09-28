@@ -17,6 +17,7 @@ export 'src/media/create_upload_request.dart';
 export 'src/media/create_upload_result.dart';
 export 'src/posts/post_detail.dart';
 export 'src/posts/post_view.dart';
+export 'src/search/search.dart';
 export 'src/tenants/lat_lng.dart';
 export 'src/tenants/tenant_config.dart';
 export 'src/tenants/tenant_summary.dart';

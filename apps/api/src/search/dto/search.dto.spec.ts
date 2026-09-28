@@ -2,11 +2,29 @@ import { searchQuerySchema, suggestQuerySchema } from './search.dto';
 
 describe('search query parameters', () => {
   it('applies defaults', () => {
-    expect(searchQuerySchema.parse({})).toMatchObject({
-      q: '',
-      type: 'posts',
-      sort: 'relevance',
-      page: 1,
+    const parsed = searchQuerySchema.parse({});
+    expect(parsed).toMatchObject({ q: '', type: 'posts', scope: 'area', sort: 'relevance' });
+    expect(parsed.page).toBeUndefined();
+    expect(parsed.cursor).toBeUndefined();
+  });
+
+  it("accepts the feed's scopes, a price range in taka, and the old sort name", () => {
+    expect(
+      searchQuerySchema.parse({
+        scope: 'nearby',
+        radius_km: '3',
+        price_min: '500',
+        price_max: '1500.5',
+        sort: 'nearest',
+        lat: '23.8',
+        lng: '90.4',
+      }),
+    ).toMatchObject({
+      scope: 'nearby',
+      radius_km: 3,
+      price_min: '500.00',
+      price_max: '1500.50',
+      sort: 'distance',
     });
   });
 
@@ -37,6 +55,13 @@ describe('search query parameters', () => {
       { category: 'to-let', filters: '{"x":{"like":"a"}}' },
       { lat: '23.8' }, // lng missing
       { sort: 'nearest' }, // needs a location
+      { sort: 'distance' },
+      { scope: 'world' },
+      { price_min: '12.345' },
+      { price_min: '-5' },
+      { price_min: '500', price_max: '500' },
+      { cursor: 'abc', page: '2' },
+      { cursor: 'not/base64url' },
       { lat: '100', lng: '90' },
       { q: 'x'.repeat(201) },
       { page: '0' },

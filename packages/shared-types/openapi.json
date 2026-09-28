@@ -2319,7 +2319,29 @@
             }
           },
           {
+            "name": "scope",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "area",
+                "nearby",
+                "country"
+              ],
+              "type": "string"
+            }
+          },
+          {
             "name": "category",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "area",
             "required": false,
             "in": "query",
             "schema": {
@@ -2348,7 +2370,7 @@
             }
           },
           {
-            "name": "radius",
+            "name": "radius_km",
             "required": false,
             "in": "query",
             "schema": {
@@ -2366,6 +2388,24 @@
             }
           },
           {
+            "name": "price_min",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "pattern": "^\\d{1,10}(\\.\\d{1,2})?$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "price_max",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "pattern": "^\\d{1,10}(\\.\\d{1,2})?$",
+              "type": "string"
+            }
+          },
+          {
             "name": "sort",
             "required": false,
             "in": "query",
@@ -2373,11 +2413,21 @@
               "enum": [
                 "relevance",
                 "newest",
-                "nearest",
                 "price_asc",
                 "price_desc",
+                "distance",
                 "rating"
               ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 200,
+              "pattern": "^[A-Za-z0-9_-]+$",
               "type": "string"
             }
           },
@@ -2458,6 +2508,58 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SuggestResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Search"
+        ]
+      }
+    },
+    "/search/trending": {
+      "get": {
+        "operationId": "SearchController_trending",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrendingResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Search"
+        ]
+      }
+    },
+    "/search/click": {
+      "post": {
+        "operationId": "SearchController_click",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SearchClickDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchClickResultDto"
                 }
               }
             }
@@ -2943,6 +3045,175 @@
         ]
       }
     },
+    "/saved-searches": {
+      "post": {
+        "operationId": "SavedSearchesController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSavedSearchDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedSearchDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "SavedSearches"
+        ]
+      },
+      "get": {
+        "operationId": "SavedSearchesController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedSearchListDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "SavedSearches"
+        ]
+      }
+    },
+    "/saved-searches/{id}": {
+      "get": {
+        "operationId": "SavedSearchesController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedSearchDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "SavedSearches"
+        ]
+      },
+      "patch": {
+        "operationId": "SavedSearchesController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSavedSearchDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedSearchDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "SavedSearches"
+        ]
+      },
+      "delete": {
+        "operationId": "SavedSearchesController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "SavedSearches"
+        ]
+      }
+    },
+    "/saved-searches/{id}/new-results": {
+      "get": {
+        "operationId": "SavedSearchesController_newResults",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NewResultsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "SavedSearches"
+        ]
+      }
+    },
     "/tenant/analytics/store-activity": {
       "get": {
         "operationId": "AnalyticsController_storeActivity",
@@ -2971,6 +3242,27 @@
         },
         "tags": [
           "Analytics"
+        ]
+      }
+    },
+    "/analytics/unmet-demand": {
+      "get": {
+        "operationId": "UnmetDemandController_get",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnmetDemandDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "UnmetDemand"
         ]
       }
     },
@@ -3055,6 +3347,27 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SitemapPostsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Seo"
+        ]
+      }
+    },
+    "/seo/category-areas": {
+      "get": {
+        "operationId": "SeoController_categoryAreas",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryAreasDto"
                 }
               }
             }
@@ -3215,7 +3528,10 @@
                 "clean-stale-drafts",
                 "flush-post-views",
                 "clean-orphan-media",
-                "purge-deleted-media"
+                "purge-deleted-media",
+                "match-saved-searches",
+                "pause-idle-saved-searches",
+                "refresh-unmet-demand"
               ],
               "type": "string"
             }
@@ -3256,7 +3572,10 @@
                 "clean-stale-drafts",
                 "flush-post-views",
                 "clean-orphan-media",
-                "purge-deleted-media"
+                "purge-deleted-media",
+                "match-saved-searches",
+                "pause-idle-saved-searches",
+                "refresh-unmet-demand"
               ],
               "type": "string"
             }
@@ -6590,6 +6909,10 @@
           "query": {
             "type": "string"
           },
+          "searchId": {
+            "type": "string",
+            "nullable": true
+          },
           "hits": {
             "type": "array",
             "items": {
@@ -6774,6 +7097,194 @@
               ]
             }
           },
+          "landmarks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "posts",
+                    "stores",
+                    "places"
+                  ]
+                },
+                "tenantId": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "object",
+                  "properties": {
+                    "bn": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "en": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "bn",
+                    "en"
+                  ]
+                },
+                "nameTranslit": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "category": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "slug": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "object",
+                      "properties": {
+                        "bn": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "en": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "bn",
+                        "en"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "slug",
+                    "name"
+                  ],
+                  "nullable": true
+                },
+                "area": {
+                  "type": "object",
+                  "properties": {
+                    "bn": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "en": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "bn",
+                    "en"
+                  ],
+                  "nullable": true
+                },
+                "location": {
+                  "type": "object",
+                  "properties": {
+                    "lat": {
+                      "type": "number"
+                    },
+                    "lng": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "lat",
+                    "lng"
+                  ],
+                  "nullable": true
+                },
+                "distanceMeters": {
+                  "type": "number",
+                  "nullable": true
+                },
+                "isBoosted": {
+                  "type": "boolean"
+                },
+                "publishedAt": {
+                  "type": "string"
+                },
+                "price": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "cardFields": {
+                  "type": "object",
+                  "additionalProperties": {}
+                },
+                "rating": {
+                  "type": "number",
+                  "nullable": true
+                },
+                "slug": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "cover": {
+                  "type": "object",
+                  "properties": {
+                    "thumbUrl": {
+                      "type": "string"
+                    },
+                    "thumbhash": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "thumbUrl",
+                    "thumbhash"
+                  ],
+                  "nullable": true
+                },
+                "isVerified": {
+                  "type": "boolean"
+                },
+                "isLandmark": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "id",
+                "type",
+                "tenantId",
+                "name",
+                "nameTranslit",
+                "description",
+                "category",
+                "area",
+                "location",
+                "distanceMeters",
+                "isBoosted",
+                "publishedAt",
+                "price",
+                "cardFields",
+                "rating",
+                "slug",
+                "cover",
+                "isVerified",
+                "isLandmark"
+              ]
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          },
           "page": {
             "type": "integer"
           },
@@ -6782,6 +7293,47 @@
           },
           "totalHits": {
             "type": "integer"
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "area",
+              "nearby",
+              "country"
+            ]
+          },
+          "radiusKm": {
+            "type": "number",
+            "nullable": true
+          },
+          "area": {
+            "type": "object",
+            "properties": {
+              "slug": {
+                "type": "string"
+              },
+              "name": {
+                "type": "object",
+                "properties": {
+                  "bn": {
+                    "type": "string"
+                  },
+                  "en": {
+                    "type": "string",
+                    "nullable": true
+                  }
+                },
+                "required": [
+                  "bn",
+                  "en"
+                ]
+              }
+            },
+            "required": [
+              "slug",
+              "name"
+            ],
+            "nullable": true
           },
           "facets": {
             "type": "object",
@@ -6803,6 +7355,46 @@
                     "count"
                   ]
                 }
+              },
+              "price": {
+                "type": "object",
+                "properties": {
+                  "min": {
+                    "type": "string"
+                  },
+                  "max": {
+                    "type": "string"
+                  },
+                  "buckets": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "min": {
+                          "type": "string"
+                        },
+                        "max": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "count": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "min",
+                        "max",
+                        "count"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "min",
+                  "max",
+                  "buckets"
+                ],
+                "nullable": true
               },
               "fields": {
                 "type": "object",
@@ -6883,6 +7475,7 @@
             },
             "required": [
               "categories",
+              "price",
               "fields"
             ]
           },
@@ -6892,10 +7485,16 @@
         },
         "required": [
           "query",
+          "searchId",
           "hits",
+          "landmarks",
+          "nextCursor",
           "page",
           "limit",
           "totalHits",
+          "scope",
+          "radiusKm",
+          "area",
           "facets",
           "degraded"
         ]
@@ -6906,94 +7505,90 @@
           "query": {
             "type": "string"
           },
-          "suggestions": {
+          "categories": {
             "type": "array",
             "items": {
-              "oneOf": [
-                {
-                  "type": "object",
-                  "properties": {
-                    "kind": {
-                      "type": "string",
-                      "enum": [
-                        "category"
-                      ]
-                    },
-                    "slug": {
-                      "type": "string"
-                    },
-                    "name": {
-                      "type": "object",
-                      "properties": {
-                        "bn": {
-                          "type": "string",
-                          "nullable": true
-                        },
-                        "en": {
-                          "type": "string",
-                          "nullable": true
-                        }
-                      },
-                      "required": [
-                        "bn",
-                        "en"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "kind",
-                    "slug",
-                    "name"
-                  ]
+              "type": "object",
+              "properties": {
+                "slug": {
+                  "type": "string"
                 },
-                {
+                "name": {
                   "type": "object",
                   "properties": {
-                    "kind": {
-                      "type": "string",
-                      "enum": [
-                        "posts",
-                        "stores",
-                        "places"
-                      ]
-                    },
-                    "id": {
-                      "type": "string"
-                    },
-                    "name": {
-                      "type": "object",
-                      "properties": {
-                        "bn": {
-                          "type": "string",
-                          "nullable": true
-                        },
-                        "en": {
-                          "type": "string",
-                          "nullable": true
-                        }
-                      },
-                      "required": [
-                        "bn",
-                        "en"
-                      ]
-                    },
-                    "categorySlug": {
+                    "bn": {
                       "type": "string",
                       "nullable": true
                     },
-                    "slug": {
+                    "en": {
                       "type": "string",
                       "nullable": true
                     }
                   },
                   "required": [
-                    "kind",
-                    "id",
-                    "name",
-                    "categorySlug",
-                    "slug"
+                    "bn",
+                    "en"
                   ]
                 }
+              },
+              "required": [
+                "slug",
+                "name"
+              ]
+            }
+          },
+          "queries": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "query"
+              ]
+            }
+          },
+          "listings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "tenantId": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "object",
+                  "properties": {
+                    "bn": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "en": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "bn",
+                    "en"
+                  ]
+                },
+                "categorySlug": {
+                  "type": "string",
+                  "nullable": true
+                }
+              },
+              "required": [
+                "id",
+                "tenantId",
+                "title",
+                "categorySlug"
               ]
             }
           },
@@ -7003,8 +7598,66 @@
         },
         "required": [
           "query",
-          "suggestions",
+          "categories",
+          "queries",
+          "listings",
           "degraded"
+        ]
+      },
+      "TrendingResponseDto": {
+        "type": "object",
+        "properties": {
+          "windowHours": {
+            "type": "integer"
+          },
+          "queries": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                },
+                "searchers": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "query",
+                "searchers"
+              ]
+            }
+          }
+        },
+        "required": [
+          "windowHours",
+          "queries"
+        ]
+      },
+      "SearchClickDto": {
+        "type": "object",
+        "properties": {
+          "searchId": {
+            "type": "string"
+          },
+          "postId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "searchId",
+          "postId"
+        ]
+      },
+      "SearchClickResultDto": {
+        "type": "object",
+        "properties": {
+          "recorded": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "recorded"
         ]
       },
       "FeedResponseDto": {
@@ -8295,6 +8948,639 @@
           "followerCount"
         ]
       },
+      "CreateSavedSearchDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "q": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "filters": {
+            "type": "object",
+            "properties": {
+              "category": {
+                "type": "string",
+                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+              },
+              "fields": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "array",
+                        "items": {
+                          "oneOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "number"
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              },
+              "price_min": {
+                "type": "string",
+                "pattern": "^\\d{1,10}(\\.\\d{1,2})?$"
+              },
+              "price_max": {
+                "type": "string",
+                "pattern": "^\\d{1,10}(\\.\\d{1,2})?$"
+              }
+            }
+          },
+          "center": {
+            "type": "object",
+            "properties": {
+              "lat": {
+                "type": "number",
+                "minimum": -90,
+                "maximum": 90
+              },
+              "lng": {
+                "type": "number",
+                "minimum": -180,
+                "maximum": 180
+              }
+            },
+            "required": [
+              "lat",
+              "lng"
+            ]
+          },
+          "radius_km": {
+            "type": "number",
+            "minimum": 0.5
+          },
+          "frequency": {
+            "type": "string",
+            "enum": [
+              "instant",
+              "daily",
+              "off"
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "filters",
+          "center",
+          "radius_km"
+        ]
+      },
+      "SavedSearchDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "q": {
+            "type": "string"
+          },
+          "filters": {
+            "type": "object",
+            "properties": {
+              "category": {
+                "type": "string",
+                "nullable": true
+              },
+              "fields": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              },
+              "priceMin": {
+                "type": "string",
+                "nullable": true
+              },
+              "priceMax": {
+                "type": "string",
+                "nullable": true
+              }
+            },
+            "required": [
+              "category",
+              "fields",
+              "priceMin",
+              "priceMax"
+            ]
+          },
+          "center": {
+            "type": "object",
+            "properties": {
+              "lat": {
+                "type": "number"
+              },
+              "lng": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "lat",
+              "lng"
+            ]
+          },
+          "radiusKm": {
+            "type": "number"
+          },
+          "frequency": {
+            "type": "string",
+            "enum": [
+              "instant",
+              "daily",
+              "off"
+            ]
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "pausedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "newResultCount": {
+            "type": "integer"
+          },
+          "lastAlertedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "q",
+          "filters",
+          "center",
+          "radiusKm",
+          "frequency",
+          "active",
+          "pausedAt",
+          "newResultCount",
+          "lastAlertedAt",
+          "createdAt"
+        ]
+      },
+      "SavedSearchListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "q": {
+                  "type": "string"
+                },
+                "filters": {
+                  "type": "object",
+                  "properties": {
+                    "category": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "object",
+                        "additionalProperties": {}
+                      }
+                    },
+                    "priceMin": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "priceMax": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "category",
+                    "fields",
+                    "priceMin",
+                    "priceMax"
+                  ]
+                },
+                "center": {
+                  "type": "object",
+                  "properties": {
+                    "lat": {
+                      "type": "number"
+                    },
+                    "lng": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "lat",
+                    "lng"
+                  ]
+                },
+                "radiusKm": {
+                  "type": "number"
+                },
+                "frequency": {
+                  "type": "string",
+                  "enum": [
+                    "instant",
+                    "daily",
+                    "off"
+                  ]
+                },
+                "active": {
+                  "type": "boolean"
+                },
+                "pausedAt": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "newResultCount": {
+                  "type": "integer"
+                },
+                "lastAlertedAt": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "createdAt": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "q",
+                "filters",
+                "center",
+                "radiusKm",
+                "frequency",
+                "active",
+                "pausedAt",
+                "newResultCount",
+                "lastAlertedAt",
+                "createdAt"
+              ]
+            }
+          },
+          "newResultCount": {
+            "type": "integer"
+          },
+          "maxActive": {
+            "type": "integer"
+          },
+          "activeCount": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "newResultCount",
+          "maxActive",
+          "activeCount"
+        ]
+      },
+      "UpdateSavedSearchDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "q": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "filters": {
+            "type": "object",
+            "properties": {
+              "category": {
+                "type": "string",
+                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+              },
+              "fields": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "array",
+                        "items": {
+                          "oneOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "number"
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              },
+              "price_min": {
+                "type": "string",
+                "pattern": "^\\d{1,10}(\\.\\d{1,2})?$"
+              },
+              "price_max": {
+                "type": "string",
+                "pattern": "^\\d{1,10}(\\.\\d{1,2})?$"
+              }
+            }
+          },
+          "center": {
+            "type": "object",
+            "properties": {
+              "lat": {
+                "type": "number",
+                "minimum": -90,
+                "maximum": 90
+              },
+              "lng": {
+                "type": "number",
+                "minimum": -180,
+                "maximum": 180
+              }
+            },
+            "required": [
+              "lat",
+              "lng"
+            ]
+          },
+          "radius_km": {
+            "type": "number",
+            "minimum": 0.5
+          },
+          "frequency": {
+            "type": "string",
+            "enum": [
+              "instant",
+              "daily",
+              "off"
+            ]
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "filters"
+        ]
+      },
+      "NewResultsDto": {
+        "type": "object",
+        "properties": {
+          "search": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "q": {
+                "type": "string"
+              },
+              "filters": {
+                "type": "object",
+                "properties": {
+                  "category": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "fields": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    }
+                  },
+                  "priceMin": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "priceMax": {
+                    "type": "string",
+                    "nullable": true
+                  }
+                },
+                "required": [
+                  "category",
+                  "fields",
+                  "priceMin",
+                  "priceMax"
+                ]
+              },
+              "center": {
+                "type": "object",
+                "properties": {
+                  "lat": {
+                    "type": "number"
+                  },
+                  "lng": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "lat",
+                  "lng"
+                ]
+              },
+              "radiusKm": {
+                "type": "number"
+              },
+              "frequency": {
+                "type": "string",
+                "enum": [
+                  "instant",
+                  "daily",
+                  "off"
+                ]
+              },
+              "active": {
+                "type": "boolean"
+              },
+              "pausedAt": {
+                "type": "string",
+                "nullable": true
+              },
+              "newResultCount": {
+                "type": "integer"
+              },
+              "lastAlertedAt": {
+                "type": "string",
+                "nullable": true
+              },
+              "createdAt": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "q",
+              "filters",
+              "center",
+              "radiusKm",
+              "frequency",
+              "active",
+              "pausedAt",
+              "newResultCount",
+              "lastAlertedAt",
+              "createdAt"
+            ]
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "post"
+                  ]
+                },
+                "id": {
+                  "type": "string"
+                },
+                "tenantId": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "price": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "cover": {
+                  "type": "object",
+                  "properties": {
+                    "url": {
+                      "type": "string"
+                    },
+                    "thumbhash": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "url",
+                    "thumbhash"
+                  ],
+                  "nullable": true
+                },
+                "distanceMeters": {
+                  "type": "number",
+                  "nullable": true
+                },
+                "area": {
+                  "type": "object",
+                  "properties": {
+                    "bn": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "en": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "bn",
+                    "en"
+                  ],
+                  "nullable": true
+                },
+                "badges": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "boosted",
+                      "highlighted",
+                      "verified_store",
+                      "free",
+                      "negotiable"
+                    ]
+                  }
+                },
+                "createdAt": {
+                  "type": "string"
+                },
+                "isSaved": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "kind",
+                "id",
+                "tenantId",
+                "title",
+                "price",
+                "cover",
+                "distanceMeters",
+                "area",
+                "badges",
+                "createdAt",
+                "isSaved"
+              ]
+            }
+          }
+        },
+        "required": [
+          "search",
+          "results"
+        ]
+      },
       "StoreActivityDto": {
         "type": "object",
         "properties": {
@@ -8337,6 +9623,112 @@
         },
         "required": [
           "months"
+        ]
+      },
+      "UnmetDemandDto": {
+        "type": "object",
+        "properties": {
+          "refreshedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "resultThreshold": {
+            "type": "integer"
+          },
+          "windowDays": {
+            "type": "integer"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "category": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "slug": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "name": {
+                      "type": "object",
+                      "properties": {
+                        "bn": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "en": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "bn",
+                        "en"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "slug",
+                    "name"
+                  ],
+                  "nullable": true
+                },
+                "geoArea": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "object",
+                      "properties": {
+                        "bn": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "en": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "bn",
+                        "en"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name"
+                  ],
+                  "nullable": true
+                },
+                "activeSavedSearches": {
+                  "type": "integer"
+                },
+                "weakSearches": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "category",
+                "geoArea",
+                "activeSavedSearches",
+                "weakSearches"
+              ]
+            }
+          }
+        },
+        "required": [
+          "refreshedAt",
+          "resultThreshold",
+          "windowDays",
+          "rows"
         ]
       },
       "ListingStatusDto": {
@@ -8431,6 +9823,90 @@
           }
         },
         "required": [
+          "items"
+        ]
+      },
+      "CategoryAreasDto": {
+        "type": "object",
+        "properties": {
+          "minListings": {
+            "type": "integer"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "category": {
+                  "type": "object",
+                  "properties": {
+                    "slug": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "object",
+                      "properties": {
+                        "bn": {
+                          "type": "string"
+                        },
+                        "en": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "bn",
+                        "en"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "slug",
+                    "name"
+                  ]
+                },
+                "area": {
+                  "type": "object",
+                  "properties": {
+                    "slug": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "object",
+                      "properties": {
+                        "bn": {
+                          "type": "string"
+                        },
+                        "en": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "bn",
+                        "en"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "slug",
+                    "name"
+                  ]
+                },
+                "count": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "category",
+                "area",
+                "count"
+              ]
+            }
+          }
+        },
+        "required": [
+          "minListings",
           "items"
         ]
       },
@@ -8719,7 +10195,10 @@
               "clean-stale-drafts",
               "flush-post-views",
               "clean-orphan-media",
-              "purge-deleted-media"
+              "purge-deleted-media",
+              "match-saved-searches",
+              "pause-idle-saved-searches",
+              "refresh-unmet-demand"
             ]
           },
           "queue": {
@@ -8980,7 +10459,10 @@
               "clean-stale-drafts",
               "flush-post-views",
               "clean-orphan-media",
-              "purge-deleted-media"
+              "purge-deleted-media",
+              "match-saved-searches",
+              "pause-idle-saved-searches",
+              "refresh-unmet-demand"
             ]
           },
           "queue": {

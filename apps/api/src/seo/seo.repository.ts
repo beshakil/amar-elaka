@@ -51,6 +51,24 @@ const OG_ROW = z.object({
 });
 export type OgRow = z.infer<typeof OG_ROW>;
 
+const AREA_ROW = z.object({
+  id: z.string(),
+  slug: z.string(),
+  name_bn: z.string(),
+  name_en: z.string().nullable(),
+  lat: z.number().nullable(),
+  lng: z.number().nullable(),
+});
+export type AreaRow = z.infer<typeof AREA_ROW>;
+
+const CATEGORY_TREE_ROW = z.object({
+  slug: z.string(),
+  name_bn: z.string(),
+  name_en: z.string(),
+  ids: z.array(z.string()),
+});
+export type CategoryTreeRow = z.infer<typeof CATEGORY_TREE_ROW>;
+
 /** The tenant's posts a sitemap lists: live, and sold ones still inside the index window. */
 const sitemapPostsWhere = (soldNoindexDays: number) => sql`
   p.tenant_id = public.current_tenant_id()
@@ -192,5 +210,41 @@ export class SeoRepository {
       order by p.id desc
       limit ${limit}`);
     return z.array(z.object({ id: z.string(), tenant_id: z.string() })).parse([...rows]);
+  }
+
+  // ---- category + area landing pages (ADR 042) ---------------------------
+
+  /** The host tenant's active areas, with their URL slug and centre. */
+  async activeAreas(tx: DatabaseTransaction): Promise<AreaRow[]> {
+    const rows = await tx.execute(sql`
+      select l.id, l.slug, l.name_bn, l.name_en,
+             st_y(l.center::geometry) as lat, st_x(l.center::geometry) as lng
+      from public.localities l
+      where l.tenant_id = public.current_tenant_id() and l.is_active and l.deleted_at is null
+      order by l.sort_order, l.slug`);
+    return z.array(AREA_ROW).parse([...rows]);
+  }
+
+  /**
+   * The host tenant's enabled categories, each with its active descendants'
+   * ids — the same tree a search for the category covers (resolveCategory).
+   */
+  async enabledCategoryTrees(tx: DatabaseTransaction): Promise<CategoryTreeRow[]> {
+    const rows = await tx.execute(sql`
+      with recursive tree as (
+        select c.id as root_id, c.id from public.categories c
+        join public.tenant_categories tc
+          on tc.category_id = c.id and tc.tenant_id = public.current_tenant_id() and tc.is_enabled
+        where c.deleted_at is null and c.is_active
+        union all
+        select t.root_id, c.id from public.categories c
+        join tree t on c.parent_id = t.id
+        where c.deleted_at is null and c.is_active
+      )
+      select r.slug, r.name_bn, r.name_en, array_agg(distinct tree.id::text) as ids
+      from tree join public.categories r on r.id = tree.root_id
+      group by r.id, r.slug, r.name_bn, r.name_en
+      order by r.slug`);
+    return z.array(CATEGORY_TREE_ROW).parse([...rows]);
   }
 }

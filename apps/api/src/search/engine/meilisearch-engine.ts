@@ -143,12 +143,15 @@ export class MeilisearchEngine implements SearchEngine {
 
 function toParams(request: EngineSearchRequest): SearchParams {
   return {
-    limit: request.limit,
-    offset: request.offset,
+    // Page mode with no hits per page gives an exhaustive totalHits.
+    ...(request.countOnly
+      ? { page: 1, hitsPerPage: 0 }
+      : { limit: request.limit, offset: request.offset }),
     ...(request.filter && request.filter.length > 0 ? { filter: request.filter } : {}),
     ...(request.sort && request.sort.length > 0 ? { sort: request.sort } : {}),
     ...(request.facets && request.facets.length > 0 ? { facets: request.facets } : {}),
     ...(request.attributesToRetrieve ? { attributesToRetrieve: request.attributesToRetrieve } : {}),
+    ...(request.matchingStrategy ? { matchingStrategy: request.matchingStrategy } : {}),
   };
 }
 

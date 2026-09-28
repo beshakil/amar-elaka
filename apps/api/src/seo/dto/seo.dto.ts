@@ -100,3 +100,25 @@ export const storePageSchema = z.object({
 });
 export type StorePage = z.infer<typeof storePageSchema>;
 export class StorePageDto extends createZodDto(storePageSchema) {}
+
+// ---- category + area landing pages (ADR 042) ---------------------------
+
+const bnName = z.object({ bn: z.string(), en: z.string().nullable() });
+
+/**
+ * GET /seo/category-areas: the host tenant's category + area pairs with at
+ * least `minListings` listings (seo_area_page_min_listings) — the landing
+ * pages that exist. Counted with the same search criteria the page shows.
+ */
+export const categoryAreasSchema = z.object({
+  minListings: z.number().int(),
+  items: z.array(
+    z.object({
+      category: z.object({ slug: z.string(), name: bnName }),
+      area: z.object({ slug: z.string(), name: bnName }),
+      count: z.number().int(),
+    }),
+  ),
+});
+export type CategoryAreas = z.infer<typeof categoryAreasSchema>;
+export class CategoryAreasDto extends createZodDto(categoryAreasSchema) {}

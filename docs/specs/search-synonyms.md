@@ -25,6 +25,26 @@ It is a long-lived asset: anyone can add to it, and every addition makes search 
 Locality names and aliases (`localities.aliases`, schema §3.1) are added as synonyms
 automatically. Don't repeat them here.
 
+## Finding what's missing: the zero-result report
+
+Every text search is logged in normalized form (`search_queries`, ADR 040), so the searches
+that found nothing show where the dictionary has a gap. Once a week:
+
+1. Run `pnpm --filter @amar-elaka/api search:zero-results` (in the image:
+   `node dist/search/cli/zero-results.js`). It prints the queries that found nothing in the
+   last 7 days (`search_zero_result_report_days`) across every tenant, most distinct
+   searchers first, as a Markdown table: the query, its Banglish, how many people and
+   tenants searched it, and which of its words the dictionary already knows.
+   `--days 14` and `--limit 100` override the defaults.
+2. For each row, decide what it is:
+   - **A missing synonym** (a Banglish or English spelling of something we have): add it to
+     the right group below, or start a group.
+   - **A misspelling too far for typo tolerance**: add it to the group of the right word.
+   - **Real unmet demand** (nobody offers it nearby): leave it; that is a product signal, not
+     a dictionary gap.
+3. Run `pnpm --filter @amar-elaka/api search:synonyms`, commit this file with the generated
+   one, and deploy. The worker applies the new synonyms when it starts.
+
 ## Rules
 
 - **One group per line**, starting with `- `. The terms are separated by commas and are all

@@ -191,6 +191,12 @@ interface State {
   sitemapUrlsPerFile: number;
   /** The last /search query the web made, for asserting filters. */
   lastSearch: Record<string, string> | null;
+  /** seo_area_page_min_listings: live posts an area needs for its landing page. */
+  areaMinListings: number;
+  /** POST /saved-searches bodies, in order. */
+  savedSearches: Schemas['CreateSavedSearchDto'][];
+  /** Answer the next saves with the active-search limit. */
+  savedSearchLimit: boolean;
 }
 
 function freshState(): State {
@@ -209,6 +215,9 @@ function freshState(): State {
     gone: new Set(),
     sitemapUrlsPerFile: 10_000,
     lastSearch: null,
+    areaMinListings: 1,
+    savedSearches: [],
+    savedSearchLimit: false,
   };
 }
 let state = freshState();
@@ -383,6 +392,8 @@ function seedPost(overrides: Partial<Schemas['PostDto']>): Schemas['PostDto'] {
 // ---------------------------------------------------------------------------
 
 const SEARCH_PAGE_SIZE = 20;
+/** The stub's one area (a locality of Mirpur), for the landing pages (ADR 042). */
+const STUB_AREA = { slug: 'mirpur-10', name: { bn: 'মিরপুর ১০', en: 'Mirpur 10' } };
 /** A 1×1 PNG: what the web's OG proxy passes through. */
 const PNG_1X1 = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
@@ -544,20 +555,129 @@ async function handlePublic(
   }
   if (req.method === 'GET' && path === '/search') {
     state.lastSearch = Object.fromEntries(url.searchParams);
+    const q = (url.searchParams.get('q') ?? '').trim().toLowerCase();
     const category = url.searchParams.get('category');
+    const area = url.searchParams.get('area');
+    if (area !== null && area !== STUB_AREA.slug) {
+      fail(res, 404, 'SEARCH_AREA_NOT_FOUND');
+      return true;
+    }
     const page = Math.max(1, Number(url.searchParams.get('page') ?? '1'));
-    // Every stub post is a phone: another category is empty.
-    const all = !category || category === phoneCategory.slug ? livePosts(tenantId) : [];
+    const poisha = (money: string | null) =>
+      money === null ? null : Math.round(Number(money) * 100);
+    const priceMin = poisha(url.searchParams.get('price_min'));
+    const priceMax = poisha(url.searchParams.get('price_max'));
+    const filters = JSON.parse(url.searchParams.get('filters') ?? '{}') as Record<
+      string,
+      Record<string, string>
+    >;
+    // The stub's matching: a title containing the text, the phone category,
+    // price bounds, and `condition` (eq / in) — enough for the pages' flows.
+    const textMatch = (p: Schemas['PostDto']) => !q || p.title.toLowerCase().includes(q);
+    const inCategory = !category || category === phoneCategory.slug;
+    const byCondition = (p: Schemas['PostDto']) => {
+      const wanted = filters.condition?.eq ?? filters.condition?.in;
+      return !wanted || wanted.split(',').includes(String(p.fields.condition));
+    };
+    const priced = (p: Schemas['PostDto']) => {
+      const price = poisha(p.price);
+      return (
+        (priceMin === null || (price !== null && price >= priceMin)) &&
+        (priceMax === null || (price !== null && price < priceMax))
+      );
+    };
+    const base = inCategory ? livePosts(tenantId).filter(textMatch) : [];
+    const all = base.filter(byCondition).filter(priced);
+    const conditionCounts = new Map<string, number>();
+    for (const p of base.filter(priced)) {
+      const c = String(p.fields.condition);
+      conditionCounts.set(c, (conditionCounts.get(c) ?? 0) + 1);
+    }
+    const inRange = (lo: number, hi: number | null) =>
+      base.filter(byCondition).filter((p) => {
+        const price = poisha(p.price) ?? -1;
+        return price >= lo && (hi === null || price < hi);
+      }).length;
     const found: Schemas['SearchResponseDto'] = {
       query: url.searchParams.get('q') ?? '',
+      searchId: q ? 'stub-search' : null,
       hits: all.slice((page - 1) * SEARCH_PAGE_SIZE, page * SEARCH_PAGE_SIZE).map(hitOf),
+      landmarks: [],
+      nextCursor: null,
       page,
       limit: SEARCH_PAGE_SIZE,
       totalHits: all.length,
-      facets: { categories: [], fields: {} },
+      scope: area ? 'area' : 'area',
+      radiusKm: 10,
+      area: area ? { slug: STUB_AREA.slug, name: STUB_AREA.name } : null,
+      facets: {
+        categories: base.length > 0 ? [{ slug: phoneCategory.slug, count: base.length }] : [],
+        price:
+          base.length > 0
+            ? {
+                min: '10000.00',
+                max: '30000.00',
+                buckets: [
+                  { min: '10000.00', max: '20000.00', count: inRange(1_000_000, 2_000_000) },
+                  { min: '20000.00', max: null, count: inRange(2_000_000, null) },
+                ],
+              }
+            : null,
+        fields:
+          category && conditionCounts.size > 0
+            ? {
+                condition: {
+                  kind: 'values',
+                  values: [...conditionCounts].map(([value, count]) => ({ value, count })),
+                },
+              }
+            : {},
+      },
       degraded: false,
     };
     send(res, 200, found);
+    return true;
+  }
+  if (req.method === 'GET' && path === '/search/suggest') {
+    const q = (url.searchParams.get('q') ?? '').trim().toLowerCase();
+    const body: Schemas['SuggestResponseDto'] = {
+      query: q,
+      categories:
+        q.length >= 2 && ('mobile phones মোবাইল ফোন'.includes(q) || q.startsWith('mob'))
+          ? [{ slug: phoneCategory.slug, name: phoneCategory.name }]
+          : [],
+      queries: q.length >= 2 ? [{ query: `${q} dhaka` }] : [],
+      listings: livePosts(tenantId)
+        .filter((p) => q.length >= 2 && p.title.toLowerCase().includes(q))
+        .slice(0, 5)
+        .map((p) => ({
+          id: p.id,
+          tenantId: p.tenantId,
+          title: { bn: p.title, en: null },
+          categorySlug: phoneCategory.slug,
+        })),
+      degraded: false,
+    };
+    send(res, 200, body);
+    return true;
+  }
+  if (req.method === 'GET' && path === '/seo/category-areas') {
+    // Every stub post is a phone in the stub's one area.
+    const count = livePosts(tenantId).length;
+    const body: Schemas['CategoryAreasDto'] = {
+      minListings: state.areaMinListings,
+      items:
+        count >= state.areaMinListings && tenantId === TENANT_MIRPUR
+          ? [
+              {
+                category: { slug: phoneCategory.slug, name: phoneCategory.name },
+                area: { slug: STUB_AREA.slug, name: STUB_AREA.name },
+                count,
+              },
+            ]
+          : [],
+    };
+    send(res, 200, body);
     return true;
   }
   if (req.method === 'GET' && path === '/feed') {
@@ -782,6 +902,8 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
     if (typeof body.sitemapUrlsPerFile === 'number') {
       state.sitemapUrlsPerFile = body.sitemapUrlsPerFile;
     }
+    if (typeof body.areaMinListings === 'number') state.areaMinListings = body.areaMinListings;
+    if (typeof body.savedSearchLimit === 'boolean') state.savedSearchLimit = body.savedSearchLimit;
     if (Array.isArray(body.seedPosts)) {
       for (const post of body.seedPosts as Partial<Schemas['PostDto']>[]) seedPost(post);
     }
@@ -795,6 +917,7 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
       hits: state.hits,
       posts: [...state.posts.values()],
       lastSearch: state.lastSearch,
+      savedSearches: state.savedSearches,
     });
   }
   // The presigned upload target (what object storage is in a real deployment).
@@ -1092,6 +1215,38 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
     }
   }
 
+  if (req.method === 'POST' && path === '/saved-searches') {
+    const body = (await readJson(req)) as Schemas['CreateSavedSearchDto'];
+    if (state.savedSearchLimit) {
+      return send(res, 409, {
+        statusCode: 409,
+        error: 'SAVED_SEARCH_LIMIT_REACHED',
+        message: 'x',
+        details: { maxActive: 5 },
+      });
+    }
+    state.savedSearches.push(body);
+    const saved: Schemas['SavedSearchDto'] = {
+      id: randomUUID(),
+      name: body.name,
+      q: body.q ?? '',
+      filters: {
+        category: body.filters?.category ?? null,
+        fields: body.filters?.fields ?? {},
+        priceMin: body.filters?.price_min ?? null,
+        priceMax: body.filters?.price_max ?? null,
+      },
+      center: body.center,
+      radiusKm: body.radius_km,
+      frequency: body.frequency ?? 'daily',
+      active: true,
+      pausedAt: null,
+      newResultCount: 0,
+      lastAlertedAt: null,
+      createdAt: new Date().toISOString(),
+    };
+    return send(res, 201, saved);
+  }
   if (req.method === 'POST' && path === '/auth/logout') {
     const body = await readJson(req);
     state.refreshTokens.delete(String(body?.refreshToken));

@@ -75,6 +75,8 @@ export const localities = pgTable('localities', {
   geoAreaId: uuid('geo_area_id').references(() => geoAreas.id, { onDelete: 'restrict' }),
   nameBn: text('name_bn').notNull(),
   nameEn: text('name_en'),
+  // 0036: the area's URL segment (landing pages, ADR 042), unique per tenant.
+  slug: text('slug').notNull(),
   aliases: text('aliases')
     .array()
     .notNull()

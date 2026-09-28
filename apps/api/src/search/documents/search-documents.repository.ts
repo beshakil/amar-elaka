@@ -19,7 +19,9 @@ import type { PlaceRow, PostRow, StoreRow } from './document-builder';
  *
  * "Indexable" is decided here, in one place per type, and mirrors what the
  * public may see (schema.md §4.2, §4.4, §5.1): live / active / published,
- * not deleted or hidden, category enabled in the tenant, author not banned.
+ * not deleted, hidden or scrubbed, category enabled in the tenant, author
+ * not banned. A sold post is not live, so it leaves search; a scrubbed one
+ * (ADR 006) leaves it whatever its status.
  */
 
 export function uuidList(ids: readonly string[]): SQL {
@@ -52,6 +54,7 @@ const baseRow = z.object({
   lng: z.coerce.number().nullable(),
   published_at: z.coerce.number().int(),
   is_boosted: z.boolean(),
+  is_shippable: z.boolean(),
   cover_thumb_key: nullableText,
   cover_thumbhash: nullableText,
   rating_avg: nullableText,
@@ -97,6 +100,35 @@ function withSchema<T extends z.infer<typeof baseRow>>(row: T) {
   };
 }
 
+/**
+ * A post counts as boosted in search exactly as in the feed (feed_posts step
+ * 1, migration 0030, with the category placement it uses for a category
+ * page): an active `category_top` boost of a live post, and only the first
+ * boost_slots_per_category of its tenant + category by start (the tenant's
+ * override, else the platform's). Extra boosts rank as organic. Runs with
+ * `p` = the post and `ts` = its tenant_settings row in scope.
+ */
+const CAPPED_BOOST = sql.raw(`exists (
+          select 1
+          from (
+            select b.post_id,
+                   row_number() over (order by b.starts_at, b.id) as slot
+            from public.boosts b
+            join public.boost_types bt on bt.id = b.boost_type_id
+            join public.posts bp on bp.tenant_id = b.tenant_id and bp.id = b.post_id
+            where b.tenant_id = p.tenant_id and bp.category_id = p.category_id
+              and b.status_code = 'active' and b.post_id is not null
+              and b.starts_at <= now() and b.ends_at > now()
+              and bt.placement_code = 'category_top'
+              and bp.status_code = 'live' and bp.deleted_at is null and not bp.hidden_by_owner
+          ) ranked
+          where ranked.post_id = p.id
+            and ranked.slot <= coalesce(
+              (ts.setting_overrides ->> 'boost_slots_per_category')::integer,
+              (select (ps.value #>> '{}')::integer from public.platform_settings ps
+               where ps.key = 'boost_slots_per_category'))
+        )`);
+
 /** The shared tail of each loader: area names, geo point, cover photo. */
 const GEO_POINT = sql.raw('st_y(g.pt::geometry) as lat, st_x(g.pt::geometry) as lng');
 
@@ -125,6 +157,7 @@ export class SearchDocumentsRepository {
         p.id, p.tenant_id, p.title, p.description, p.fields, p.price::text as price,
         (p.status_code = 'live'
           and p.deleted_at is null
+          and p.scrubbed_at is null
           and not p.hidden_by_owner
           and (p.expires_at is null or p.expires_at > now())
           and c.deleted_at is null and c.is_active
@@ -137,11 +170,8 @@ export class SearchDocumentsRepository {
         coalesce(l.name_en, ga.name_en) as area_name_en,
         ${GEO_POINT},
         extract(epoch from coalesce(p.bumped_at, p.published_at, p.created_at))::bigint as published_at,
-        exists (
-          select 1 from public.boosts b
-          where b.tenant_id = p.tenant_id and b.post_id = p.id
-            and b.status_code = 'active' and b.starts_at <= now() and b.ends_at > now()
-        ) as is_boosted,
+        ${CAPPED_BOOST} as is_boosted,
+        c.is_shippable,
         cover.thumb_key as cover_thumb_key, cover.thumbhash as cover_thumbhash,
         null::text as rating_avg
       from public.posts p
@@ -152,6 +182,7 @@ export class SearchDocumentsRepository {
         on l.tenant_id = p.tenant_id and l.id = p.locality_id and l.deleted_at is null
       left join public.geo_areas ga on ga.id = coalesce(p.geo_area_id, p.geo_area_id_coarse)
       left join public.tenant_members m on m.tenant_id = p.tenant_id and m.id = p.author_member_id
+      left join public.tenant_settings ts on ts.tenant_id = p.tenant_id
       cross join lateral (select coalesce(p.location, l.center, ga.centroid) as pt) g
       left join lateral (
         select ma.variants -> 'thumb' ->> 'key' as thumb_key, ma.thumbhash
@@ -193,6 +224,7 @@ export class SearchDocumentsRepository {
           where b.tenant_id = st.tenant_id and b.store_id = st.id
             and b.status_code = 'active' and b.starts_at <= now() and b.ends_at > now()
         ) as is_boosted,
+        false as is_shippable,
         cover.thumb_key as cover_thumb_key, cover.thumbhash as cover_thumbhash,
         st.rating_avg::text as rating_avg
       from public.stores st
@@ -236,6 +268,7 @@ export class SearchDocumentsRepository {
         ${GEO_POINT},
         extract(epoch from pl.created_at)::bigint as published_at,
         false as is_boosted,
+        false as is_shippable,
         cover.thumb_key as cover_thumb_key, cover.thumbhash as cover_thumbhash,
         pl.rating_avg::text as rating_avg
       from public.places pl
@@ -348,6 +381,28 @@ export class SearchDocumentsRepository {
       .map((r) => r.id);
   }
 
+  /**
+   * Posts whose `category_top` boost started or ended since they were last
+   * synced, as (tenant, post): a boost window passing changes no row, so no
+   * trigger fires. The relay re-syncs each one's category (boost_post scope).
+   */
+  async boostBoundaryPosts(
+    tx: DatabaseTransaction,
+    limit: number,
+  ): Promise<{ tenant_id: string; post_id: string }[]> {
+    const rows = await tx.execute(sql`
+      select distinct b.tenant_id, b.post_id
+      from public.boosts b
+      join public.boost_types bt on bt.id = b.boost_type_id
+      join public.posts p on p.tenant_id = b.tenant_id and p.id = b.post_id
+      where b.status_code = 'active' and b.post_id is not null
+        and bt.placement_code = 'category_top'
+        and (   (b.starts_at <= now() and b.starts_at > coalesce(p.search_synced_at, '-infinity'))
+             or (b.ends_at <= now() and b.ends_at > coalesce(p.search_synced_at, '-infinity')))
+      limit ${limit}`);
+    return z.array(z.object({ tenant_id: z.string(), post_id: z.string() })).parse([...rows]);
+  }
+
   /** Locality names and aliases, as extra synonym groups (schema.md §3.1 `aliases`). */
   async localitySynonymGroups(tx: DatabaseTransaction): Promise<string[][]> {
     const rows = await tx.execute(sql`
@@ -365,7 +420,18 @@ export type ResyncScope =
   | { kind: 'tenant_category'; tenantId: string; categoryId: string }
   | { kind: 'locality'; tenantId: string; localityId: string }
   | { kind: 'member'; tenantId: string; memberId: string }
-  | { kind: 'place'; tenantId: string; placeId: string };
+  | { kind: 'place'; tenantId: string; placeId: string }
+  /** A boost of this post changed: its category's boosted posts (and the post) re-sync. */
+  | { kind: 'boost_post'; tenantId: string; postId: string }
+  /** boost_slots_per_category changed: every post with a boost (in one tenant, or all). */
+  | { kind: 'boosted'; tenantId: string | null };
+
+/** Posts `x` holding an active-status `category_top` boost (any window: one may just have ended). */
+const HAS_CATEGORY_BOOST = sql.raw(`exists (
+      select 1 from public.boosts b
+      join public.boost_types bt on bt.id = b.boost_type_id
+      where b.tenant_id = x.tenant_id and b.post_id = x.id
+        and b.status_code = 'active' and bt.placement_code = 'category_top')`);
 
 function scopeCondition(type: SearchType, scope: ResyncScope): SQL | undefined {
   switch (scope.kind) {
@@ -392,6 +458,18 @@ function scopeCondition(type: SearchType, scope: ResyncScope): SQL | undefined {
       // A store takes its category and fallback location from its place.
       return type === 'stores'
         ? sql`x.tenant_id = ${scope.tenantId}::uuid and x.place_id = ${scope.placeId}::uuid`
+        : undefined;
+    case 'boost_post':
+      return type === 'posts'
+        ? sql`x.tenant_id = ${scope.tenantId}::uuid
+            and x.category_id = (select bp.category_id from public.posts bp
+                                 where bp.tenant_id = ${scope.tenantId}::uuid and bp.id = ${scope.postId}::uuid)
+            and (x.id = ${scope.postId}::uuid or ${HAS_CATEGORY_BOOST})`
+        : undefined;
+    case 'boosted':
+      return type === 'posts'
+        ? sql`(${scope.tenantId}::uuid is null or x.tenant_id = ${scope.tenantId}::uuid)
+            and ${HAS_CATEGORY_BOOST}`
         : undefined;
   }
 }

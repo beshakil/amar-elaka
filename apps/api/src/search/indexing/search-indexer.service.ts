@@ -158,6 +158,25 @@ export class SearchIndexer {
     return counts;
   }
 
+  /**
+   * Boosts whose window opened or closed since their post was last synced:
+   * re-syncs each post's category, since the slot cap may now let another
+   * boosted post in. Cheap when there's nothing to do (boosts are few).
+   */
+  async syncBoostBoundaries(): Promise<number> {
+    const crossed = await this.asSystem((tx) => this.repo.boostBoundaryPosts(tx, INDEX_BATCH));
+    let synced = 0;
+    for (const { tenant_id, post_id } of crossed) {
+      const result = await this.resync({
+        kind: 'boost_post',
+        tenantId: tenant_id,
+        postId: post_id,
+      });
+      synced += result.upserted + result.removed;
+    }
+    return synced;
+  }
+
   /** The safety net for events that never arrived. */
   async sweep(): Promise<number> {
     let synced = 0;

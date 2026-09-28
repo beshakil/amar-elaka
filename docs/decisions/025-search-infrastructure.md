@@ -96,6 +96,12 @@ The ranking rules are:
 
 `test/search.meili-spec.ts` checks the order exact > boosted > nearby > recent against a real engine.
 
+_Changed 2026-09-28 (ADR 040):_
+
+- `is_boosted` now counts only a `category_top` boost within the feed's `boost_slots_per_category` cap.
+- An explicit sort (newest, price, distance) of a text search first selects the matching ids, then sorts them purely,
+  instead of only breaking ties.
+
 ## Decision 4: geo from PostGIS, and a Postgres fallback
 
 - `_geo` comes from PostGIS. For a post it is the post's point, else its locality's centre, else its area's centroid, so

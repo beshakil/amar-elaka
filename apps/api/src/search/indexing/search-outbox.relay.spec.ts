@@ -37,6 +37,37 @@ describe('planEvents', () => {
     });
   });
 
+  it('reads the boost slot-cap scopes (0034)', () => {
+    const tenant = '0191e3a0-0000-7000-8000-000000000002';
+    const post = '0191e3a0-0000-7000-8000-000000000003';
+    const plan = planEvents([
+      event({
+        id: '1',
+        event_type: 'search.resync',
+        aggregate_table: 'boosts',
+        payload: { scope: 'boost_post', tenant_id: tenant, post_id: post },
+      }),
+      event({
+        id: '2',
+        event_type: 'search.resync',
+        aggregate_table: 'platform_settings',
+        payload: { scope: 'boosted' },
+      }),
+      event({
+        id: '3',
+        event_type: 'search.resync',
+        aggregate_table: 'tenant_settings',
+        payload: { scope: 'boosted', tenant_id: tenant },
+      }),
+    ]);
+    expect(plan.scopes).toEqual([
+      { kind: 'boost_post', tenantId: tenant, postId: post },
+      { kind: 'boosted', tenantId: null },
+      { kind: 'boosted', tenantId: tenant },
+    ]);
+    expect(plan.ignored).toEqual([]);
+  });
+
   it('ignores (and does not retry forever) events it cannot read', () => {
     const plan = planEvents([
       event({ id: 'bad-scope', event_type: 'search.resync', payload: { scope: 'nope' } }),

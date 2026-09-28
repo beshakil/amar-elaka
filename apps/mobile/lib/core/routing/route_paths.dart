@@ -26,6 +26,14 @@ abstract final class RoutePaths {
   static const String postDetail = '/posts';
   static String postDetailFor(String postId) => '$postDetail/$postId';
 
+  /// Search (full-screen, above the tab shell).
+  static const String search = '/search';
+
+  /// Saved searches, and one's new results (the alert notification's deep
+  /// link, `/saved-searches/<id>`, ADR 041).
+  static const String savedSearches = '/saved-searches';
+  static String savedSearchFor(String id) => '$savedSearches/$id';
+
   static const String designSystem = '/design-system';
   static const String formPreview = '/form-preview';
 }

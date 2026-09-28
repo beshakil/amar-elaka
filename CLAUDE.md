@@ -90,3 +90,8 @@ Month 2 (weeks 5–9) — Core marketplace: posts, feed, search UX, map.
   no purchase flow.
 - Do NOT build yet (months 3–5): payments, credit purchase, boost purchase,
   subscriptions, chat, reviews, admin dashboards beyond the moderation queue.
+
+Week 6 focus: feed ranking, post detail, contact actions, lead tracking, saved items.
+
+Week 7 focus: search UX, suggestions, saved searches (in-app delivery only),
+unmet demand analytics.

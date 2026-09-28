@@ -38,10 +38,24 @@ export class Stub {
     accessTtlSeconds?: number;
     sitemapUrlsPerFile?: number;
     seedPosts?: Partial<components['schemas']['PostDto']>[];
+    areaMinListings?: number;
+    savedSearchLimit?: boolean;
   }): Promise<{ posts: { id: string; title: string }[] }> {
     const res = await this.request.post(`${STUB_URL}/__control`, { data: body });
     expect(res.ok()).toBe(true);
     return (await res.json()) as { posts: { id: string; title: string }[] };
+  }
+
+  /** What the web sent: the last search's parameters and every saved search. */
+  async searches(): Promise<{
+    lastSearch: Record<string, string> | null;
+    savedSearches: components['schemas']['CreateSavedSearchDto'][];
+  }> {
+    const res = await this.request.get(`${STUB_URL}/__stats`);
+    return (await res.json()) as {
+      lastSearch: Record<string, string> | null;
+      savedSearches: components['schemas']['CreateSavedSearchDto'][];
+    };
   }
 
   /** The posts the stub holds now (what the web app sent it). */

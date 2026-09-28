@@ -10,6 +10,7 @@ import {
   QUEUE_MAINTENANCE,
   QUEUE_MEDIA,
   QUEUE_POSTS,
+  QUEUE_SAVED_SEARCHES,
   QUEUE_SEARCH,
 } from './queue.types';
 
@@ -58,6 +59,8 @@ const SEARCH_JOB_OPTIONS = {
       { name: deadLetterQueueName(QUEUE_SEARCH) },
       { name: QUEUE_POSTS, defaultJobOptions: DEFAULT_JOB_OPTIONS },
       { name: deadLetterQueueName(QUEUE_POSTS) },
+      { name: QUEUE_SAVED_SEARCHES, defaultJobOptions: DEFAULT_JOB_OPTIONS },
+      { name: deadLetterQueueName(QUEUE_SAVED_SEARCHES) },
     ),
   ],
   providers: [MailQueueEventsListener, MaintenanceQueueEventsListener],

@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import postgres, { type TransactionSql } from 'postgres';
 import { loadDotenv } from '../../config/load-dotenv';
 import {
@@ -66,6 +67,8 @@ async function main(): Promise<void> {
       await seedPosts(tx, tenantIds, memberIds, storeIds, categoryIds, geoAreaIdBySlug);
       await seedPlaces(tx, tenantIds, memberIds, categoryIds, geoAreaIdBySlug);
       await seedSavedAndFollows(tx, userIds.get('buyer')!);
+      await seedSearchQueries(tx, tenantIds);
+      await seedSavedSearches(tx, tenantIds, userIds.get('buyer')!);
       await seedEmergencyContacts(tx, tenantIds);
       await seedBloodDonors(tx, tenantIds, memberIds);
       await seedBazarPrices(
@@ -653,6 +656,89 @@ async function seedSavedAndFollows(tx: TransactionSql, buyerId: string): Promise
   console.log(
     `saved: ${savedPosts.count} posts, ${savedPlaces.count} places, ${savedStores.count} stores; follows: ${follows.count}`,
   );
+}
+
+// ---------------------------------------------------------------------------
+// Search log (0034, ADR 040)
+// ---------------------------------------------------------------------------
+
+/**
+ * A few days of searches per tenant, so trending, the popular queries in
+ * suggestions and the zero-result report (search:zero-results) show
+ * something in dev. Normalized text only, in all three scripts, from several
+ * anonymous searchers; some found nothing.
+ */
+const SEED_SEARCHES: readonly { q: string; searchers: number; found: boolean }[] = [
+  { q: 'ডাক্তার', searchers: 6, found: true },
+  { q: 'daktar', searchers: 4, found: true },
+  { q: 'basa vara', searchers: 5, found: true },
+  { q: 'বাসা ভাড়া', searchers: 3, found: true },
+  { q: 'mobile', searchers: 4, found: true },
+  { q: 'ইলেকট্রিশিয়ান', searchers: 3, found: true },
+  { q: 'plumbr', searchers: 3, found: false },
+  { q: 'অ্যাম্বুলেন্স রাতে', searchers: 2, found: false },
+];
+
+async function seedSearchQueries(
+  tx: TransactionSql,
+  tenantIds: Map<string, string>,
+): Promise<void> {
+  let rows = 0;
+  for (const [slug, tenantId] of tenantIds) {
+    for (const { q, searchers, found } of SEED_SEARCHES) {
+      for (let n = 0; n < searchers; n += 1) {
+        const searcher = createHash('sha256').update(`seed-searcher:${slug}:${n}`).digest('hex');
+        const result = await tx`
+          insert into search_queries
+            (id, tenant_id, searcher_hash, q_normalized, filters_hash, result_count, created_at)
+          values (${seedId(`search:${slug}:${q}:${n}`)}, ${tenantId}, ${searcher}, ${q},
+                  '0000000000000000', ${found ? 7 : 0}, now() - make_interval(hours => ${n * 3}))
+          on conflict (id) do nothing`;
+        rows += result.count;
+      }
+    }
+  }
+  console.log(`search log: ${rows} searches`);
+}
+
+// ---------------------------------------------------------------------------
+// Saved searches (0035, ADR 041)
+// ---------------------------------------------------------------------------
+
+/**
+ * Two of the buyer's saved searches around each tenant's centre — one
+ * instant, one daily — and, for the first, a few "new results" (its badge),
+ * so the saved-search screens have something to show in dev. Matches are
+ * normally the worker's (saved_search_matches is system-written); the seed
+ * runs as system too.
+ */
+async function seedSavedSearches(
+  tx: TransactionSql,
+  tenantIds: Map<string, string>,
+  buyerId: string,
+): Promise<void> {
+  let searches = 0;
+  let matches = 0;
+  for (const [slug, tenantId] of tenantIds) {
+    const instantId = seedId(`saved-search:${slug}:instant`);
+    const inserted = await tx`
+      insert into saved_searches (id, user_id, name, query_text, center, radius_km, alert_frequency_code, last_engaged_at)
+      select ${instantId}::uuid, ${buyerId}::uuid, 'মোবাইল', 'mobile', t.map_center, 5, 'instant', now()
+      from tenants t where t.id = ${tenantId}
+      union all
+      select ${seedId(`saved-search:${slug}:daily`)}::uuid, ${buyerId}::uuid, 'বাসা ভাড়া', 'basa vara', t.map_center, 3, 'daily', now()
+      from tenants t where t.id = ${tenantId}
+      on conflict (id) do nothing`;
+    searches += inserted.count;
+    const newResults = await tx`
+      insert into saved_search_matches (saved_search_id, user_id, post_id, post_tenant_id)
+      select ${instantId}::uuid, ${buyerId}::uuid, p.id, p.tenant_id from posts p
+      where p.tenant_id = ${tenantId} and p.status_code = 'live'
+      order by p.id limit 3
+      on conflict (saved_search_id, post_id) do nothing`;
+    matches += newResults.count;
+  }
+  console.log(`saved searches: ${searches}, new results: ${matches}`);
 }
 
 // ---------------------------------------------------------------------------

@@ -1,24 +1,22 @@
 import { Module } from '@nestjs/common';
+import { AuthModule } from '../auth/auth.module';
+import { CacheModule } from '../cache/cache.module';
 import { SettingsModule } from '../settings/settings.module';
 import { StorageModule } from '../storage/storage.module';
-import { MeilisearchEngine } from './engine/meilisearch-engine';
-import { SEARCH_ENGINE } from './engine/search-engine.port';
-import { SearchQueryRepository } from './query/search-query.repository';
+import { SearchActivityService } from './query/search-activity.service';
 import { SearchService } from './query/search.service';
 import { SearchController } from './search.controller';
+import { SearchCoreModule } from './search-core.module';
 
 /**
- * The HTTP side of search: read-only. Index writes live in the worker
+ * The HTTP side of search: reads the index, and writes only the query log
+ * (search_queries). Index writes live in the worker
  * (indexing/search-worker.module.ts), fed by the transactional outbox, so a
- * request never waits on — or fails because of — Meilisearch (ADR 025).
+ * request never waits on — or fails because of — a Meilisearch write (ADR 025).
  */
 @Module({
-  imports: [SettingsModule, StorageModule],
+  imports: [AuthModule, SettingsModule, StorageModule, CacheModule, SearchCoreModule],
   controllers: [SearchController],
-  providers: [
-    SearchService,
-    SearchQueryRepository,
-    { provide: SEARCH_ENGINE, useClass: MeilisearchEngine },
-  ],
+  providers: [SearchService, SearchActivityService],
 })
 export class SearchModule {}

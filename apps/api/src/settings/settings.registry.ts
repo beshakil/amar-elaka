@@ -47,6 +47,14 @@ export const SETTING_DEFINITIONS = {
   saved_search_max_active: wholeNumber,
   saved_search_notify_per_day: wholeNumber,
   saved_search_auto_pause_days: wholeNumber,
+  // Saved searches and unmet demand (ADR 041, migration 0035)
+  saved_search_match_grace_seconds: wholeNumber,
+  saved_search_daily_digest_hour: wholeNumber,
+  saved_search_new_results_max: wholeNumber,
+  saved_search_name_max_length: wholeNumber,
+  unmet_demand_result_threshold: wholeNumber,
+  unmet_demand_window_days: wholeNumber,
+  search_log_origin_decimals: wholeNumber,
 
   // Boosts & credits (§6, §13.32–13.35)
   boost_slots_per_category: wholeNumber,
@@ -160,6 +168,23 @@ export const SETTING_DEFINITIONS = {
   search_typo_two_typos_min_chars: wholeNumber,
   search_outbox_max_attempts: wholeNumber,
 
+  // Search API (ADR 040, migration 0034)
+  trending_window_hours: wholeNumber,
+  search_trending_min_searchers: wholeNumber,
+  search_trending_limit: wholeNumber,
+  search_list_cache_seconds: wholeNumber,
+  search_popular_window_days: wholeNumber,
+  search_popular_pool_size: wholeNumber,
+  search_suggest_listings_max: wholeNumber,
+  search_suggest_queries_max: wholeNumber,
+  search_suggest_categories_max: wholeNumber,
+  search_facet_fields_max: wholeNumber,
+  search_price_bucket_count: wholeNumber,
+  search_landmarks_max: wholeNumber,
+  search_click_window_minutes: wholeNumber,
+  search_zero_result_report_days: wholeNumber,
+  search_zero_result_report_limit: wholeNumber,
+
   // Locations & geocoding (ADR 026, migration 0021)
   geocode_cache_days: wholeNumber,
   geocode_results_max: wholeNumber,
@@ -213,6 +238,9 @@ export const SETTING_DEFINITIONS = {
   web_category_revalidate_seconds: wholeNumber,
   web_listing_revalidate_seconds: wholeNumber,
   sitemap_urls_per_file: wholeNumber,
+
+  // Category + area landing pages (ADR 042, migration 0036)
+  seo_area_page_min_listings: wholeNumber,
 } as const satisfies Record<string, z.ZodTypeAny>;
 
 export type SettingKey = keyof typeof SETTING_DEFINITIONS;

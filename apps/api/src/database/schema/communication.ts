@@ -309,5 +309,60 @@ export const savedSearches = pgTable('saved_searches', {
   isActive: boolean('is_active').notNull().default(true),
   lastEngagedAt: timestamptz('last_engaged_at'),
   pausedAt: timestamptz('paused_at'),
+  // 0035: the per-search daily notification cap (Asia/Dhaka day).
+  notifyDay: date('notify_day'),
+  notifyCount: smallint('notify_count').notNull().default(0),
   ...softDeleteColumns(),
+});
+
+/**
+ * §8.11 (0035): posts a saved search matched. GLOBAL, owner-read; unseen rows
+ * are the "new results" list and badge.
+ */
+export const savedSearchMatches = pgTable('saved_search_matches', {
+  id: id(),
+  savedSearchId: uuid('saved_search_id')
+    .notNull()
+    .references(() => savedSearches.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  // Composite FK (post_tenant_id, post_id) -> posts, CASCADE.
+  postId: uuid('post_id').notNull(),
+  postTenantId: uuid('post_tenant_id').notNull(),
+  notifiedAt: timestamptz('notified_at'),
+  seenAt: timestamptz('seen_at'),
+  ...auditColumns(),
+});
+
+/** §8.11 (0035): the saved-search matcher's last post per tenant. System only. */
+export const savedSearchWatermarks = pgTable('saved_search_watermarks', {
+  tenantId: uuid('tenant_id')
+    .primaryKey()
+    .references(() => tenants.id, { onDelete: 'restrict' }),
+  lastPublishedAt: timestamptz('last_published_at').notNull(),
+  lastPostId: uuid('last_post_id').notNull(),
+  ...auditColumns(),
+});
+
+/**
+ * §8.12 (0034): the search log — normalized query only, never the raw text.
+ * Tenant-scoped; the public sees aggregates only (search_popular_queries).
+ */
+export const searchQueries = pgTable('search_queries', {
+  id: id(),
+  tenantId: uuid('tenant_id')
+    .notNull()
+    .references(() => tenants.id, { onDelete: 'restrict' }),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
+  searcherHash: text('searcher_hash').notNull(),
+  qNormalized: text('q_normalized').notNull(),
+  filtersHash: text('filters_hash').notNull(),
+  resultCount: integer('result_count').notNull(),
+  // Plain FK -> posts.id (a click may be on another tenant's post), SET NULL.
+  clickedPostId: uuid('clicked_post_id'),
+  // 0035: what unmet demand groups by. Origin rounded, NULL without a viewer location.
+  categoryId: uuid('category_id').references(() => categories.id, { onDelete: 'set null' }),
+  origin: geographyPoint('origin'),
+  ...auditColumns(),
 });

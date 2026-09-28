@@ -444,6 +444,9 @@ describe('Post lifecycle jobs (e2e)', () => {
         'flush-post-views',
         'clean-orphan-media',
         'purge-deleted-media',
+        'match-saved-searches',
+        'pause-idle-saved-searches',
+        'refresh-unmet-demand',
       ]);
       const drafts = jobs.find((job) => job.code === 'clean-stale-drafts')!;
       expect(drafts.schedule?.pattern).toBe('0 4 * * *');

@@ -1,5 +1,6 @@
 import { apiFetch } from '../api/fetch';
 import {
+  categoryAreasSchema,
   sitemapPostsSchema,
   sitemapStoresSchema,
   sitemapSummarySchema,
@@ -9,7 +10,8 @@ import { listingPath } from './slug';
 
 /**
  * Per-tenant sitemaps (ADR 039): /sitemap.xml is an index of
- *   /sitemaps/pages.xml         home, info pages, categories
+ *   /sitemaps/pages.xml         home, info pages, categories, category + area
+ *                               landing pages (ADR 042)
  *   /sitemaps/listings-<n>.xml  live listings (and sold ones still indexed)
  *   /sitemaps/stores-<n>.xml    active stores
  * each at most sitemap_urls_per_file URLs (setting), so a big area splits
@@ -45,11 +47,21 @@ export async function sitemapUrls(
 ): Promise<SitemapUrl[] | null> {
   const url = (path: string) => new URL(path, origin).toString();
   if (file === 'pages') {
+    // The landing pages that exist now; if they can't be listed, the rest of
+    // the file still goes out (they return on the next crawl).
+    const areas = await apiFetch({
+      path: '/seo/category-areas',
+      schema: categoryAreasSchema,
+      tenantId: tenant.id,
+    })
+      .then((pairs) => pairs.items)
+      .catch(() => []);
     return [
       { loc: url('/') },
       { loc: url('/info') },
       { loc: url('/map') },
       ...tenant.enabledCategories.map((c) => ({ loc: url(`/category/${c.slug}`) })),
+      ...areas.map((i) => ({ loc: url(`/category/${i.category.slug}/${i.area.slug}`) })),
     ];
   }
   const match = /^(listings|stores)-(\d+)$/.exec(file);

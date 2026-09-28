@@ -11,6 +11,7 @@ import type { DatabaseTransaction } from '../src/database/database.client';
 import { TenantContext } from '../src/database/tenant-context';
 import type { TenantDb } from '../src/database/tenant-db';
 import {
+  placeDocument,
   postDocument,
   storeDocument,
   type PostRow,
@@ -22,8 +23,18 @@ import {
 } from '../src/search/dto/search.dto';
 import { MeilisearchEngine } from '../src/search/engine/meilisearch-engine';
 import { buildIndexSettings } from '../src/search/index-settings';
+import {
+  matchForms,
+  type SearchActivityService,
+} from '../src/search/query/search-activity.service';
 import type { SearchQueryRepository } from '../src/search/query/search-query.repository';
+import { SearchCriteriaService } from '../src/search/query/search-criteria.service';
+import { SearchMatcher } from '../src/search/query/search-matcher';
 import { SearchService } from '../src/search/query/search.service';
+import {
+  SearchCategoryNotShippableException,
+  SearchCursorInvalidException,
+} from '../src/search/search.exceptions';
 import { indexUid, SEARCH_TYPES, type SearchDocument } from '../src/search/search.types';
 import { SYNONYM_LINES } from '../src/search/synonyms/search-synonyms.generated';
 import { toMeilisearchSynonyms } from '../src/search/synonyms/synonym-dictionary';
@@ -94,6 +105,7 @@ function post(id: string, title: string, over: Partial<PostRow> = {}): PostRow {
     lng: MIRPUR.lng,
     published_at: NOW - 30 * DAY,
     is_boosted: false,
+    is_shippable: false,
     cover_thumb_key: null,
     cover_thumbhash: null,
     rating_avg: null,
@@ -206,17 +218,29 @@ const SETTINGS: Record<string, number> = {
   search_page_size_max: 50,
   search_max_total_hits: 1000,
   search_suggest_min_chars: 2,
-  search_suggest_limit: 8,
+  search_suggest_categories_max: 3,
+  search_suggest_queries_max: 3,
+  search_suggest_listings_max: 5,
+  search_facet_fields_max: 4,
+  search_price_bucket_count: 5,
+  search_landmarks_max: 3,
 };
 
+/** Popular queries of tenant A, as search_popular_queries would rank them. */
+const POPULAR = ['ডাক্তার চেম্বার', 'daktar', 'basa vara', 'কোরবানির গরু'];
+
 describe('Search against a real Meilisearch', () => {
+  const HOST = process.env.MEILI_HOST ?? 'http://127.0.0.1:7700';
+  const KEY = process.env.MEILI_MASTER_KEY ?? '';
   const engine = new MeilisearchEngine({
-    MEILI_HOST: process.env.MEILI_HOST ?? 'http://127.0.0.1:7700',
-    MEILI_MASTER_KEY: process.env.MEILI_MASTER_KEY ?? '',
+    MEILI_HOST: HOST,
+    MEILI_MASTER_KEY: KEY,
     MEILI_TIMEOUT_MS: 10_000,
   });
   const terms = new SearchTerms(SYNONYM_LINES);
   let service: SearchService;
+  let matcher: SearchMatcher;
+  let criteria: SearchCriteriaService;
 
   beforeAll(async () => {
     const settings = buildIndexSettings(
@@ -231,6 +255,29 @@ describe('Search against a real Meilisearch', () => {
       indexUid(PREFIX, 'posts'),
       ROWS.map((row) => postDocument(row, terms)),
     );
+    await engine.upsertDocuments(indexUid(PREFIX, 'places'), [
+      placeDocument(
+        {
+          ...post('landmark-hospital', 'unused'),
+          name_bn: 'মিরপুর ডাক্তার হাসপাতাল',
+          name_en: 'Mirpur Doctors Hospital',
+          slug: 'mirpur-hospital',
+          is_landmark: true,
+          ...NEAR_MIRPUR,
+        },
+        terms,
+      ),
+      placeDocument(
+        {
+          ...post('not-landmark', 'unused'),
+          name_bn: 'ডাক্তার ফার্মেসি কর্নার',
+          name_en: null,
+          slug: 'pharmacy-corner',
+          is_landmark: false,
+        },
+        terms,
+      ),
+    ]);
     await engine.upsertDocuments(indexUid(PREFIX, 'stores'), [
       storeDocument(
         {
@@ -252,27 +299,54 @@ describe('Search against a real Meilisearch', () => {
       resolveCategory: (_tx: DatabaseTransaction, slug: string) =>
         Promise.resolve(
           slug === 'to-let'
-            ? { id: 'cat-to-let', ids: ['cat-to-let'], definition: toLetDefinition }
-            : undefined,
+            ? {
+                id: 'cat-to-let',
+                slug: 'to-let',
+                ids: ['cat-to-let'],
+                shippableIds: [],
+                definition: toLetDefinition,
+              }
+            : slug === 'livestock'
+              ? {
+                  id: 'cat-livestock',
+                  slug: 'livestock',
+                  ids: ['cat-livestock'],
+                  shippableIds: ['cat-livestock'],
+                  definition: null,
+                }
+              : undefined,
         ),
       tenantCategories: () =>
         Promise.resolve([{ slug: 'doctors', name_bn: 'ডাক্তার ও চেম্বার', name_en: 'Doctors' }]),
       // Tenant A's map centre: where search is centred when the query has no location.
       tenantCenter: () => Promise.resolve(MIRPUR),
     } as unknown as SearchQueryRepository;
+    const activity = {
+      log: () => Promise.resolve('0191e3a0-0000-7000-8000-00000000000f'),
+      cached: <T>(_tenant: string, _key: string, load: () => Promise<T>) => load(),
+      popularPool: () => Promise.resolve(POPULAR.map((q) => ({ query: q, forms: matchForms(q) }))),
+    } as unknown as SearchActivityService;
+    const settingsService = {
+      get: (key: string) => Promise.resolve(SETTINGS[key]),
+    } as unknown as SettingsService;
+    const tenantDb = {
+      transaction: <T>(work: (tx: DatabaseTransaction) => Promise<T>) =>
+        work({} as DatabaseTransaction),
+    } as unknown as TenantDb;
+    matcher = new SearchMatcher(engine, { MEILI_INDEX_PREFIX: PREFIX });
+    criteria = new SearchCriteriaService(repo, settingsService, tenantDb);
     service = new SearchService(
       engine,
+      matcher,
+      criteria,
       repo,
-      { get: (key: string) => Promise.resolve(SETTINGS[key]) } as unknown as SettingsService,
-      {
-        transaction: <T>(work: (tx: DatabaseTransaction) => Promise<T>) =>
-          work({} as DatabaseTransaction),
-      } as unknown as TenantDb,
+      activity,
+      settingsService,
+      tenantDb,
       context,
       {
         getPublicUrl: (_b: string, key: string) => `https://cdn.test/${key}`,
       } as unknown as StorageService,
-      { MEILI_INDEX_PREFIX: PREFIX },
       { setContext: () => undefined, warn: () => undefined } as unknown as PinoLogger,
     );
   }, 120_000);
@@ -335,7 +409,13 @@ describe('Search against a real Meilisearch', () => {
   );
 
   it('ranks exact match > boosted > nearby > recent', async () => {
-    const response = await search({ q: 'tutor', lat: MIRPUR.lat, lng: MIRPUR.lng, radius: 50 });
+    const response = await search({
+      q: 'tutor',
+      lat: MIRPUR.lat,
+      lng: MIRPUR.lng,
+      scope: 'nearby',
+      radius_km: 50,
+    });
     expect(ids(response)).toEqual([
       'rank-boosted',
       'rank-near',
@@ -346,7 +426,13 @@ describe('Search against a real Meilisearch', () => {
   });
 
   it('with a location, searches by radius across tenants, nearest first, with distances', async () => {
-    const near = await search({ q: 'doctor', lat: MIRPUR.lat, lng: MIRPUR.lng, radius: 5 });
+    const near = await search({
+      q: 'doctor',
+      lat: MIRPUR.lat,
+      lng: MIRPUR.lng,
+      scope: 'nearby',
+      radius_km: 5,
+    });
     expect(new Set(ids(near))).toEqual(new Set(['doctor-bn', 'doctor-en', 'doctor-other-tenant']));
     expect(near.hits.find((h) => h.id === 'doctor-other-tenant')?.distanceMeters).toBeGreaterThan(
       2000,
@@ -364,14 +450,15 @@ describe('Search against a real Meilisearch', () => {
       category: 'to-let',
       lat: MIRPUR.lat,
       lng: MIRPUR.lng,
-      radius: 10,
+      scope: 'nearby',
+      radius_km: 10,
     });
     expect(ids(rentals)).not.toContain('house-far');
   });
 
   it('filters on custom fields and returns facets for the filter UI', async () => {
     // Wide enough to include the far house: this test is about field filters, not geo.
-    const wide = { lat: MIRPUR.lat, lng: MIRPUR.lng, radius: 50 };
+    const wide = { lat: MIRPUR.lat, lng: MIRPUR.lng, scope: 'nearby', radius_km: 50 };
     const all = await search({ ...wide, category: 'to-let' });
     expect(new Set(ids(all))).toEqual(new Set(['basa', 'flat-en', 'house-far']));
     expect(all.facets.fields.property_type).toEqual({
@@ -423,12 +510,142 @@ describe('Search against a real Meilisearch', () => {
     expect(ids(await search({ q: 'pharmacy', type: 'stores' }))).toEqual(['store-pharmacy']);
   });
 
-  it('suggests as you type, in Banglish too', async () => {
-    const response = await service.suggest(suggestQuerySchema.parse({ q: 'dak' }));
-    expect(response.suggestions[0]).toMatchObject({ kind: 'category', slug: 'doctors' });
-    expect(response.suggestions).toEqual(
-      expect.arrayContaining([expect.objectContaining({ kind: 'posts', id: 'doctor-bn' })]),
+  it('suggests as you type: categories, popular queries and listing titles, in any script', async () => {
+    for (const q of ['dak', 'ডাক', 'doctor']) {
+      const response = await service.suggest(suggestQuerySchema.parse({ q }));
+      expect(response.degraded).toBe(false);
+      expect(response.categories[0]).toMatchObject({ slug: 'doctors' });
+      // "ডাক্তার চেম্বার" and "daktar" are both popular; each script finds both.
+      expect(response.queries.map((x) => x.query)).toEqual(['ডাক্তার চেম্বার', 'daktar']);
+      expect(response.listings.map((l) => l.id)).toEqual(
+        expect.arrayContaining(['doctor-bn', 'doctor-en']),
+      );
+      expect(response.listings.length).toBeLessThanOrEqual(5);
+    }
+  });
+
+  it("answers a suggestion's listing queries well within the 50 ms budget, engine side", async () => {
+    // Engine processing time, as Meilisearch reports it: the wall clock inside
+    // Jest adds ~45 ms of test-runtime HTTP overhead that a server doesn't have
+    // (the same request takes ~10 ms from a plain Node process). The service's
+    // own share is measured in search.service.spec.ts.
+    const request = (q: string) => ({
+      indexUid: indexUid(PREFIX, 'posts'),
+      q,
+      limit: 5,
+      filter: [`_geoRadius(${MIRPUR.lat}, ${MIRPUR.lng}, 10000)`],
+      sort: [`_geoPoint(${MIRPUR.lat}, ${MIRPUR.lng}):asc`],
+    });
+    for (const typed of [['ডাক্তা', 'dakta'], ['doc'], ['basa v']]) {
+      const response = await fetch(`${HOST}/multi-search`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ queries: typed.map(request) }),
+      });
+      const { results } = (await response.json()) as { results: { processingTimeMs: number }[] };
+      const total = results.reduce((sum, r) => sum + r.processingTimeMs, 0);
+      expect(total).toBeLessThan(25);
+    }
+  });
+
+  it('pages with a cursor bound to the search, and never repeats a hit', async () => {
+    const first = await search({ q: 'tutor', scope: 'nearby', radius_km: 50, limit: 2 });
+    expect(first.hits).toHaveLength(2);
+    expect(first.nextCursor).not.toBeNull();
+    const second = await search({
+      q: 'tutor',
+      scope: 'nearby',
+      radius_km: 50,
+      limit: 2,
+      cursor: first.nextCursor,
+    });
+    expect(second.page).toBe(2);
+    expect(ids(second).some((id) => ids(first).includes(id))).toBe(false);
+    // The same cursor with another query is refused, not silently mixed.
+    await expect(
+      search({ q: 'doctor', scope: 'nearby', radius_km: 50, limit: 2, cursor: first.nextCursor }),
+    ).rejects.toThrow(SearchCursorInvalidException);
+  });
+
+  it('returns price ranges as a facet, counted exactly, ignoring the price filter itself', async () => {
+    const wide = { lat: MIRPUR.lat, lng: MIRPUR.lng, scope: 'nearby', radius_km: 50 };
+    const all = await search({ ...wide, category: 'to-let' });
+    expect(all.facets.price).toEqual({
+      min: '15000.00',
+      max: '40000.00',
+      buckets: [
+        { min: '10000.00', max: '20000.00', count: 1 },
+        { min: '20000.00', max: '30000.00', count: 1 },
+        { min: '30000.00', max: '40000.00', count: 0 },
+        { min: '40000.00', max: null, count: 1 },
+      ],
+    });
+
+    // Choosing a range filters the hits, but the facet still shows every range.
+    const cheap = await search({
+      ...wide,
+      category: 'to-let',
+      price_min: '20000',
+      price_max: '30000',
+    });
+    expect(ids(cheap)).toEqual(['flat-en']);
+    expect(cheap.facets.price?.buckets.map((b) => b.count)).toEqual([1, 1, 0, 1]);
+  });
+
+  it("limits the chosen category's value facets to its top select-type fields", async () => {
+    const one = await service.search(
+      searchQuerySchema.parse({ category: 'to-let', scope: 'nearby', radius_km: 50, ...MIRPUR }),
     );
+    // to-let has two select fields (property_type, tenant_type), both within 4.
+    expect(Object.keys(one.facets.fields)).toEqual(
+      expect.arrayContaining(['property_type', 'tenant_type']),
+    );
+  });
+
+  it('sorts by distance (and still accepts the old "nearest")', async () => {
+    for (const sort of ['distance', 'nearest']) {
+      const response = await search({
+        q: 'doctor',
+        sort,
+        scope: 'nearby',
+        radius_km: 5,
+        ...MIRPUR,
+      });
+      const distances = response.hits.map((h) => h.distanceMeters!);
+      expect(distances).toEqual([...distances].sort((a, b) => a - b));
+    }
+  });
+
+  it('shows matching landmarks above a text search, never plain places', async () => {
+    const response = await search({ q: 'ডাক্তার', ...MIRPUR });
+    expect(response.landmarks.map((l) => l.id)).toEqual(['landmark-hospital']);
+    expect(response.landmarks[0]).toMatchObject({ type: 'places', isLandmark: true });
+    // Not on a category page.
+    expect((await search({ q: 'ডাক্তার', category: 'to-let', ...MIRPUR })).landmarks).toEqual([]);
+  });
+
+  it('country scope: shippable categories only, with no radius', async () => {
+    await engine.upsertDocuments(indexUid(PREFIX, 'posts'), [
+      postDocument(
+        post('cow-far', 'কোরবানির গরু বিক্রি — দিনাজপুর', {
+          category_id: 'cat-livestock',
+          category_slug: 'livestock',
+          lat: 25.62,
+          lng: 88.63,
+          is_shippable: true,
+        }),
+        terms,
+      ),
+    ]);
+    const nationwide = await search({ q: 'গরু', scope: 'country' });
+    expect(nationwide).toMatchObject({ scope: 'country', radiusKm: null });
+    // 'cow' is in a category that doesn't ship; the Dinajpur cow is 300 km away but ships.
+    expect(ids(nationwide)).toEqual(['cow-far']);
+    expect(ids(await search({ q: 'গরু' }))).toEqual(['cow']);
+    await expect(search({ category: 'to-let', scope: 'country' })).rejects.toThrow(
+      SearchCategoryNotShippableException,
+    );
+    await engine.deleteDocuments(indexUid(PREFIX, 'posts'), ['cow-far']);
   });
 
   it('removes deleted documents', async () => {

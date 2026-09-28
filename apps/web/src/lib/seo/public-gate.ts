@@ -11,6 +11,8 @@ import { listingPath, listingSlug } from './slug';
  *                           another tenant's post → 308 to its own host
  *                           missing or wrong slug → 308 to the canonical one
  *   /category/<slug>        not a category of this tenant → 404
+ *   /category/<slug>/<area> not a landing page (too few listings there,
+ *                           ADR 042) → 404
  *   /store/<slug>           no such active store here → 404
  *
  * Only definite answers are cached (briefly, in this process); an API that
@@ -93,6 +95,22 @@ async function categoryExists(slug: string, tenantId: string): Promise<boolean |
   return slugs?.includes(slug);
 }
 
+async function areaPageExists(
+  slug: string,
+  area: string,
+  tenantId: string,
+): Promise<boolean | undefined> {
+  const pairs = await cached(`category-areas:${tenantId}`, async () => {
+    const response = await apiGet('/seo/category-areas', tenantId);
+    if (!response?.ok) return undefined;
+    const body = (await response.json()) as {
+      items?: { category: { slug: string }; area: { slug: string } }[];
+    };
+    return (body.items ?? []).map((i) => `${i.category.slug}/${i.area.slug}`);
+  });
+  return pairs?.includes(`${slug}/${area}`);
+}
+
 async function storeExists(slug: string, tenantId: string): Promise<boolean | undefined> {
   return cached(`store:${tenantId}:${slug}`, async () => {
     const response = await apiGet(`/stores/${slug}?limit=1`, tenantId);
@@ -168,6 +186,11 @@ export async function publicPageGate(
   if (section === 'category' && first && !second) {
     if (!SLUG.test(first)) return notFound(request);
     return (await categoryExists(first, tenantId)) === false ? notFound(request) : null;
+  }
+
+  if (section === 'category' && first && second) {
+    if (!SLUG.test(first) || !SLUG.test(second) || rest.length > 0) return notFound(request);
+    return (await areaPageExists(first, second, tenantId)) === false ? notFound(request) : null;
   }
 
   if (section === 'store' && first && !second) {

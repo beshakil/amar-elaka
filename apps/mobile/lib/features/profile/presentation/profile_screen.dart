@@ -5,11 +5,13 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/design/theme_mode_controller.dart';
 import '../../../core/design/tokens/app_spacing.dart';
+import '../../../core/dynamic_form/bn_numerals.dart';
 import '../../../core/design/widgets/app_button.dart';
 import '../../../core/routing/route_paths.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../auth/domain/auth_session_state.dart';
+import '../../search/application/saved_searches_controller.dart';
 
 /// `AppShell` provides the shared app bar/bottom nav; this is body content only.
 class ProfileScreen extends ConsumerWidget {
@@ -38,6 +40,7 @@ class ProfileScreen extends ConsumerWidget {
                   onPressed: () => context.push(RoutePaths.profileCompletion),
                 ),
               ),
+              const _SavedSearchesTile(),
               const SizedBox(height: AppSpacing.md),
               AppButton(
                 label: l10n.profileLogout,
@@ -126,6 +129,30 @@ class ProfileScreen extends ConsumerWidget {
           ),
         ],
       ],
+    );
+  }
+}
+
+/// Saved searches, with the total of new results as a badge (ADR 041).
+class _SavedSearchesTile extends ConsumerWidget {
+  const _SavedSearchesTile();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+    final locale = Localizations.localeOf(context).languageCode;
+    final newResults =
+        ref.watch(savedSearchesProvider).value?.newResultCount ?? 0;
+    return ListTile(
+      key: const ValueKey('profile-saved-searches'),
+      leading: Badge(
+        isLabelVisible: newResults > 0,
+        label: Text(localizeDigits('$newResults', locale)),
+        child: const Icon(Icons.bookmarks_outlined),
+      ),
+      title: Text(l10n.profileSavedSearches),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () => context.push(RoutePaths.savedSearches),
     );
   }
 }

@@ -88,6 +88,7 @@ class MemoryRepository {
   }
 
   unsyncedIds = () => Promise.resolve([]);
+  boostBoundaryPosts = () => Promise.resolve([]);
   localitySynonymGroups = () => Promise.resolve(this.localities);
 }
 
@@ -109,6 +110,7 @@ function row(id: string, title: string): PostRow {
     lng: null,
     published_at: 1_790_000_000,
     is_boosted: false,
+    is_shippable: false,
     cover_thumb_key: null,
     cover_thumbhash: null,
     rating_avg: null,

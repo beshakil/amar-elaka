@@ -19,6 +19,8 @@ import '../../features/post_detail/presentation/post_detail_screen.dart';
 import '../../features/post/presentation/post_screen.dart';
 import '../../features/profile/presentation/profile_completion_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
+import '../../features/search/presentation/saved_searches_screen.dart';
+import '../../features/search/presentation/search_screen.dart';
 import '../../features/splash/presentation/splash_screen.dart';
 import '../../features/tenant_bootstrap/application/tenant_bootstrap_controller.dart';
 import '../../features/tenant_bootstrap/presentation/location_permission_screen.dart';
@@ -107,6 +109,21 @@ GoRouter appRouter(Ref ref) {
         path: '${RoutePaths.postDetail}/:id',
         builder: (context, state) =>
             PostDetailScreen(postId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: RoutePaths.search,
+        builder: (context, state) => const SearchScreen(),
+      ),
+      GoRoute(
+        path: RoutePaths.savedSearches,
+        builder: (context, state) => const SavedSearchesScreen(),
+        routes: [
+          GoRoute(
+            path: ':id',
+            builder: (context, state) =>
+                SavedSearchResultsScreen(id: state.pathParameters['id']!),
+          ),
+        ],
       ),
       // Debug-only: `kDebugMode` is a compile-time constant, so this branch
       // (and DesignSystemScreen's tree) is tree-shaken out of release builds.

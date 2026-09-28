@@ -1,22 +1,19 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { PinoLogger } from 'nestjs-pino';
-import { APP_CONFIG } from '../../config/config.module';
-import type { Env } from '../../config/env.schema';
-import {
-  parseFieldFilters,
-  type CategoryFieldDefinition,
-  type FieldFilter,
-} from '../../categories/field-schema';
+import type { CategoryFieldDefinition } from '../../categories/field-schema';
+import type { DatabaseTransaction } from '../../database/database.client';
 import { TenantContext } from '../../database/tenant-context';
 import { TenantNotFoundException, TenantRequiredException } from '../../database/tenant.exceptions';
 import { TenantDb } from '../../database/tenant-db';
+import type { ViewerSignals } from '../../engagement/viewer-key';
 import { SettingsService } from '../../settings/settings.service';
 import { STORAGE_SERVICE, type StorageService } from '../../storage/storage.ports';
 import type {
+  PriceFacet,
   SearchHit,
   SearchQuery,
   SearchResponse,
-  Suggestion,
+  SearchScope,
   SuggestQuery,
   SuggestResponse,
 } from '../dto/search.dto';
@@ -26,20 +23,21 @@ import {
   type EngineSearchResult,
   type SearchEngine,
 } from '../engine/search-engine.port';
-import {
-  SearchCategoryNotFoundException,
-  SearchFiltersNeedFieldsException,
-} from '../search.exceptions';
-import { indexUid, SEARCH_TYPES, type SearchDocument, type SearchType } from '../search.types';
+import type { SearchDocument, SearchType } from '../search.types';
 import { SYNONYM_LINES } from '../synonyms/search-synonyms.generated';
 import { toMeilisearchSynonyms } from '../synonyms/synonym-dictionary';
 import { hasBengali, normalizeSearchText, searchWords } from '../text/normalize';
-import { SearchTerms } from '../text/search-terms';
 import { transliterate, transliterateWord } from '../text/transliterate';
-import { buildSearchFilter, buildSort, type GeoScope } from './filter-builder';
+import { buildSort, idsIn, priceExpressions } from './filter-builder';
+import { priceBuckets } from './price-buckets';
+import { matchForms, SearchActivityService } from './search-activity.service';
+import { SearchCriteriaService } from './search-criteria.service';
+import { SearchMatcher, type SearchCriteria } from './search-matcher';
+import { decodeSearchCursor, encodeSearchCursor, searchDigest } from './search-cursor';
 import {
   SearchQueryRepository,
   type FallbackRow,
+  type ResolvedArea,
   type ResolvedCategory,
 } from './search-query.repository';
 
@@ -47,14 +45,14 @@ import {
 const ENGINE_COOLDOWN_MS = 10_000;
 // settings-exempt: bounds the ILIKE alternatives of a degraded query (query cost), not a business rule
 const FALLBACK_MAX_TERMS = 24;
-// settings-exempt: category suggestions shown before listing suggestions (layout)
-const MAX_CATEGORY_SUGGESTIONS = 3;
 const POISHA_PER_TAKA = 100; // settings-exempt: currency unit conversion
 const MONEY_DECIMALS = 2; // settings-exempt: the scale of numeric(12,2), a column type
 const MILLIS_PER_SECOND = 1_000; // settings-exempt: unit conversion
 const MONEY_FIELD_TYPES = new Set(['money']);
 const RANGE_FIELD_TYPES = new Set(['number', 'money', 'date']);
+/** "Select-type" fields: a small set of values, faceted as value counts. */
 const VALUE_FIELD_TYPES = new Set(['select', 'multiselect', 'bool']);
+const PRICE_ATTRIBUTE = 'price_minor';
 
 /** Integer poisha → "12000.00" without ever going through a float. */
 export function poishaToMoney(poisha: number): string {
@@ -71,112 +69,205 @@ interface Plan {
   tenantId: string;
   type: SearchType;
   q: string;
-  geo: GeoScope;
-  /** False when geo is the tenant's centre, not the viewer: distances then mean nothing to them. */
+  /** normalizeSearchText(q): what is logged, never the raw text. */
+  qNormalized: string;
+  scope: SearchScope;
+  /** Where "nearby" and distance are measured from: the viewer, else the tenant's centre. */
+  origin: { lat: number; lng: number };
+  /** Null in the country scope: no radius. */
+  radiusKm: number | null;
+  /** False when origin is the tenant's centre, not the viewer: distances then mean nothing to them. */
   viewerLocated: boolean;
   category: ResolvedCategory | null;
-  fieldFilters: FieldFilter[];
-  page: number;
+  /** The area of a landing page (`area`), which centres the search. */
+  area: ResolvedArea | null;
+  /** What decides the result set: shared with saved searches (SearchMatcher, ADR 041). */
+  criteria: SearchCriteria;
+  sort: SearchQuery['sort'];
   limit: number;
   offset: number;
-  sort: SearchQuery['sort'];
+  /** Where Meilisearch stops paging (search_max_total_hits). */
+  maxTotalHits: number;
+  /** Digest the cursor is bound to. */
+  queryKey: string;
+  /** Digest of what narrows the list apart from the text (search_queries.filters_hash). */
+  filtersHash: string;
 }
 
 /**
- * GET /search and GET /search/suggest.
+ * GET /search, /search/suggest (ADR 025, ADR 040).
  *
- * Meilisearch answers normally. When it is unreachable (timeout, network,
- * 5xx), search keeps working from Postgres (`degraded: true`): the same
- * radius, but the current tenant's rows only (RLS; cross-tenant reads go
- * through discover_nearby, 0023), substring matching expanded through the
- * synonym dictionary, no facets. Without the viewer's location, "nearby" is
- * measured from the tenant's map centre and hits carry no distance. After a failure the engine is skipped for a short cool-down so
- * an outage doesn't cost every request a timeout.
+ * Scopes are the feed's (radius-based, crossing tenant boundaries, §13.26);
+ * boosts count within the same slot cap as the feed (decided at index time,
+ * search-documents.repository.ts). Meilisearch answers normally. When it is
+ * unreachable (timeout, network, 5xx), search keeps working from Postgres
+ * (`degraded: true`): the same radius, but the current tenant's rows only
+ * (RLS; cross-tenant reads go through discover_nearby, 0023), substring
+ * matching expanded through the synonym dictionary, no facets. After a
+ * failure the engine is skipped for a short cool-down so an outage doesn't
+ * cost every request a timeout.
+ *
+ * The first page of every text search is logged (search_queries, normalized
+ * text only) for trending, synonym tuning and unmet demand; degraded
+ * searches are not, since their counts cover one tenant only.
  */
 @Injectable()
 export class SearchService {
-  private readonly terms = new SearchTerms(SYNONYM_LINES);
   private readonly synonyms = toMeilisearchSynonyms(SYNONYM_LINES);
-  private readonly prefix: string;
   private engineDownUntil = 0;
 
   constructor(
     @Inject(SEARCH_ENGINE) private readonly engine: SearchEngine,
+    private readonly matcher: SearchMatcher,
+    private readonly criteria: SearchCriteriaService,
     private readonly repo: SearchQueryRepository,
+    private readonly activity: SearchActivityService,
     private readonly settings: SettingsService,
     private readonly tenantDb: TenantDb,
     private readonly tenantContext: TenantContext,
     @Inject(STORAGE_SERVICE) private readonly storage: StorageService,
-    @Inject(APP_CONFIG) env: Pick<Env, 'MEILI_INDEX_PREFIX'>,
     private readonly logger: PinoLogger,
   ) {
-    this.prefix = env.MEILI_INDEX_PREFIX;
     this.logger.setContext(SearchService.name);
   }
 
-  async search(query: SearchQuery): Promise<SearchResponse> {
+  async search(query: SearchQuery, signals?: ViewerSignals): Promise<SearchResponse> {
     const plan = await this.plan(query);
-    const empty = this.emptyResponse(plan);
-    if (plan.limit === 0) return empty;
+    if (plan.limit === 0) return this.emptyResponse(plan);
 
     const fromEngine = await this.tryEngine(() => this.searchEngine(plan));
-    const response = fromEngine ?? (await this.searchDatabase(plan));
-    return plan.viewerLocated
-      ? response
-      : { ...response, hits: response.hits.map((hit) => ({ ...hit, distanceMeters: null })) };
+    let response = fromEngine ?? (await this.searchDatabase(plan));
+    if (!plan.viewerLocated) {
+      const hideDistance = (hit: SearchHit) => ({ ...hit, distanceMeters: null });
+      response = {
+        ...response,
+        hits: response.hits.map(hideDistance),
+        landmarks: response.landmarks.map(hideDistance),
+      };
+    }
+    if (plan.offset === 0 && plan.qNormalized !== '' && !response.degraded && signals) {
+      response.searchId = await this.activity.log({
+        tenantId: plan.tenantId,
+        qNormalized: plan.qNormalized,
+        filtersHash: plan.filtersHash,
+        resultCount: response.totalHits,
+        categoryId: plan.category?.id ?? null,
+        // Only where the viewer really is: the tenant's centre would skew unmet demand.
+        origin: plan.viewerLocated ? plan.origin : null,
+        signals,
+      });
+    }
+    return response;
   }
 
+  /**
+   * As-you-type: matching categories, popular queries of this tenant and the
+   * top listing titles nearby, in Bengali, Banglish or English. Categories
+   * and popular queries come from the per-tenant cache and the listings from
+   * one small engine query, all at once, so a keystroke costs a few
+   * milliseconds. Without the engine, the listings are left out.
+   */
   async suggest(query: SuggestQuery): Promise<SuggestResponse> {
     const tenantId = this.requireTenant();
-    const [minChars, limit, defaultRadius] = await Promise.all([
+    const [minChars, categoriesMax, queriesMax, listingsMax, defaultRadius] = await Promise.all([
       this.settings.get('search_suggest_min_chars'),
-      this.settings.get('search_suggest_limit'),
+      this.settings.get('search_suggest_categories_max'),
+      this.settings.get('search_suggest_queries_max'),
+      this.settings.get('search_suggest_listings_max'),
       this.settings.get('search_default_radius_km', tenantId),
     ]);
     const q = normalizeSearchText(query.q);
-    if ([...q].length < minChars) return { query: query.q, suggestions: [], degraded: false };
+    const empty: SuggestResponse = {
+      query: query.q,
+      categories: [],
+      queries: [],
+      listings: [],
+      degraded: false,
+    };
+    if ([...q].length < minChars) return empty;
+    const needles = this.needles(q);
 
-    const categories = (await this.categorySuggestions(tenantId, q)).slice(
-      0,
-      MAX_CATEGORY_SUGGESTIONS,
-    );
-    const geo = { ...(await this.origin(tenantId, query)), radiusKm: defaultRadius };
-    const perType = Math.max(1, limit - categories.length);
-    const listings = await this.tryEngine(async () => {
-      const results = await this.engine.multiSearch<SearchDocument>(
-        SEARCH_TYPES.map((type) => ({
-          indexUid: indexUid(this.prefix, type),
-          q: this.terms.expandQuery(q),
-          filter: buildSearchFilter({ geo, categoryIds: null, fieldFilters: [] }),
-          sort: buildSort('relevance', geo),
-          limit: perType,
-          offset: 0,
-          attributesToRetrieve: ['id', 'name_bn', 'name_en', 'category_slug', 'slug'],
-        })),
-      );
-      return interleave(
-        results.map((result, i) =>
-          result.hits.map((hit): Suggestion => ({
-            kind: SEARCH_TYPES[i]!,
-            id: hit.id,
-            name: { bn: hit.name_bn, en: hit.name_en },
-            categorySlug: hit.category_slug,
-            slug: hit.slug,
-          })),
-        ),
-      );
-    });
+    const listings =
+      listingsMax === 0
+        ? Promise.resolve([])
+        : this.origin(tenantId, query).then((origin) =>
+            this.tryEngine(async () => {
+              const nearby = nearbyCriteria('posts', origin, defaultRadius);
+              // Meilisearch prefix-matches only a query's last word, so the
+              // half-typed text and its Banglish go as separate queries:
+              // "ডাক" finds ডাক্তার, and its "dak" finds "daktar".
+              const variants = [...new Set([q, hasBengali(q) ? transliterate(q) : q])];
+              const results = await this.engine.multiSearch<SearchDocument>(
+                variants.map((variant) => ({
+                  indexUid: this.matcher.indexUid('posts'),
+                  q: variant,
+                  filter: this.matcher.filters(nearby),
+                  sort: buildSort('relevance', origin),
+                  limit: listingsMax,
+                  offset: 0,
+                  attributesToRetrieve: ['id', 'tenant_id', 'name_bn', 'name_en', 'category_slug'],
+                })),
+              );
+              const seen = new Set<string>();
+              return interleave(results.map((r) => r.hits))
+                .filter((hit) => !seen.has(hit.id) && seen.add(hit.id))
+                .slice(0, listingsMax)
+                .map((hit) => ({
+                  id: hit.id,
+                  tenantId: hit.tenant_id,
+                  title: { bn: hit.name_bn, en: hit.name_en },
+                  categorySlug: hit.category_slug,
+                }));
+            }),
+          );
+    const [categories, popular, found] = await Promise.all([
+      categoriesMax === 0 ? Promise.resolve([]) : this.suggestCategories(tenantId, needles),
+      queriesMax === 0 ? Promise.resolve([]) : this.activity.popularPool(tenantId),
+      listings,
+    ]);
 
     return {
       query: query.q,
-      suggestions: [...categories, ...(listings ?? [])].slice(0, limit),
-      degraded: listings === undefined,
+      categories: categories.slice(0, categoriesMax),
+      queries: popular
+        .filter((entry) => entry.query !== q && startsLike(entry.forms, needles))
+        .slice(0, queriesMax)
+        .map((entry) => ({ query: entry.query })),
+      listings: found ?? [],
+      degraded: found === undefined,
     };
+  }
+
+  /**
+   * What typed input may be the start of: the text itself, its Banglish, and
+   * its dictionary synonyms (so "doctor" also finds "ডাক্তার").
+   */
+  private needles(q: string): string[] {
+    const needles = new Set([q, transliterate(q), ...(this.synonyms[q] ?? [])]);
+    needles.delete('');
+    return [...needles];
+  }
+
+  private async suggestCategories(
+    tenantId: string,
+    needles: readonly string[],
+  ): Promise<SuggestResponse['categories']> {
+    const categories = await this.activity.cached(tenantId, 'categories', async () =>
+      (await this.readOnly((tx) => this.repo.tenantCategories(tx, tenantId))).map((c) => ({
+        slug: c.slug,
+        name: { bn: c.name_bn, en: c.name_en },
+        forms: matchForms(c.name_bn, c.name_en),
+      })),
+    );
+    return categories
+      .filter((c) => startsLike(c.forms, needles))
+      .map((c) => ({ slug: c.slug, name: c.name }));
   }
 
   /**
    * Where "nearby" is measured from: the viewer's location, or the tenant's
    * map centre when they share none. Discovery is always a radius (§13.26).
+   * The centre is cached with the tenant's other search lists.
    */
   private async origin(
     tenantId: string,
@@ -185,109 +276,266 @@ export class SearchService {
     if (query.lat !== undefined && query.lng !== undefined) {
       return { lat: query.lat, lng: query.lng };
     }
-    const center = await this.tenantDb.transaction((tx) => this.repo.tenantCenter(tx, tenantId), {
-      accessMode: 'read only',
-    });
+    const center = await this.activity.cached(
+      tenantId,
+      'center',
+      async () => (await this.readOnly((tx) => this.repo.tenantCenter(tx, tenantId))) ?? null,
+    );
     if (!center) throw new TenantNotFoundException();
     return center;
   }
 
   private async plan(query: SearchQuery): Promise<Plan> {
     const tenantId = this.requireTenant();
-    const [defaultRadius, maxRadius, pageDefault, pageMax, maxTotalHits] = await Promise.all([
-      this.settings.get('search_default_radius_km', tenantId),
-      this.settings.get('search_max_radius_km'),
+    const [pageDefault, pageMax, maxTotalHits] = await Promise.all([
       this.settings.get('search_page_size_default'),
       this.settings.get('search_page_size_max'),
       this.settings.get('search_max_total_hits'),
     ]);
-
-    const category = query.category
-      ? await this.tenantDb.transaction((tx) => this.repo.resolveCategory(tx, query.category!), {
-          accessMode: 'read only',
-        })
-      : null;
-    if (query.category && !category) throw new SearchCategoryNotFoundException();
-
-    let fieldFilters: FieldFilter[] = [];
-    if (query.filters && query.filters.length > 0) {
-      if (!category?.definition) throw new SearchFiltersNeedFieldsException();
-      fieldFilters = parseFieldFilters(category.definition, query.filters);
-    }
-
+    const origin = await this.origin(tenantId, query);
+    const { criteria, category, area } = await this.criteria.resolve({
+      tenantId,
+      type: query.type,
+      q: query.q,
+      scope: query.scope,
+      origin,
+      radiusKm: query.radius_km,
+      category: query.category ? { slug: query.category } : null,
+      area: query.area ? { slug: query.area } : null,
+      filters: query.filters,
+      priceMin: query.price_min,
+      priceMax: query.price_max,
+    });
     const limit = Math.min(query.limit ?? pageDefault, pageMax);
-    const offset = (query.page - 1) * limit;
+
+    const narrowing = {
+      type: query.type,
+      scope: query.scope,
+      category: category?.id ?? null,
+      area: area?.id ?? null,
+      filters: criteria.fieldFilters,
+      price: criteria.price && [
+        criteria.price.min?.toString() ?? null,
+        criteria.price.max?.toString() ?? null,
+      ],
+    };
+    const qNormalized = normalizeSearchText(query.q);
+    const queryKey = searchDigest({
+      ...narrowing,
+      q: qNormalized,
+      origin: [criteria.origin.lat, criteria.origin.lng],
+      radiusKm: criteria.radiusKm,
+      sort: query.sort,
+      limit,
+    });
+    const offset = query.cursor
+      ? decodeSearchCursor(query.cursor, queryKey)
+      : ((query.page ?? 1) - 1) * limit;
+
     return {
       tenantId,
       type: query.type,
       q: query.q,
-      geo: {
-        ...(await this.origin(tenantId, query)),
-        radiusKm: Math.min(query.radius ?? defaultRadius, maxRadius),
-      },
+      qNormalized,
+      scope: query.scope,
+      // The area's centre for an area search, else the viewer (or the tenant's centre).
+      origin: criteria.origin,
+      radiusKm: criteria.radiusKm,
       viewerLocated: query.lat !== undefined && query.lng !== undefined,
-      category: category ?? null,
-      fieldFilters,
-      page: query.page,
+      category,
+      area,
+      criteria,
+      sort: query.sort,
       // Meilisearch never pages past maxTotalHits; neither does the API.
       limit: offset >= maxTotalHits ? 0 : Math.min(limit, maxTotalHits - offset),
       offset,
-      sort: query.sort,
+      maxTotalHits,
+      queryKey,
+      filtersHash: searchDigest(narrowing),
     };
   }
 
-  private async searchEngine(plan: Plan): Promise<SearchResponse> {
-    const definition = plan.category?.definition ?? null;
-    const facetFields = definition
-      ? definition.filterableFields.filter((key) => {
-          const type = definition.jsonSchema.properties[key]?.['x-field-type'];
-          return type !== undefined && (VALUE_FIELD_TYPES.has(type) || RANGE_FIELD_TYPES.has(type));
-        })
-      : [];
-    const result = await this.engine.search<SearchDocument>({
-      indexUid: indexUid(this.prefix, plan.type),
-      q: this.terms.expandQuery(plan.q),
-      filter: buildSearchFilter({
-        geo: plan.geo,
-        categoryIds: plan.category?.ids ?? null,
-        fieldFilters: plan.fieldFilters,
-      }),
-      sort: buildSort(plan.sort, plan.geo),
-      facets: ['category_slug', ...facetFields.map((k) => `fields.${k}`)],
-      limit: plan.limit,
-      offset: plan.offset,
+  /** Filters of the main query, with or without the price range (the price facet ignores it). */
+  private filters(plan: Plan, withPrice: boolean, matched: string[] = []): string[] {
+    return this.matcher.filters(plan.criteria, { withPrice, extra: matched });
+  }
+
+  /**
+   * The text part of a search. Relevance: the query itself — the text rules
+   * rank first, then boosts, then the request's sort (ADR 025). An explicit
+   * sort (newest, price, distance) must really sort, and in Meilisearch the
+   * sort rule only breaks ties between equally good matches. So the text
+   * selects instead: the ids matching every word (up to maxTotalHits) become
+   * a filter, and a placeholder search orders them purely by the sort, still
+   * boosted-first within the slot cap. Undefined: nothing matches.
+   */
+  private async textScope(plan: Plan): Promise<{ q: string; matched: string[] } | undefined> {
+    const q = this.matcher.expandQuery(plan.q);
+    if (plan.qNormalized === '' || plan.sort === 'relevance') return { q, matched: [] };
+    const ids = await this.matcher.matchingIds(plan.criteria, {
+      withPrice: false,
+      limit: plan.maxTotalHits,
     });
+    if (ids.length === 0) return undefined;
+    return { q: '', matched: [idsIn(ids)] };
+  }
+
+  private async searchEngine(plan: Plan): Promise<SearchResponse> {
+    const [facetFieldsMax, bucketCount, landmarksMax] = await Promise.all([
+      this.settings.get('search_facet_fields_max'),
+      this.settings.get('search_price_bucket_count'),
+      this.settings.get('search_landmarks_max'),
+    ]);
+    const definition = plan.category?.definition ?? null;
+    const facetFields = definition ? topFacetFields(definition, facetFieldsMax) : [];
+    const wantPrice = plan.type === 'posts' && bucketCount > 0;
+    const wantLandmarks =
+      landmarksMax > 0 &&
+      plan.type === 'posts' &&
+      plan.offset === 0 &&
+      plan.qNormalized !== '' &&
+      plan.category === null &&
+      plan.radiusKm !== null;
+    const text = await this.textScope(plan);
+    if (text === undefined) return this.emptyResponse(plan);
+    const { q, matched } = text;
+    const sort = buildSort(plan.sort, plan.origin);
+
+    // Round 1, in parallel: the page itself; the price bounds without the
+    // price filter (when one is set: the facet must show the other ranges
+    // too); and the landmarks.
+    const [result, priceSource, landmarks] = await Promise.all([
+      this.engine.search<SearchDocument>({
+        indexUid: this.matcher.indexUid(plan.type),
+        q,
+        filter: this.filters(plan, true, matched),
+        sort,
+        facets: [
+          'category_slug',
+          ...facetFields.map((k) => `fields.${k}`),
+          ...(wantPrice ? [PRICE_ATTRIBUTE] : []),
+        ],
+        limit: plan.limit,
+        offset: plan.offset,
+      }),
+      wantPrice && plan.criteria.price !== null
+        ? this.engine.search<SearchDocument>({
+            indexUid: this.matcher.indexUid(plan.type),
+            q,
+            filter: this.filters(plan, false, matched),
+            facets: [PRICE_ATTRIBUTE],
+            limit: 0,
+            offset: 0,
+          })
+        : Promise.resolve(null),
+      wantLandmarks
+        ? this.engine.search<SearchDocument>({
+            indexUid: this.matcher.indexUid('places'),
+            q: this.matcher.expandQuery(plan.q),
+            filter: this.matcher.filters(
+              nearbyCriteria('places', plan.origin, plan.radiusKm ?? 0),
+              { extra: ['is_landmark = true'] },
+            ),
+            sort: buildSort('distance', plan.origin),
+            limit: landmarksMax,
+            offset: 0,
+          })
+        : Promise.resolve(null),
+    ]);
+    // Round 2: how many results fall in each price range.
+    const price = wantPrice
+      ? await this.priceFacet(
+          plan,
+          q,
+          matched,
+          (priceSource ?? result).facetStats[PRICE_ATTRIBUTE],
+          bucketCount,
+        )
+      : null;
+
+    const reachable = Math.min(result.estimatedTotalHits, plan.maxTotalHits);
     return {
       ...this.emptyResponse(plan),
       hits: result.hits.map((hit) => this.toHit(plan.type, hit)),
+      landmarks: landmarks?.hits.map((hit) => this.toHit('places', hit)) ?? [],
       totalHits: result.estimatedTotalHits,
+      nextCursor:
+        result.hits.length === plan.limit && plan.offset + plan.limit < reachable
+          ? encodeSearchCursor(plan.queryKey, plan.offset + plan.limit)
+          : null,
       facets: {
         categories: Object.entries(result.facetDistribution.category_slug ?? {})
           .map(([slug, count]) => ({ slug, count }))
           .sort((a, b) => b.count - a.count),
+        price,
         fields: fieldFacets(definition, facetFields, result),
       },
     };
   }
 
+  /** Nice price ranges over the results' price bounds, each counted exactly. */
+  private async priceFacet(
+    plan: Plan,
+    q: string,
+    matched: string[],
+    stats: { min: number; max: number } | undefined,
+    bucketCount: number,
+  ): Promise<PriceFacet | null> {
+    if (stats === undefined) return null;
+    const buckets = priceBuckets(stats.min, stats.max, bucketCount);
+    if (buckets.length === 0) return null;
+    const base = this.filters(plan, false, matched);
+    const counts = await this.engine.multiSearch<SearchDocument>(
+      buckets.map((bucket) => ({
+        indexUid: this.matcher.indexUid(plan.type),
+        q,
+        filter: [
+          ...base,
+          ...priceExpressions({
+            min: BigInt(bucket.min),
+            max: bucket.max === null ? null : BigInt(bucket.max),
+          }),
+        ],
+        limit: 0,
+        offset: 0,
+        countOnly: true,
+      })),
+    );
+    return {
+      min: poishaToMoney(stats.min),
+      max: poishaToMoney(stats.max),
+      buckets: buckets.map((bucket, i) => ({
+        min: poishaToMoney(bucket.min),
+        max: bucket.max === null ? null : poishaToMoney(bucket.max),
+        count: counts[i]?.estimatedTotalHits ?? 0,
+      })),
+    };
+  }
+
   private async searchDatabase(plan: Plan): Promise<SearchResponse> {
-    const rows = await this.tenantDb.transaction(
-      (tx) =>
-        this.repo.fallback(tx, plan.type, {
-          terms: this.fallbackTerms(plan.q),
-          categoryIds: plan.category?.ids ?? null,
-          fieldFilters: plan.type === 'posts' ? plan.fieldFilters : [],
-          geo: plan.geo,
-          nearestFirst: plan.sort === 'nearest' || plan.sort === 'relevance',
-          limit: plan.limit,
-          offset: plan.offset,
-        }),
-      { accessMode: 'read only' },
+    const rows = await this.readOnly((tx) =>
+      this.repo.fallback(tx, plan.type, {
+        terms: this.fallbackTerms(plan.q),
+        categoryIds: plan.criteria.categoryIds,
+        fieldFilters: plan.type === 'posts' ? plan.criteria.fieldFilters : [],
+        origin: plan.origin,
+        radiusKm: plan.radiusKm,
+        shippableOnly: plan.criteria.shippableOnly,
+        price: plan.criteria.price,
+        localityId: plan.type === 'posts' ? plan.criteria.localityId : null,
+        nearestFirst: plan.sort === 'distance' || plan.sort === 'relevance',
+        limit: plan.limit,
+        offset: plan.offset,
+      }),
     );
     return {
       ...this.emptyResponse(plan),
       hits: rows.map((row) => fallbackHit(plan.type, row)),
       totalHits: plan.offset + rows.length,
+      nextCursor:
+        rows.length === plan.limit && plan.offset + plan.limit < plan.maxTotalHits
+          ? encodeSearchCursor(plan.queryKey, plan.offset + plan.limit)
+          : null,
       degraded: true,
     };
   }
@@ -306,29 +554,6 @@ export class SearchService {
       for (const synonym of this.synonyms[word] ?? []) terms.add(synonym);
     }
     return [...terms].slice(0, FALLBACK_MAX_TERMS);
-  }
-
-  private async categorySuggestions(tenantId: string, q: string): Promise<Suggestion[]> {
-    const categories = await this.tenantDb.transaction(
-      (tx) => this.repo.tenantCategories(tx, tenantId),
-      {
-        accessMode: 'read only',
-      },
-    );
-    const needles = new Set(
-      [q, transliterate(q), ...(this.synonyms[q] ?? [])].filter((n) => n !== ''),
-    );
-    const matches = (candidate: string) => {
-      const text = normalizeSearchText(candidate);
-      return [...needles].some((n) => text.startsWith(n) || text.includes(` ${n}`));
-    };
-    return categories
-      .filter((c) => [c.name_bn, c.name_en, transliterate(c.name_bn)].some(matches))
-      .map((c) => ({
-        kind: 'category' as const,
-        slug: c.slug,
-        name: { bn: c.name_bn, en: c.name_en },
-      }));
   }
 
   private toHit(type: SearchType, doc: SearchDocument & { _geoDistance?: number }): SearchHit {
@@ -374,11 +599,17 @@ export class SearchService {
   private emptyResponse(plan: Plan): SearchResponse {
     return {
       query: plan.q,
+      searchId: null,
       hits: [],
-      page: plan.page,
+      landmarks: [],
+      nextCursor: null,
+      page: plan.limit > 0 ? Math.floor(plan.offset / plan.limit) + 1 : 1,
       limit: plan.limit,
       totalHits: 0,
-      facets: { categories: [], fields: {} },
+      scope: plan.scope,
+      radiusKm: plan.radiusKm,
+      area: plan.area && { slug: plan.area.slug, name: plan.area.name },
+      facets: { categories: [], price: null, fields: {} },
       degraded: false,
     };
   }
@@ -396,11 +627,63 @@ export class SearchService {
     }
   }
 
+  private readOnly<T>(work: (tx: DatabaseTransaction) => Promise<T>): Promise<T> {
+    return this.tenantDb.transaction(work, { accessMode: 'read only' });
+  }
+
   private requireTenant(): string {
     const tenantId = this.tenantContext.require().tenantId;
     if (!tenantId) throw new TenantRequiredException();
     return tenantId;
   }
+}
+
+/**
+ * The category's facets: its first `selectMax` select-type fields (in the
+ * schema's filterable order, which is the author's priority) plus every
+ * numeric/date range field.
+ */
+export function topFacetFields(definition: CategoryFieldDefinition, selectMax: number): string[] {
+  const typeOf = (key: string) => definition.jsonSchema.properties[key]?.['x-field-type'];
+  const values = definition.filterableFields
+    .filter((key) => VALUE_FIELD_TYPES.has(typeOf(key) ?? ''))
+    .slice(0, selectMax);
+  return definition.filterableFields.filter(
+    (key) => values.includes(key) || RANGE_FIELD_TYPES.has(typeOf(key) ?? ''),
+  );
+}
+
+/** Everything within a radius: suggestions and landmarks. */
+function nearbyCriteria(
+  type: SearchType,
+  origin: { lat: number; lng: number },
+  radiusKm: number,
+): SearchCriteria {
+  return {
+    type,
+    q: '',
+    origin,
+    radiusKm,
+    shippableOnly: false,
+    localityId: null,
+    categoryIds: null,
+    fieldFilters: [],
+    price: null,
+  };
+}
+
+/** Round-robin across lists, so each query variant contributes its best first. */
+function interleave<T>(lists: readonly (readonly T[])[]): T[] {
+  const out: T[] = [];
+  for (let i = 0; lists.some((l) => i < l.length); i++) {
+    for (const list of lists) if (i < list.length) out.push(list[i]!);
+  }
+  return out;
+}
+
+/** Starts like a needle: at the beginning of a form or of one of its words. Forms are normalized. */
+function startsLike(forms: readonly string[], needles: readonly string[]): boolean {
+  return forms.some((text) => needles.some((n) => text.startsWith(n) || text.includes(` ${n}`)));
 }
 
 function fieldFacets(
@@ -458,13 +741,4 @@ function fallbackHit(type: SearchType, row: FallbackRow): SearchHit {
     isVerified: false,
     isLandmark: false,
   };
-}
-
-/** Round-robin across lists, so suggestions mix posts, stores and places. */
-function interleave<T>(lists: T[][]): T[] {
-  const out: T[] = [];
-  for (let i = 0; lists.some((l) => i < l.length); i++) {
-    for (const list of lists) if (i < list.length) out.push(list[i]!);
-  }
-  return out;
 }

@@ -13,6 +13,16 @@ export interface EngineSearchRequest {
   limit: number;
   offset: number;
   attributesToRetrieve?: string[];
+  /**
+   * Only the number of matches, counted exactly (no hits): limit/offset are
+   * ignored. Used for the price-range facet counts.
+   */
+  countOnly?: boolean;
+  /**
+   * 'last' (Meilisearch's default) drops query words from the end until
+   * something matches; 'all' returns only documents matching every word.
+   */
+  matchingStrategy?: 'last' | 'all';
 }
 
 export interface EngineSearchResult<T> {

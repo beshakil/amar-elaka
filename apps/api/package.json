@@ -28,6 +28,7 @@
     "geo:import": "tsx src/locations/geo-import/geo-import.ts",
     "search:synonyms": "tsx src/search/synonyms/export-synonyms.ts && prettier --write src/search/synonyms/search-synonyms.generated.ts",
     "search:reindex": "nest build && node dist/search/cli/reindex.js",
+    "search:zero-results": "nest build && node dist/search/cli/zero-results.js",
     "storage:check": "tsx src/storage/cli/storage-check.ts"
   },
   "dependencies": {

@@ -51,6 +51,13 @@ const scopeSchema = z.discriminatedUnion('scope', [
     tenant_id: z.string().uuid(),
     place_id: z.string().uuid(),
   }),
+  // 0034: the boost slot cap.
+  z.object({
+    scope: z.literal('boost_post'),
+    tenant_id: z.string().uuid(),
+    post_id: z.string().uuid(),
+  }),
+  z.object({ scope: z.literal('boosted'), tenant_id: z.string().uuid().optional() }),
 ]);
 
 const claimedEvent = z.object({
@@ -128,6 +135,10 @@ function toScope(payload: z.infer<typeof scopeSchema>): ResyncScope {
       return { kind: 'member', tenantId: payload.tenant_id, memberId: payload.member_id };
     case 'place':
       return { kind: 'place', tenantId: payload.tenant_id, placeId: payload.place_id };
+    case 'boost_post':
+      return { kind: 'boost_post', tenantId: payload.tenant_id, postId: payload.post_id };
+    case 'boosted':
+      return { kind: 'boosted', tenantId: payload.tenant_id ?? null };
   }
 }
 
@@ -165,6 +176,12 @@ export class SearchOutboxRelay {
   }
 
   async relay(): Promise<number> {
+    // No row changes when a boost window opens or closes; catch it here, on
+    // the relay's own 2-second beat, so search follows within seconds.
+    // Best effort: a failure here must never hold up the outbox itself.
+    await this.indexer.syncBoostBoundaries().catch((error: unknown) => {
+      this.logger.warn({ err: error }, 'boost window sync failed; will retry on the next run');
+    });
     let handled = 0;
     for (let batch = 0; batch < MAX_BATCHES_PER_RUN; batch++) {
       const events = await this.asSystem((tx) => this.claim(tx));

@@ -50,8 +50,14 @@ export interface SearchDocument {
 
   /** From PostGIS: the row's point, else its locality's centre, else its area's centroid. */
   _geo: { lat: number; lng: number } | null;
-  /** 1 while a boost is active (ranking rule `is_boosted:desc`). */
+  /**
+   * 1 while a `category_top` boost is active AND within the category's
+   * boost_slots_per_category cap — the same rule as the feed (feed_posts,
+   * 0030). Ranking rule `is_boosted:desc`.
+   */
   is_boosted: 0 | 1;
+  /** Posts: the category ships nationwide (scope=country searches only these). */
+  is_shippable: boolean;
   /** Unix seconds: last bump or publication (ranking rule `published_at:desc`). */
   published_at: number;
 
@@ -90,12 +96,15 @@ export const SEARCHABLE_ATTRIBUTES = [
 ] as const;
 
 export const FILTERABLE_ATTRIBUTES = [
+  // An explicit sort of a text search filters on the matching ids (search.service.ts).
+  'id',
   'tenant_id',
   'category_id',
   'category_slug',
   'locality_id',
   '_geo',
   'is_boosted',
+  'is_shippable',
   'price_minor',
   'rating_avg',
   'is_verified',

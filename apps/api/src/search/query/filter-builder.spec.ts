@@ -1,4 +1,10 @@
-import { buildSearchFilter, buildSort, fieldFilterExpression, quote } from './filter-builder';
+import {
+  buildSearchFilter,
+  buildSort,
+  fieldFilterExpression,
+  priceExpressions,
+  quote,
+} from './filter-builder';
 
 describe('filter builder', () => {
   it('quotes and escapes every string value', () => {
@@ -16,6 +22,31 @@ describe('filter builder', () => {
         fieldFilters: [],
       }),
     ).toEqual(['_geoRadius(23.8, 90.4, 2500)', 'category_id IN ["c1", "c2"]']);
+  });
+
+  it('an area narrows the radius search, never replaces it (ADR 042)', () => {
+    expect(
+      buildSearchFilter({
+        geo: { lat: 23.8, lng: 90.4, radiusKm: 10 },
+        localityId: 'loc-1',
+        categoryIds: null,
+        fieldFilters: [],
+      }),
+    ).toEqual(['_geoRadius(23.8, 90.4, 10000)', 'locality_id = "loc-1"']);
+  });
+
+  it('country scope: no radius, shippable only; price bounds in poisha', () => {
+    expect(
+      buildSearchFilter({
+        geo: null,
+        shippableOnly: true,
+        categoryIds: null,
+        fieldFilters: [],
+        price: { min: 50_000n, max: null },
+      }),
+    ).toEqual(['is_shippable = true', 'price_minor >= 50000']);
+    expect(priceExpressions({ min: null, max: 100n })).toEqual(['price_minor < 100']);
+    expect(priceExpressions(null)).toEqual([]);
   });
 
   it('translates each kind of field filter', () => {
@@ -53,5 +84,7 @@ describe('filter builder', () => {
     expect(buildSort('newest', geo)).toEqual(['published_at:desc', '_geoPoint(23.8, 90.4):asc']);
     expect(buildSort('price_asc', null)).toEqual(['price_minor:asc']);
     expect(buildSort('rating', null)).toEqual(['rating_avg:desc']);
+    expect(buildSort('distance', geo)).toEqual(['_geoPoint(23.8, 90.4):asc']);
+    expect(buildSort('price_desc', geo)).toEqual(['price_minor:desc', '_geoPoint(23.8, 90.4):asc']);
   });
 });
