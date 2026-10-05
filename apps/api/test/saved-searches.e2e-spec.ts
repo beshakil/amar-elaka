@@ -88,10 +88,24 @@ describe('Saved searches (e2e)', () => {
       })
       .then((r) => ({ status: r.statusCode, body: (r.body ? r.json() : null) as T }));
 
-  /** Index what was written, then run the matcher and the notifier: one scheduled run. */
+  /**
+   * Index what was written, then run the matcher and the notifier: one
+   * scheduled run. The suites share one outbox in parallel, and another
+   * suite's relay may hold a lease on our events: wait until they are done.
+   */
   const runMatcher = async () => {
     const relay = worker.get(SearchOutboxRelay);
-    while ((await relay.relay()) > 0);
+    const deadline = Date.now() + 20_000;
+    for (;;) {
+      while ((await relay.relay()) > 0);
+      const [pending] = await admin<{ n: string }[]>`
+        select count(*) as n from outbox_events
+        where processed_at is null and event_type like 'search.%'
+          and aggregate_id::text like ${FIXTURE}`;
+      if (Number(pending!.n) === 0) break;
+      if (Date.now() > deadline) throw new Error(`${pending!.n} search events never processed`);
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
     await worker.get(SavedSearchMatcherService).matchNewPosts(BUDGET);
     await worker.get(SavedSearchNotifierService).notifyPending(BUDGET);
   };

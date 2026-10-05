@@ -183,7 +183,7 @@ function setup(searches: StoredSavedSearch[], pairs: { search_id: string; post_i
     logger,
   );
   jest.spyOn(context, 'require').mockReturnValue({ tenantId: TENANT, role: 'anon' } as never);
-  return { service, search, engine, matcher, inserted, watermarks, warn };
+  return { service, search, engine, matcher, inserted, watermarks, warn, repo };
 }
 
 describe('SavedSearchMatcherService', () => {
@@ -206,6 +206,36 @@ describe('SavedSearchMatcherService', () => {
     ]);
     expect(watermarks).toEqual(['p3']);
     expect(outcome).toEqual({ rows: 3, capped: false, details: { matches: 1 } });
+  });
+
+  it('skips a tenant deleted mid-run and carries on with the others', async () => {
+    const { service, engine, watermarks, warn, repo } = setup(
+      [stored()],
+      [{ search_id: 's-flat', post_id: 'p1' }],
+    );
+    engine.accept = new Set(['p1']);
+    // What Drizzle throws for Postgres 23503: the driver's error as the cause.
+    const fkViolation = Object.assign(new Error('Failed query'), { cause: { code: '23503' } });
+    Object.assign(repo, {
+      matchableTenants: () => Promise.resolve(['t-gone', TENANT]),
+      ensureWatermark: (_tx: DatabaseTransaction, tenantId: string) =>
+        tenantId === 't-gone' ? Promise.reject(fkViolation) : Promise.resolve(),
+    });
+
+    const outcome = await service.matchNewPosts({ batchSize: 50, maxBatches: 5 });
+
+    expect(watermarks).toEqual(['p3']);
+    expect(outcome).toMatchObject({ rows: 3, capped: false });
+    expect(warn).toHaveBeenCalledWith(
+      { tenantId: 't-gone' },
+      'tenant or post deleted during matching; skipped',
+    );
+
+    // Anything else still fails the run: the next one retries it.
+    Object.assign(repo, { ensureWatermark: () => Promise.reject(new Error('connection lost')) });
+    await expect(service.matchNewPosts({ batchSize: 50, maxBatches: 5 })).rejects.toThrow(
+      'connection lost',
+    );
   });
 
   it('sends the engine exactly what GET /search sends for the same criteria', async () => {

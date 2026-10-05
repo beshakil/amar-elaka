@@ -196,11 +196,15 @@ export class SavedSearchesRepository {
   /**
    * A tenant seen for the first time starts at "now": saved searches alert
    * on what is published from here on, never on the whole back catalogue.
+   * A tenant deleted since the run listed it gets no watermark (and so no
+   * posts): selected from `tenants`, not inserted blind.
    */
   async ensureWatermark(tx: DatabaseTransaction, tenantId: string, graceSeconds: number) {
     await tx.execute(sql`
       insert into public.saved_search_watermarks (tenant_id, last_published_at, last_post_id)
-      values (${tenantId}::uuid, now() - make_interval(secs => ${graceSeconds}), ${nilUuid}::uuid)
+      select t.id, now() - make_interval(secs => ${graceSeconds}), ${nilUuid}::uuid
+      from public.tenants t
+      where t.id = ${tenantId}::uuid
       on conflict (tenant_id) do nothing`);
   }
 

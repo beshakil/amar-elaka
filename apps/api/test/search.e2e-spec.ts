@@ -73,9 +73,23 @@ describe('Search API (e2e)', () => {
     get<SearchResponse>('', query, installId);
   const ids = (response: SearchResponse) => response.hits.map((h) => h.id).sort();
 
-  /** Everything written so far reaches the index. */
+  /**
+   * Everything written so far reaches the index. Relaying ourselves is not
+   * enough: the e2e suites run in parallel on one outbox, and another suite's
+   * relay may hold a lease on our events — wait until they are processed too.
+   */
   const drain = async () => {
-    while ((await relay.relay()) > 0);
+    const deadline = Date.now() + 20_000;
+    for (;;) {
+      while ((await relay.relay()) > 0);
+      const [pending] = await admin<{ n: string }[]>`
+        select count(*) as n from outbox_events
+        where processed_at is null and event_type like 'search.%'
+          and aggregate_id::text like ${FIXTURE}`;
+      if (Number(pending!.n) === 0) return;
+      if (Date.now() > deadline) throw new Error(`${pending!.n} search events never processed`);
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
   };
 
   async function cleanUp(): Promise<void> {

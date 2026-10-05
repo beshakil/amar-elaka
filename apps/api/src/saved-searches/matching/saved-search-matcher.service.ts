@@ -50,16 +50,24 @@ export class SavedSearchMatcherService {
     let matches = 0;
     let batches = 0;
     for (const tenantId of tenants) {
-      await this.asSystem((tx) => this.repo.ensureWatermark(tx, tenantId, grace));
-      for (;;) {
-        if (batches >= budget.maxBatches) {
-          return { rows: posts, capped: true, details: { matches } };
+      try {
+        await this.asSystem((tx) => this.repo.ensureWatermark(tx, tenantId, grace));
+        for (;;) {
+          if (batches >= budget.maxBatches) {
+            return { rows: posts, capped: true, details: { matches } };
+          }
+          const done = await this.matchBatch(tenantId, grace, budget.batchSize);
+          batches += 1;
+          posts += done.posts;
+          matches += done.matches;
+          if (done.posts < budget.batchSize) break;
         }
-        const done = await this.matchBatch(tenantId, grace, budget.batchSize);
-        batches += 1;
-        posts += done.posts;
-        matches += done.matches;
-        if (done.posts < budget.batchSize) break;
+      } catch (error) {
+        // The tenant (or a post) was deleted while this run was on it: its
+        // rows went with it, so there is nothing left to match. Other tenants
+        // must not wait for the next run because of it.
+        if (!isForeignKeyViolation(error)) throw error;
+        this.logger.warn({ tenantId }, 'tenant or post deleted during matching; skipped');
       }
     }
     return { rows: posts, capped: false, details: { matches } };
@@ -151,4 +159,13 @@ export class SavedSearchMatcherService {
   private asSystem<T>(work: (tx: DatabaseTransaction) => Promise<T>): Promise<T> {
     return this.context.run({ role: 'system' }, () => this.tenantDb.transaction(work));
   }
+}
+
+/** Postgres 23503, directly or as the cause Drizzle wraps it in. */
+function isForeignKeyViolation(error: unknown): boolean {
+  const codeOf = (e: unknown) =>
+    typeof e === 'object' && e !== null && 'code' in e ? e.code : undefined;
+  const cause =
+    typeof error === 'object' && error !== null && 'cause' in error ? error.cause : undefined;
+  return codeOf(error) === '23503' || codeOf(cause) === '23503';
 }
