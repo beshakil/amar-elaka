@@ -44,6 +44,8 @@ export const stores = pgTable('stores', {
   slug: text('slug').notNull(),
   nameBn: text('name_bn').notNull(),
   nameEn: text('name_en'),
+  // 0043: name_bn in Latin letters, for duplicate detection.
+  nameTranslit: text('name_translit'),
   description: text('description'),
   // Composite FKs (tenant_id, *_media_id) -> media_assets, SET NULL.
   logoMediaId: uuid('logo_media_id'),

@@ -13,7 +13,7 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 import { categories, categoryFieldSchemas, geoAreas } from './catalog';
-import { auditColumns, geographyPoint, id, softDeleteColumns, timestamptz } from './columns';
+import { auditColumns, geographyPoint, id, softDeleteColumns, timestamptz, xid8 } from './columns';
 import {
   claimStatuses,
   claimVerificationMethods,
@@ -179,6 +179,8 @@ export const places = pgTable('places', {
   slug: text('slug').notNull(),
   nameBn: text('name_bn').notNull(),
   nameEn: text('name_en'),
+  // 0043: name_bn in Latin letters, for duplicate detection.
+  nameTranslit: text('name_translit'),
   description: text('description'),
   fields: jsonb('fields')
     .$type<Record<string, unknown>>()
@@ -205,6 +207,14 @@ export const places = pgTable('places', {
   // Composite FK (tenant_id, claimed_by_member_id) -> tenant_members; see
   // posts.authorMemberId for why this stays a bare column.
   claimedByMemberId: uuid('claimed_by_member_id'),
+  // Composite FKs (0042): (tenant_id, claim_store_id) -> stores and
+  // (tenant_id, street_photo_media_id) -> media_assets, both SET NULL.
+  claimStoreId: uuid('claim_store_id'),
+  streetPhotoMediaId: uuid('street_photo_media_id'),
+  // 0043: a merged place stays as a redirect; composite FK (tenant_id,
+  // merged_into_place_id) -> places, SET NULL.
+  mergedIntoPlaceId: uuid('merged_into_place_id'),
+  mergedAt: timestamptz('merged_at'),
   fieldVerifiedAt: timestamptz('field_verified_at'),
   statusCode: text('status_code')
     .notNull()
@@ -258,6 +268,40 @@ export const placeClaims = pgTable('place_claims', {
   rejectionReasonCode: text('rejection_reason_code').references(() => moderationReasons.code, {
     onDelete: 'restrict',
   }),
+  // 0042: the evidence offered (≥ 1), the OTP proof, the store the approval
+  // created or linked (composite FK -> stores, SET NULL), a moderator's note.
+  evidenceCodes: text('evidence_codes')
+    .array()
+    .notNull()
+    .default(sql`'{}'::text[]`),
+  otpVerifiedPhoneE164: text('otp_verified_phone_e164'),
+  otpVerifiedAt: timestamptz('otp_verified_at'),
+  storeId: uuid('store_id'),
+  reviewNote: text('review_note'),
+  ...auditColumns(),
+});
+
+/**
+ * 0042 A place's edit history: one row per place per transaction, written by
+ * the places trigger and record_place_hours_revision(), never by the API.
+ */
+export const placeRevisions = pgTable('place_revisions', {
+  id: id(),
+  tenantId: uuid('tenant_id')
+    .notNull()
+    .references(() => tenants.id, { onDelete: 'restrict' }),
+  // Composite FKs (tenant_id, place_id) -> places and (tenant_id,
+  // reverts_revision_id) -> place_revisions, both CASCADE.
+  placeId: uuid('place_id').notNull(),
+  changedFields: jsonb('changed_fields')
+    .$type<Record<string, { from: unknown; to: unknown }>>()
+    .notNull(),
+  changedByUserId: uuid('changed_by_user_id').references(() => users.id, {
+    onDelete: 'set null',
+  }),
+  kindCode: text('kind_code').notNull(),
+  revertsRevisionId: uuid('reverts_revision_id'),
+  xactId: xid8('xact_id').notNull(),
   ...auditColumns(),
 });
 
@@ -353,5 +397,58 @@ export const mediaAttachments = pgTable('media_attachments', {
   ticketMessageId: uuid('ticket_message_id'),
   sortOrder: smallint('sort_order').notNull().default(0),
   caption: text('caption'),
+  ...auditColumns(),
+});
+
+/**
+ * 0043 The duplicate review queue: a likely/possible pair of places or of
+ * stores, one row per pair ever. Composite FKs to places/stores stay in SQL.
+ */
+export const duplicateCandidates = pgTable('duplicate_candidates', {
+  id: id(),
+  tenantId: uuid('tenant_id')
+    .notNull()
+    .references(() => tenants.id, { onDelete: 'restrict' }),
+  entityTypeCode: text('entity_type_code').notNull(),
+  placeId: uuid('place_id'),
+  candidatePlaceId: uuid('candidate_place_id'),
+  storeId: uuid('store_id'),
+  candidateStoreId: uuid('candidate_store_id'),
+  candidateTenantId: uuid('candidate_tenant_id')
+    .notNull()
+    .references(() => tenants.id, { onDelete: 'restrict' }),
+  score: numeric('score', { precision: 4, scale: 3 }).notNull(),
+  classificationCode: text('classification_code').notNull(),
+  signals: jsonb('signals')
+    .$type<Record<string, unknown>>()
+    .notNull()
+    .default(sql`'{}'::jsonb`),
+  sourceCode: text('source_code').notNull(),
+  statusCode: text('status_code').notNull().default('open'),
+  resolvedByUserId: uuid('resolved_by_user_id').references(() => users.id, {
+    onDelete: 'set null',
+  }),
+  resolvedAt: timestamptz('resolved_at'),
+  ...auditColumns(),
+});
+
+/** 0043 What one place merge moved, for its undo (written only by merge_place()). */
+export const placeMerges = pgTable('place_merges', {
+  id: id(),
+  tenantId: uuid('tenant_id')
+    .notNull()
+    .references(() => tenants.id, { onDelete: 'restrict' }),
+  // Composite FKs (tenant_id, loser/target_place_id) -> places, CASCADE.
+  loserPlaceId: uuid('loser_place_id').notNull(),
+  targetPlaceId: uuid('target_place_id').notNull(),
+  mergedByUserId: uuid('merged_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+  reasonCode: text('reason_code')
+    .notNull()
+    .references(() => moderationReasons.code, { onDelete: 'restrict' }),
+  reasonText: text('reason_text'),
+  moved: jsonb('moved').$type<Record<string, unknown>>().notNull(),
+  undoUntil: timestamptz('undo_until').notNull(),
+  undoneAt: timestamptz('undone_at'),
+  undoneByUserId: uuid('undone_by_user_id').references(() => users.id, { onDelete: 'set null' }),
   ...auditColumns(),
 });

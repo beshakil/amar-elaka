@@ -44,6 +44,7 @@ import { TokenService } from './tokens/token.service';
   // StorageModule, and by PlatformAdminGuard). A guard named in @UseGuards is
   // constructed in the *consuming* module's scope, so its own dependency —
   // TokenService — must be exported too, or that module cannot build it.
-  exports: [JwtAuthGuard, TokenService],
+  // OtpService: the place-claim OTP (PlacesModule, ADR 047).
+  exports: [JwtAuthGuard, TokenService, OtpService],
 })
 export class AuthModule {}

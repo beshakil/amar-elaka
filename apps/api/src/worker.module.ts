@@ -8,6 +8,7 @@ import { MailModule } from './mail/mail.module';
 import { GeoWorkerModule } from './locations/geocoding/geo-worker.module';
 import { MaintenanceModule } from './maintenance/maintenance.module';
 import { MediaWorkerModule } from './media/media-worker.module';
+import { PlacesWorkerModule } from './places/places-worker.module';
 import { PostsWorkerModule } from './posts/posts-worker.module';
 import { QueueModule } from './queue/queue.module';
 import { SavedSearchesWorkerModule } from './saved-searches/saved-searches-worker.module';
@@ -35,6 +36,7 @@ import { SearchWorkerModule } from './search/indexing/search-worker.module';
     MaintenanceModule,
     GeoWorkerModule,
     MediaWorkerModule,
+    PlacesWorkerModule,
     PostsWorkerModule,
     SavedSearchesWorkerModule,
     SearchWorkerModule,

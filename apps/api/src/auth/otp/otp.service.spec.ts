@@ -171,4 +171,35 @@ describe('OtpService', () => {
     // Even the correct code no longer works — the record was deleted.
     await expect(otp.verifyOtp(PHONE, code)).rejects.toBeInstanceOf(OtpExpiredException);
   });
+
+  describe('place-claim codes (ADR 047)', () => {
+    const CLAIM = { kind: 'place_claim', scope: 'user-1:place-1' } as const;
+
+    it('say what they are for, verify for their claim, and never log anyone in', async () => {
+      const { otp, sms, store } = await setup();
+      await otp.requestOtp(PHONE, IP, CLAIM);
+      const message = sms.sent[0]!.message;
+      expect(message).toContain('মালিকানা');
+      const code = /\d{6}/.exec(message)![0];
+
+      // Not a login code: there is no login OTP for this phone at all.
+      await expect(otp.verifyOtp(PHONE, code)).rejects.toBeInstanceOf(OtpExpiredException);
+      // Not usable by another claimant or for another place.
+      await expect(
+        otp.verifyOtp(PHONE, code, { kind: 'place_claim', scope: 'user-2:place-1' }),
+      ).rejects.toBeInstanceOf(OtpExpiredException);
+      await expect(otp.verifyOtp(PHONE, code, CLAIM)).resolves.toBeUndefined();
+      expect(store.records.size).toBe(0);
+    });
+
+    it("don't overwrite a pending login code, but share the phone's cooldown", async () => {
+      const { otp, sms, store } = await setup();
+      await otp.requestOtp(PHONE, IP);
+      const loginCode = /\d{6}/.exec(sms.sent[0]!.message)![0];
+      await expect(otp.requestOtp(PHONE, IP, CLAIM)).rejects.toBeInstanceOf(OtpCooldownException);
+      store.cooldowns.clear();
+      await otp.requestOtp(PHONE, IP, CLAIM);
+      await expect(otp.verifyOtp(PHONE, loginCode)).resolves.toBeUndefined();
+    });
+  });
 });

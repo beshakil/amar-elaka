@@ -1455,6 +1455,28 @@ Local business directory entry: a physical place (shop, pharmacy, clinic, school
 - `(updated_at) where search_synced_at is null or search_synced_at < updated_at`: search sync safety-net sweeper.
   **RLS:** T-PUBLIC-READ (published, temporarily/permanently closed). INSERT: any member (forced to `pending_review` by service), or agent/staff. UPDATE: staff, agents, or the claimed owner (`claimed_by_member_id = current_member_id()`), always in the **owning** tenant's context. That's why a landmark is visible to neighbours but can't be edited by them: their sessions never satisfy T-ISOLATE for this row. Neighbours read landmarks only through `neighbour_landmarks()` and render them in the owner's context.
 
+**0042 (ADR 047):**
+
+- **New columns:**
+  - `claim_store_id`: the store whose map pin this place is (→ stores (T), SET NULL; unique per store).
+  - `street_photo_media_id`: → media_assets (T), SET NULL; the photo is also attached via `media_attachments`.
+- **New policies:**
+  - `places_creator_read`: the contributor reads their own place in any status.
+  - `places_owner_read`: the claimed owner reads theirs.
+- **New trigger:** `places_protect_system_columns`. Only staff/system write `claimed_by_member_id`, `claim_store_id`,
+  `created_by_user_id` and the ratings. A claimed owner only moves the place between published and
+  temporarily/permanently closed.
+- **History:** every change is recorded in `place_revisions` (§4.6a).
+
+**0043 (ADR 048):**
+
+- **New columns:**
+  - `name_translit`: `name_bn` in Latin letters, for duplicate detection; trigram-indexed; also on `stores`.
+  - `merged_into_place_id`, `merged_at`: a merged place stays as a soft-deleted redirect to its target.
+- **Duplicates:** found by `place_duplicate_signals()` (radius, any tenant) and queued in `duplicate_candidates`.
+- **Merging:** `merge_place()` / `undo_place_merge()` move a place's photos, revisions, saves, reviews, lead history
+  and claims, and record them in `place_merges`.
+
 ---
 
 ### 4.5 `place_hours`
@@ -1508,6 +1530,51 @@ A member's request to be recognised as the owner of a place.
 - `(tenant_id, id) where status_code = 'pending'`: review queue.
 - `(tenant_id, claimant_member_id, id desc)`: "my claims".
   **RLS:** T-ISOLATE. The claimant can SELECT their own claims and INSERT for themselves; they can UPDATE only to `withdrawn` (service). Staff SELECT/UPDATE all. Approving sets `places.claimed_by_member_id` in the same transaction.
+
+**0042 (ADR 047):**
+
+- **New columns:**
+  - `evidence_codes text[]`: what the claimant offered (known method codes; the API requires ≥ 1 the tenant accepts).
+  - `otp_verified_phone_e164`, `otp_verified_at`: set together, when an OTP to a number on the place was verified.
+  - `store_id`: the store the approval created or linked (→ stores (T), SET NULL).
+  - `review_note`.
+- **Index:** `unique (tenant_id, place_id) where status_code = 'approved'`, at most one approved claim per place.
+- **Trigger:** `place_claims_protect_status`, so only staff/system decide a claim.
+- **Approval** is `approve_place_claim()` (SECURITY DEFINER), one transaction:
+  - creates or links the claimant's store; `places.claim_store_id` is set and the place becomes the store's map pin;
+  - carries saves and reviews over to the store;
+  - rejects competing pending claims;
+  - writes `moderation_actions` rows.
+
+---
+
+### 4.6a `place_revisions` (0042)
+
+A place's edit history: one row per place per transaction.
+**Scope:** TENANT-SCOPED
+
+| column                | type    | null | default                | comment                                                          |
+| --------------------- | ------- | ---- | ---------------------- | ---------------------------------------------------------------- |
+| `<pk>`                |         |      |                        |                                                                  |
+| `<tenant>`            |         |      |                        |                                                                  |
+| `place_id`            | `uuid`  | NO   | —                      |                                                                  |
+| `changed_fields`      | `jsonb` | NO   | —                      | `{field: {from, to}}`; location as `{lat, lng}`; `hours` = week. |
+| `changed_by_user_id`  | `uuid`  | YES  | —                      | `current_user_id()` of the writer.                               |
+| `kind_code`           | `text`  | NO   | —                      | created / edited / claimed / reverted.                           |
+| `reverts_revision_id` | `uuid`  | YES  | —                      | Set exactly for `reverted`.                                      |
+| `xact_id`             | `xid8`  | NO   | `pg_current_xact_id()` | Merge key; immutable once its transaction commits.               |
+| `<audit>`             |         |      |                        |                                                                  |
+
+**Keys:** PK `id`. `place_id → places (T)` CASCADE (places are only soft-deleted by the app). `reverts_revision_id → place_revisions (T)` CASCADE. `changed_by_user_id → users` SET NULL.
+**Indexes:**
+
+- `unique (place_id, xact_id)`: the merge target.
+- `(tenant_id, place_id, id desc)`: history.
+- `(changed_by_user_id, id desc)`: what a user changed.
+
+**Writes:** only the database: the `places_zz_record_revision` trigger, `record_place_hours_revision()` and
+`revert_place_revision()`. The app role has SELECT only, and the rows are append-only.
+**RLS:** T-ISOLATE. SELECT by staff, agents and the place's claimed owner.
 
 ---
 
@@ -3624,6 +3691,13 @@ Append-only record of every moderation action on a post, with its mandatory reas
 - `(action_code, id) where action_code in ('legal_hold_placed','legal_hold_cleared')`: **cross-tenant** legal-hold audit trail.
 - `(actor_user_id, id desc) where actor_user_id is not null`: review of a moderator's actions.
   **RLS:** ENABLE + FORCE, T-ISOLATE base. INSERT: `moderator`/`tenant_admin` of the tenant and platform (actor = self); the owner only for `privacy_scrub` on their own post; system for `spam_auto_deleted`. `legal_hold_cleared`: `platform_admin` only. SELECT: staff and platform. The owner reads their post's history only via SECURITY DEFINER `my_post_moderation_history(post_id)`, which returns action, reason_code, created_at, and `reason_text` for `removed`/`restored` only. No UPDATE/DELETE. **Retention: permanent.**
+
+**0042 (ADR 047):**
+
+- **Targets:** `post_id` is nullable, and the table gains `place_id` (→ places (T)) and `place_claim_id`
+  (→ place_claims (T)), both RESTRICT. CHECK: exactly one of the three per row.
+- **New action codes:** `claim_submitted`, `claim_approved`, `claim_rejected`, `reverted`.
+- **New INSERT policy:** a claimant inserts only their own claim's `claim_submitted` row.
 
 ---
 

@@ -295,6 +295,20 @@
       "when": 1791303119374,
       "tag": "0041_map_kinds_and_client_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1791320849460,
+      "tag": "0042_place_contributions_and_claims",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1791323862608,
+      "tag": "0043_duplicate_detection_and_merge",
+      "breakpoints": true
     }
   ]
 }

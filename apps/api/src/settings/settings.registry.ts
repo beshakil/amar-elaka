@@ -65,6 +65,13 @@ export const mapKindSchema = z.object({
 });
 export type MapKind = z.infer<typeof mapKindSchema>;
 
+/** Evidence a place claimant may offer (claim_verification_methods codes, ADR 047). */
+export const CLAIM_EVIDENCE_METHODS = [
+  'otp_to_listed_phone',
+  'shop_front_photo',
+  'trade_license',
+] as const;
+
 export const SETTING_DEFINITIONS = {
   // Tenant lifecycle (§13.30)
   grace_past_due_days: wholeNumber,
@@ -339,6 +346,27 @@ export const SETTING_DEFINITIONS = {
       (kinds) => new Set(kinds.map((k) => k.code)).size === kinds.length,
       'kind codes are unique',
     ),
+
+  // User-contributed places and the claim flow (ADR 047, migration 0042)
+  place_contribution_trust_threshold: wholeNumber,
+  place_name_max_length: wholeNumber,
+  place_max_photos: wholeNumber,
+  place_max_phones: wholeNumber,
+  place_claim_evidence_methods: z.array(z.enum(CLAIM_EVIDENCE_METHODS)),
+  place_claim_otp_auto_approve: flag,
+  place_claim_max_documents: wholeNumber,
+  place_claim_note_max_length: wholeNumber,
+
+  // Duplicate detection and the merge tool (ADR 048, migration 0043)
+  duplicate_radius_m: wholeNumber,
+  duplicate_likely_score: decimal,
+  duplicate_possible_score: decimal,
+  duplicate_phone_bonus: decimal,
+  duplicate_category_mismatch_factor: decimal,
+  duplicate_candidates_max: wholeNumber,
+  duplicate_name_stopwords: textArray,
+  duplicate_batch_lookback_hours: wholeNumber,
+  merge_undo_days: wholeNumber,
 } as const satisfies Record<string, z.ZodTypeAny>;
 
 export type SettingKey = keyof typeof SETTING_DEFINITIONS;

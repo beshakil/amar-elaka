@@ -7,7 +7,11 @@ export type NotificationType =
   | 'saved_search_match'
   | 'saved_search_paused'
   | 'geo_budget_warning'
-  | 'geo_budget_exhausted';
+  | 'geo_budget_exhausted'
+  | 'place_approved'
+  | 'place_rejected'
+  | 'place_claim_approved'
+  | 'place_claim_rejected';
 
 export interface OutgoingNotification {
   userId: string;
@@ -16,7 +20,7 @@ export interface OutgoingNotification {
   params: Record<string, string | null>;
   /** In-app route to open, e.g. /posts/<id>. */
   deepLink: string | null;
-  /** The entity the notification is about (a post id). */
+  /** The entity the notification is about (a post, place or place claim id). */
   entityId: string | null;
   /** Same key twice = one notification (e.g. a retried moderation action). */
   dedupeKey: string | null;

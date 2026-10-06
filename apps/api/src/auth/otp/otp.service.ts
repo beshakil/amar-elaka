@@ -18,8 +18,22 @@ import { otpMessage } from './sms/otp-message.templates';
 // settings-exempt: seconds in a day — the rolling-window length "per day" describes, not a tunable threshold.
 const ONE_DAY_SECONDS = 24 * 60 * 60;
 
-function otpKey(phone: string): string {
-  return `otp:code:${phone}`;
+/**
+ * What a code is for. A login code and a place-claim code (ADR 047) never
+ * share a slot or a hash: a claim code can't log anyone in, and asking for
+ * one doesn't overwrite the owner's pending login code. A claim code is also
+ * bound to `scope` (claimant + place), so only the requester can use it.
+ * Cooldown and daily limits stay per phone across purposes — they protect
+ * the recipient from SMS bombing.
+ */
+export type OtpPurpose = { kind: 'login' } | { kind: 'place_claim'; scope: string };
+
+const LOGIN: OtpPurpose = { kind: 'login' };
+
+function otpKey(phone: string, purpose: OtpPurpose): string {
+  return purpose.kind === 'login'
+    ? `otp:code:${phone}`
+    : `otp:code:${purpose.kind}:${purpose.scope}:${phone}`;
 }
 function cooldownKey(phone: string): string {
   return `otp:cooldown:${phone}`;
@@ -54,7 +68,7 @@ export class OtpService {
    * Returns the cooldown so clients can time their resend button from the
    * setting instead of hardcoding it.
    */
-  async requestOtp(phone: string, ip: string): Promise<OtpSent> {
+  async requestOtp(phone: string, ip: string, purpose: OtpPurpose = LOGIN): Promise<OtpSent> {
     const cooldownSeconds = await this.settings.get('otp_resend_cooldown_seconds');
     if (!(await this.store.trySetCooldown(cooldownKey(phone), cooldownSeconds))) {
       throw new OtpCooldownException();
@@ -79,29 +93,34 @@ export class OtpService {
     const ttlSeconds = await this.settings.get('otp_ttl_seconds');
     const code = this.generateCode(codeLength);
 
-    await this.store.createOtp(otpKey(phone), this.hashCode(phone, code), ttlSeconds);
-    await this.sms.send(phone, otpMessage(code));
+    await this.store.createOtp(
+      otpKey(phone, purpose),
+      this.hashCode(phone, code, purpose),
+      ttlSeconds,
+    );
+    await this.sms.send(phone, otpMessage(code, 'bn', purpose.kind));
     return { resendAfterSeconds: cooldownSeconds };
   }
 
   /** Single-use: the OTP record is deleted on both success and exhausted-attempts failure. */
-  async verifyOtp(phone: string, code: string): Promise<void> {
-    const record = await this.store.getOtp(otpKey(phone));
+  async verifyOtp(phone: string, code: string, purpose: OtpPurpose = LOGIN): Promise<void> {
+    const key = otpKey(phone, purpose);
+    const record = await this.store.getOtp(key);
     if (!record) {
       throw new OtpExpiredException();
     }
 
-    if (record.codeHash !== this.hashCode(phone, code)) {
+    if (record.codeHash !== this.hashCode(phone, code, purpose)) {
       const maxAttempts = await this.settings.get('otp_max_attempts');
-      const attempts = await this.store.incrementAttempts(otpKey(phone));
+      const attempts = await this.store.incrementAttempts(key);
       if (attempts >= maxAttempts) {
-        await this.store.deleteOtp(otpKey(phone));
+        await this.store.deleteOtp(key);
         throw new OtpTooManyAttemptsException();
       }
       throw new OtpIncorrectException(maxAttempts - attempts);
     }
 
-    await this.store.deleteOtp(otpKey(phone));
+    await this.store.deleteOtp(key);
   }
 
   private generateCode(length: number): string {
@@ -110,8 +129,10 @@ export class OtpService {
     return String(randomInt(max)).padStart(length, '0');
   }
 
-  /** HMAC-SHA256 keyed with JWT_SECRET, domain-separated by phone so the same code for two phones never hashes the same. */
-  private hashCode(phone: string, code: string): string {
-    return createHmac('sha256', this.env.JWT_SECRET).update(`otp:${phone}:${code}`).digest('hex');
+  /** HMAC-SHA256 keyed with JWT_SECRET, domain-separated by phone (and purpose) so the same code for two phones never hashes the same. */
+  private hashCode(phone: string, code: string, purpose: OtpPurpose): string {
+    const domain =
+      purpose.kind === 'login' ? `otp:${phone}` : `otp:${purpose.kind}:${purpose.scope}:${phone}`;
+    return createHmac('sha256', this.env.JWT_SECRET).update(`${domain}:${code}`).digest('hex');
   }
 }

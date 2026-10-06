@@ -7,6 +7,7 @@ import { MaintenanceQueueEventsListener } from './maintenance-queue-events.liste
 import {
   deadLetterQueueName,
   QUEUE_GEO,
+  QUEUE_PLACES,
   QUEUE_MAIL,
   QUEUE_MAINTENANCE,
   QUEUE_MEDIA,
@@ -64,6 +65,8 @@ const SEARCH_JOB_OPTIONS = {
       { name: deadLetterQueueName(QUEUE_SAVED_SEARCHES) },
       { name: QUEUE_GEO, defaultJobOptions: DEFAULT_JOB_OPTIONS },
       { name: deadLetterQueueName(QUEUE_GEO) },
+      { name: QUEUE_PLACES, defaultJobOptions: DEFAULT_JOB_OPTIONS },
+      { name: deadLetterQueueName(QUEUE_PLACES) },
     ),
   ],
   providers: [MailQueueEventsListener, MaintenanceQueueEventsListener],
