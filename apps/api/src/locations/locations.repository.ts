@@ -127,6 +127,19 @@ export class LocationsRepository {
    * when the provider is down. Prefix matches first, then by level (a
    * district before a union of the same name).
    */
+  /** Straight-line distance in metres on the WGS84 spheroid (PostGIS), never a provider call. */
+  async straightLineMeters(
+    tx: DatabaseTransaction,
+    from: { lat: number; lng: number },
+    to: { lat: number; lng: number },
+  ): Promise<number> {
+    const rows = await tx.execute(sql`
+      select st_distance(
+        public.geo_point(${from.lat}, ${from.lng}),
+        public.geo_point(${to.lat}, ${to.lng})) as meters`);
+    return z.object({ meters: z.coerce.number() }).parse([...rows][0]).meters;
+  }
+
   async searchByName(
     tx: DatabaseTransaction,
     query: string,

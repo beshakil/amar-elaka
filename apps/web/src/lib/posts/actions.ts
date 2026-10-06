@@ -155,10 +155,11 @@ export async function reverseGeocode(
   if (!point.safeParse({ lat, lng }).success) return invalid;
   return asSeller((auth) =>
     apiFetch({
-      path: '/geocode/reverse',
+      path: '/geo/reverse',
       schema: reverseGeocodeSchema,
       ...auth,
-      query: { lat: String(lat), lng: String(lng) },
+      // A post's pin: the fields settings map to post_location, nothing more (ADR 044).
+      query: { lat: String(lat), lng: String(lng), purpose: 'post_location' },
     }),
   );
 }
@@ -171,7 +172,7 @@ export async function searchAddress(
   if (!query || query.length > 200) return invalid;
   return asSeller(async (auth) => {
     const response = await apiFetch({
-      path: '/geocode/autocomplete',
+      path: '/geo/autocomplete',
       schema: geocodeResponseSchema,
       ...auth,
       query: { q: query, ...(near ? { lat: String(near.lat), lng: String(near.lng) } : {}) },

@@ -92,6 +92,9 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
+      # ADR 044: the leak check itself must catch a planted key.
+      - name: Geo secret check (self-test)
+        run: scripts/ci/check-geo-secrets.test.sh
       # The committed spec is the contract the apps and the e2e stub type-check
       # against; an API change must come with a regenerated spec.
       - name: OpenAPI spec is up to date
@@ -255,6 +258,13 @@ jobs:
       - run: pnpm install --frozen-lockfile
       # No runtime env on purpose: builds must not need it (ADR 022).
       - run: pnpm build
+      # ADR 044: only apps/api knows Barikoi. Fails if a web or admin build
+      # carries its host, a key-shaped string, or the real key (when the
+      # BARIKOI_API_KEY secret is set for this repository).
+      - name: No geo provider secrets in client builds
+        env:
+          BARIKOI_API_KEY: ${{ secrets.BARIKOI_API_KEY }}
+        run: scripts/ci/check-geo-secrets.sh apps/web/.next apps/admin/.next apps/web/public
       - name: Resolve Playwright version
         id: playwright
         run: echo "version=$(pnpm --filter @amar-elaka/e2e exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
@@ -318,6 +328,11 @@ jobs:
       - name: Analyze
         working-directory: apps/mobile
         run: flutter analyze
+      # ADR 044: the app never talks to Barikoi — no host, no key in its code or assets.
+      - name: No geo provider secrets in the app
+        env:
+          BARIKOI_API_KEY: ${{ secrets.BARIKOI_API_KEY }}
+        run: scripts/ci/check-geo-secrets.sh apps/mobile/lib apps/mobile/assets
       - name: Test
         working-directory: apps/mobile
         run: flutter test

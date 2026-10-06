@@ -13,11 +13,12 @@ import {
 import { DynamicForm } from '@amar-elaka/dynamic-form/react';
 import { MediaUploader } from '@/components/media-uploader/media-uploader';
 import { CategoryIcon } from '@/components/posts/category-icon';
+import { BarikoiAttribution } from '@/components/map/barikoi-attribution';
 import { LocationPicker } from '@/components/posts/location-picker';
 import { PostCard } from '@/components/posts/post-card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import type { CatalogCategory, GeocodeResult, Ownership, Post } from '@/lib/api/schemas';
+import type { CatalogCategory, GeocodeResult, MapConfig, Ownership, Post } from '@/lib/api/schemas';
 import { compressImage } from '@/lib/media/compress-image';
 import { UploadQueue } from '@/lib/media/upload-queue';
 import { createWebUploadTransport } from '@/lib/media/web-upload-transport';
@@ -67,11 +68,14 @@ export function PostEditor({
   categories,
   me,
   tenant,
+  mapConfig,
 }: {
   mode: Mode;
   categories: CatalogCategory[];
   me: { displayName: string; phone: string };
   tenant: EditorTenant;
+  /** GET /map/config; null when the API couldn't say (the map shows a notice). */
+  mapConfig: MapConfig | null;
 }) {
   const t = useTranslations('postEditor');
   const tErr = useTranslations('postErrors');
@@ -116,6 +120,8 @@ export function PostEditor({
   const [lookingUp, setLookingUp] = useState(false);
   const [addressQuery, setAddressQuery] = useState('');
   const [addressResults, setAddressResults] = useState<GeocodeResult[] | null>(null);
+  /** The address line came from the geocoding provider (Barikoi), not our own area names. */
+  const [addressFromProvider, setAddressFromProvider] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const lookup = useRef(0);
 
@@ -187,6 +193,7 @@ export function PostEditor({
           .join(', ') ||
           null);
       update({ addressLabel: label });
+      setAddressFromProvider(found !== null && found.source === 'barikoi');
     }
     setOwnership(owner.ok ? owner.data : null);
   }
@@ -506,7 +513,9 @@ export function PostEditor({
               )}
             </ul>
           )}
+          {addressResults?.some((r) => r.source === 'barikoi') && <BarikoiAttribution />}
           <LocationPicker
+            config={mapConfig}
             value={draft.location}
             center={draft.location ?? tenant.mapCenter}
             onChange={(point) => void setPoint(point)}
@@ -517,6 +526,7 @@ export function PostEditor({
               ? t('lookingUp')
               : (draft.addressLabel ?? (draft.location ? t('unknownAddress') : ''))}
           </p>
+          {!lookingUp && draft.addressLabel && addressFromProvider && <BarikoiAttribution />}
           {ownership?.outsideBoundary && (
             <p
               role="status"

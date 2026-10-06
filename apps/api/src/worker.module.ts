@@ -5,6 +5,7 @@ import type { Env } from './config/env.schema';
 import { DatabaseModule } from './database/database.module';
 import { buildPinoHttpOptions } from './logging/pino-http-options';
 import { MailModule } from './mail/mail.module';
+import { GeoWorkerModule } from './locations/geocoding/geo-worker.module';
 import { MaintenanceModule } from './maintenance/maintenance.module';
 import { MediaWorkerModule } from './media/media-worker.module';
 import { PostsWorkerModule } from './posts/posts-worker.module';
@@ -32,6 +33,7 @@ import { SearchWorkerModule } from './search/indexing/search-worker.module';
     QueueModule,
     MailModule,
     MaintenanceModule,
+    GeoWorkerModule,
     MediaWorkerModule,
     PostsWorkerModule,
     SavedSearchesWorkerModule,

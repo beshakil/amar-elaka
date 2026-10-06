@@ -267,6 +267,20 @@
       "when": 1790581769495,
       "tag": "0037_saved_search_watermarks_cascade",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1791221415453,
+      "tag": "0038_map_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1791228213320,
+      "tag": "0039_geo_provider_and_map_clusters",
+      "breakpoints": true
     }
   ]
 }

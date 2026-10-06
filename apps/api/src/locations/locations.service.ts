@@ -108,6 +108,14 @@ export class LocationsService {
     return this.read((tx) => this.repo.searchByName(tx, query, limit));
   }
 
+  /** Straight-line metres between two points (PostGIS): the route fallback, free. */
+  straightLineMeters(
+    from: { lat: number; lng: number },
+    to: { lat: number; lng: number },
+  ): Promise<number> {
+    return this.read((tx) => this.repo.straightLineMeters(tx, from, to));
+  }
+
   areasAt(lat: number, lng: number): Promise<LocationArea[]> {
     return this.read(async (tx) => (await this.repo.areasAtPoint(tx, lat, lng)).map(toArea));
   }

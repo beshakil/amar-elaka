@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/network/dio_client.dart';
 
-/// The post-related API calls (apps/api: /posts, /categories, /geocode).
+/// The post-related API calls (apps/api: /posts, /categories, /geo).
 /// Every failure surfaces as an [AppException]; the screens turn its code
 /// into a Bengali sentence (post_error_messages.dart).
 abstract interface class PostsApi {
@@ -32,7 +32,14 @@ abstract interface class PostsApi {
   Future<PostView> setHidden(String id, {required bool hidden});
   Future<void> delete(String id);
   Future<PostOwnership> ownership(double lat, double lng);
-  Future<ReverseGeocode> reverseGeocode(double lat, double lng);
+
+  /// `GET /geo/reverse`. [purpose] decides which Barikoi fields are asked
+  /// for (settings, ADR 044); areas always come from our own geo_areas.
+  Future<ReverseGeocode> reverseGeocode(
+    double lat,
+    double lng, {
+    String purpose = 'post_location',
+  });
   Future<GeocodeResponse> autocomplete(
     String query, {
     double? lat,
@@ -147,14 +154,17 @@ class DioPostsApi implements PostsApi {
   });
 
   @override
-  Future<ReverseGeocode> reverseGeocode(double lat, double lng) =>
-      _call(() async {
-        final response = await _dio.get<Map<String, dynamic>>(
-          '/geocode/reverse',
-          queryParameters: {'lat': lat, 'lng': lng},
-        );
-        return ReverseGeocode.fromJson(response.data!);
-      });
+  Future<ReverseGeocode> reverseGeocode(
+    double lat,
+    double lng, {
+    String purpose = 'post_location',
+  }) => _call(() async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/geo/reverse',
+      queryParameters: {'lat': lat, 'lng': lng, 'purpose': purpose},
+    );
+    return ReverseGeocode.fromJson(response.data!);
+  });
 
   @override
   Future<GeocodeResponse> autocomplete(
@@ -163,7 +173,7 @@ class DioPostsApi implements PostsApi {
     double? lng,
   }) => _call(() async {
     final response = await _dio.get<Map<String, dynamic>>(
-      '/geocode/autocomplete',
+      '/geo/autocomplete',
       queryParameters: {'q': query, 'lat': ?lat, 'lng': ?lng},
     );
     return GeocodeResponse.fromJson(response.data!);

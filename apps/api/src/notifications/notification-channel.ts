@@ -5,7 +5,9 @@ export type NotificationType =
   | 'post_removed'
   | 'post_expiring'
   | 'saved_search_match'
-  | 'saved_search_paused';
+  | 'saved_search_paused'
+  | 'geo_budget_warning'
+  | 'geo_budget_exhausted';
 
 export interface OutgoingNotification {
   userId: string;

@@ -2,15 +2,15 @@ import 'dart:async';
 
 import 'package:amar_elaka_api/amar_elaka_api.dart' as api;
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:maplibre_gl/maplibre_gl.dart';
 
 import '../../../../core/design/tokens/app_colors.dart';
 import '../../../../core/design/tokens/app_radii.dart';
 import '../../../../core/design/tokens/app_spacing.dart';
 import '../../../../core/design/widgets/app_text_field.dart';
-import '../../../../core/map/map_config.dart';
+import '../../../../core/map/barikoi_attribution.dart';
+import '../../../../core/map/base_map.dart';
 import '../../../../core/network/api_exception.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../tenant_bootstrap/data/location_service.dart';
@@ -19,18 +19,20 @@ import '../../application/post_editor.dart';
 import '../../data/posts_api.dart';
 import 'step_gate.dart';
 
-/// Map tiles on or off. Off in widget tests (no network) — the pin, address
-/// lookup and boundary check work the same without them.
-final mapTilesEnabledProvider = Provider<bool>((ref) => true);
+/// A point as the post stores it: the exact doubles from GPS, the draft or a
+/// search result. MapLibre's [LatLng] wraps longitudes with float arithmetic
+/// (90.3687 → 90.36869999999999), so it is used for the camera only.
+typedef _Point = ({double lat, double lng});
 
-/// Waits for the map to stop moving before asking the API about a point.
-const _settleDelay = Duration(milliseconds: 600);
+LatLng _camera(_Point p) => LatLng(p.lat, p.lng);
+
 const _searchDelay = Duration(milliseconds: 400);
 const _initialZoom = 16.0;
 
-/// Step 4: where the post is. The map starts at the phone's location (else
-/// the draft's point, else the area's centre); the pin stays in the middle
-/// while the map moves under it. Each resting point is reverse-geocoded for
+/// Step 4: where the post is. The map (our self-hosted base map, ADR 043)
+/// starts at the phone's location (else the draft's point, else the area's
+/// centre); the pin stays in the middle while the map moves under it. Each
+/// point the camera comes to rest at is reverse-geocoded for
 /// a readable address and checked against the area's boundary — outside it
 /// is a warning, never a block (the server places the post in the right
 /// area). Address search is the fallback when GPS or the map can't help.
@@ -45,10 +47,16 @@ class LocationStep extends ConsumerStatefulWidget {
 }
 
 class _LocationStepState extends ConsumerState<LocationStep> {
-  final _map = MapController();
+  MapLibreMapController? _map;
   final _search = TextEditingController();
-  Timer? _settle;
   Timer? _searchDebounce;
+
+  /// Where the app last sent the camera (GPS, a search result, the start):
+  /// its camera-idle is not a new point to look up — that is already done.
+  _Point? _movedTo;
+
+  /// A point chosen before the map existed (a GPS fix on the first frame).
+  _Point? _pendingCenter;
   int _lookup = 0;
 
   api.ReverseGeocode? _address;
@@ -66,8 +74,10 @@ class _LocationStepState extends ConsumerState<LocationStep> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final draft = widget.editor.draft!;
+      // The map opens here: its first camera-idle is not a new point.
+      _movedTo = _start;
       if (draft.hasLocation) {
-        _lookUp(LatLng(draft.lat!, draft.lng!));
+        _lookUp((lat: draft.lat!, lng: draft.lng!));
       } else {
         unawaited(_useMyLocation(initial: true));
       }
@@ -77,10 +87,8 @@ class _LocationStepState extends ConsumerState<LocationStep> {
   @override
   void dispose() {
     widget.gate.unregister(_check);
-    _settle?.cancel();
     _searchDebounce?.cancel();
     _search.dispose();
-    _map.dispose();
     super.dispose();
   }
 
@@ -90,14 +98,14 @@ class _LocationStepState extends ConsumerState<LocationStep> {
     return ok;
   }
 
-  LatLng get _start {
+  _Point get _start {
     final draft = widget.editor.draft!;
-    if (draft.hasLocation) return LatLng(draft.lat!, draft.lng!);
+    if (draft.hasLocation) return (lat: draft.lat!, lng: draft.lng!);
     final center = ref.read(currentTenantConfigProvider)?.mapCenter;
     // Bootstrapped apps always have a tenant; Dhaka only for a bare test/edge case.
     return center == null
-        ? const LatLng(23.8103, 90.4125)
-        : LatLng(center.lat, center.lng);
+        ? (lat: 23.8103, lng: 90.4125)
+        : (lat: center.lat, lng: center.lng);
   }
 
   Future<void> _useMyLocation({bool initial = false}) async {
@@ -108,7 +116,7 @@ class _LocationStepState extends ConsumerState<LocationStep> {
     if (!mounted) return;
     switch (result) {
       case LocationGranted(:final latitude, :final longitude):
-        _moveTo(LatLng(latitude, longitude));
+        _moveTo((lat: latitude, lng: longitude));
       case LocationDenied() || LocationPermanentlyDenied():
         setState(() => _notice = l10n.postLocationPermissionDenied);
         if (initial) _moveTo(_start);
@@ -120,27 +128,57 @@ class _LocationStepState extends ConsumerState<LocationStep> {
     }
   }
 
-  void _moveTo(LatLng point) {
-    try {
-      _map.move(point, _initialZoom);
-    } on StateError {
-      // The map isn't laid out yet (first frame): it opens at [_start].
+  void _moveTo(_Point point) {
+    _movedTo = point;
+    final map = _map;
+    if (map == null) {
+      _pendingCenter = point; // applied when the map is created
+    } else {
+      unawaited(
+        map.animateCamera(
+          CameraUpdate.newLatLngZoom(_camera(point), _initialZoom),
+        ),
+      );
     }
     _lookUp(point);
   }
 
-  void _onMapMoved(MapCamera camera, bool hasGesture) {
-    if (!hasGesture) return;
-    _settle?.cancel();
-    _settle = Timer(_settleDelay, () => _lookUp(camera.center));
+  void _onMapCreated(MapLibreMapController controller) {
+    _map = controller;
+    final pending = _pendingCenter;
+    _pendingCenter = null;
+    if (pending != null) {
+      unawaited(
+        controller.moveCamera(
+          CameraUpdate.newLatLngZoom(_camera(pending), _initialZoom),
+        ),
+      );
+    }
+  }
+
+  /// The user moved the map and let go: the point under the pin is new.
+  void _onCameraIdle(CameraPosition? position) {
+    if (position == null) return;
+    final target = (
+      lat: position.target.latitude,
+      lng: position.target.longitude,
+    );
+    final movedTo = _movedTo;
+    // A millionth of a degree (~0.1 m): the camera settled where it was sent.
+    const samePoint = 1e-6;
+    if (movedTo != null &&
+        (target.lat - movedTo.lat).abs() < samePoint &&
+        (target.lng - movedTo.lng).abs() < samePoint) {
+      return;
+    }
+    _movedTo = target;
+    _lookUp(target);
   }
 
   /// Saves the point, then fetches its address and ownership — the latest
   /// request wins; answers for points the user already left are dropped.
-  Future<void> _lookUp(LatLng point) async {
-    widget.editor.update(
-      (d) => d.copyWith(lat: point.latitude, lng: point.longitude),
-    );
+  Future<void> _lookUp(_Point point) async {
+    widget.editor.update((d) => d.copyWith(lat: point.lat, lng: point.lng));
     final requestId = ++_lookup;
     setState(() {
       _lookingUp = true;
@@ -151,8 +189,9 @@ class _LocationStepState extends ConsumerState<LocationStep> {
     final locale = Localizations.localeOf(context).languageCode;
     try {
       final (address, ownership) = await (
-        posts.reverseGeocode(point.latitude, point.longitude),
-        posts.ownership(point.latitude, point.longitude),
+        // A post's pin: settings decide which Barikoi fields that costs (ADR 044).
+        posts.reverseGeocode(point.lat, point.lng),
+        posts.ownership(point.lat, point.lng),
       ).wait;
       if (!mounted || requestId != _lookup) return;
       final label = _label(address, locale);
@@ -221,14 +260,13 @@ class _LocationStepState extends ConsumerState<LocationStep> {
     FocusScope.of(context).unfocus();
     _search.clear();
     setState(() => _results = null);
-    _moveTo(LatLng(result.location.lat, result.location.lng));
+    _moveTo((lat: result.location.lat, lng: result.location.lng));
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
-    final tilesOn = ref.watch(mapTilesEnabledProvider);
     final tenantName = ref.watch(currentTenantConfigProvider)?.nameBn ?? '';
     final draft = widget.editor.draft!;
     final warningColors = theme.brightness == Brightness.dark
@@ -274,6 +312,14 @@ class _LocationStepState extends ConsumerState<LocationStep> {
                               : Text(result.area!),
                           onTap: () => _pickResult(result),
                         ),
+                      if (results.any((r) => r.source == 'barikoi'))
+                        const Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: AppSpacing.md,
+                            vertical: AppSpacing.xs,
+                          ),
+                          child: BarikoiAttribution(),
+                        ),
                     ],
                   ),
           ),
@@ -281,35 +327,11 @@ class _LocationStepState extends ConsumerState<LocationStep> {
         Expanded(
           child: Stack(
             children: [
-              FlutterMap(
-                mapController: _map,
-                options: MapOptions(
-                  initialCenter: _start,
-                  initialZoom: _initialZoom,
-                  maxZoom: MapConfig.maxZoom.toDouble(),
-                  onPositionChanged: _onMapMoved,
-                  interactionOptions: const InteractionOptions(
-                    flags:
-                        InteractiveFlag.drag |
-                        InteractiveFlag.pinchZoom |
-                        InteractiveFlag.doubleTapZoom,
-                  ),
-                ),
-                children: [
-                  if (tilesOn)
-                    TileLayer(
-                      urlTemplate: MapConfig.tileUrl,
-                      userAgentPackageName: MapConfig.userAgentPackageName,
-                      maxNativeZoom: MapConfig.maxZoom,
-                      // Fewer tiles held in memory: this runs on 2 GB phones.
-                      keepBuffer: 1,
-                      panBuffer: 0,
-                    ),
-                  if (tilesOn)
-                    SimpleAttributionWidget(
-                      source: const Text(MapConfig.attribution),
-                    ),
-                ],
+              BaseMap(
+                initialCenter: _camera(_pendingCenter ?? _start),
+                initialZoom: _initialZoom,
+                onMapCreated: _onMapCreated,
+                onCameraIdle: _onCameraIdle,
               ),
               // The pin stays centred; its tip marks the point.
               IgnorePointer(
@@ -370,6 +392,10 @@ class _LocationStepState extends ConsumerState<LocationStep> {
                   l10n.postLocationUnknownAddress,
                   style: theme.textTheme.bodySmall,
                 ),
+              if (!_lookingUp &&
+                  draft.addressLabel != null &&
+                  _address?.address?.source == 'barikoi')
+                const BarikoiAttribution(),
               if (_address?.degraded == true)
                 Text(
                   l10n.postLocationDegraded,

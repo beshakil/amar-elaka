@@ -7,6 +7,7 @@ import { pickMessages } from '@/lib/i18n-messages';
 import { ApiError } from '@/lib/api/errors';
 import { requireViewer } from '@/lib/auth/viewer';
 import { myPost, postableCategories } from '@/lib/posts/load';
+import { loadMapConfig } from '@/lib/map/config';
 import { currentTenantConfig } from '@/lib/tenant';
 import { editorTenant } from '../../../../post/editor-tenant';
 import { PostEditor } from '../../../../post/post-editor';
@@ -15,7 +16,14 @@ export const metadata: Metadata = { robots: { index: false, follow: false } };
 
 // A nested provider replaces the layout's messages rather than adding to
 // them, so the shared form and photo uploader namespaces come along too.
-const EDITOR_NAMESPACES = ['postEditor', 'postErrors', 'myPosts', 'dynamicForm', 'mediaUploader'];
+const EDITOR_NAMESPACES = [
+  'postEditor',
+  'postErrors',
+  'myPosts',
+  'dynamicForm',
+  'mediaUploader',
+  'map',
+];
 
 /** Edit a post, or fix a rejected one and send it back for review. */
 export default async function EditPostPage({ params }: { params: Promise<{ id: string }> }) {
@@ -24,10 +32,11 @@ export default async function EditPostPage({ params }: { params: Promise<{ id: s
     if (error instanceof ApiError && (error.status === 404 || error.status === 400)) notFound();
     throw error;
   });
-  const [tenant, categories, messages] = await Promise.all([
+  const [tenant, categories, messages, mapConfig] = await Promise.all([
     currentTenantConfig(),
     postableCategories(viewer),
     getMessages(),
+    loadMapConfig(),
   ]);
   if (!tenant) return <NoCoverage />;
   return (
@@ -37,6 +46,7 @@ export default async function EditPostPage({ params }: { params: Promise<{ id: s
         categories={categories}
         me={{ displayName: viewer.me.displayName, phone: viewer.me.phone }}
         tenant={editorTenant(tenant)}
+        mapConfig={mapConfig}
       />
     </NextIntlClientProvider>
   );

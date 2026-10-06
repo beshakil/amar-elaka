@@ -63,6 +63,38 @@ export const EnvSchema = z
     // Transport tuning (CLAUDE.md rule 5), not a business rule.
     GEOCODING_TIMEOUT_MS: z.coerce.number().int().positive().default(3_000),
 
+    // Self-hosted base map (ADR 043). scripts/map/build-tiles.sh writes the
+    // Bangladesh .pmtiles file, current.json, fonts and sprites here; the API
+    // serves the directory as static files under /tiles (no tile server).
+    // Production: a Coolify persistent volume, like STORAGE_LOCAL_PATH.
+    MAP_TILES_PATH: z.string().min(1).default('./storage/map'),
+    // Public base of /tiles, e.g. https://tiles.amarelaka.com/tiles behind
+    // Cloudflare. Unset: `${API_PUBLIC_URL}/tiles`.
+    MAP_TILES_PUBLIC_URL: z.preprocess(
+      (v) => (v === '' ? undefined : v),
+      z
+        .string()
+        .url()
+        .transform((u) => u.replace(/\/+$/, ''))
+        .optional(),
+    ),
+    // Web origins allowed to range-read the tiles (CORS), comma-separated.
+    // `*` matches one subdomain label: https://*.amarelaka.com. Unset:
+    // https://<APP_ROOT_DOMAIN> and https://*.<APP_ROOT_DOMAIN>. Native apps
+    // send no Origin and need no entry.
+    MAP_TILES_CORS_ORIGINS: z.preprocess(
+      (v) => (v === '' ? undefined : v),
+      z
+        .string()
+        .transform((s) =>
+          s
+            .split(',')
+            .map((o) => o.trim().replace(/\/+$/, ''))
+            .filter(Boolean),
+        )
+        .optional(),
+    ),
+
     // Object storage — S3_* fields only matter when STORAGE_DRIVER=s3 (see
     // the superRefine below), so they're optional here.
     STORAGE_DRIVER: z.enum(['local', 's3']).default('local'),

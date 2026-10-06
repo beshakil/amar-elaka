@@ -1,6 +1,7 @@
 # ADR 026: Location system: real Bangladesh data, two tenant boundary modes, swappable geocoding
 
-**Status:** Accepted
+**Status:** Accepted. Decision 4 (geocoding) is extended by [ADR 044](044-geo-provider-and-map-screens.md):
+`GeoProvider`/`GeoProviderService`, own data first, a daily budget, the call log, reverse detail levels and routes.
 **Date:** 2026-09-25
 **Builds on:** [ADR 003](003-geo-data-source.md) (data source), [§13.26](../specs/schema.md) (ownership vs discovery)
 **Schema:** [§3.1 `geo_areas`](../specs/schema.md), `tenants` (§2.3), location helpers (§13.4b)

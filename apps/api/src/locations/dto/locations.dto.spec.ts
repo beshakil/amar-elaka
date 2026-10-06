@@ -1,9 +1,4 @@
-import {
-  geocodeQuerySchema,
-  tenantBoundarySchema,
-  toBoundaryInput,
-  viewportQuerySchema,
-} from './locations.dto';
+import { tenantBoundarySchema, toBoundaryInput, viewportQuerySchema } from './locations.dto';
 
 describe('location request parameters', () => {
   it('parses a viewport box in map order (minLng,minLat,maxLng,maxLat)', () => {
@@ -41,15 +36,5 @@ describe('location request parameters', () => {
         radiusKm: 0,
       }).success,
     ).toBe(false);
-  });
-
-  it('needs a query, and lat with lng', () => {
-    expect(geocodeQuerySchema.safeParse({ q: '  ' }).success).toBe(false);
-    expect(geocodeQuerySchema.safeParse({ q: 'mirpur', lat: '23.8' }).success).toBe(false);
-    expect(geocodeQuerySchema.parse({ q: ' মিরপুর ১০ ', lat: '23.8', lng: '90.36' })).toEqual({
-      q: 'মিরপুর ১০',
-      lat: 23.8,
-      lng: 90.36,
-    });
   });
 });

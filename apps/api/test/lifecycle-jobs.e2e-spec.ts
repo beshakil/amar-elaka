@@ -447,6 +447,7 @@ describe('Post lifecycle jobs (e2e)', () => {
         'match-saved-searches',
         'pause-idle-saved-searches',
         'refresh-unmet-demand',
+        'purge-geo-provider-calls',
       ]);
       const drafts = jobs.find((job) => job.code === 'clean-stale-drafts')!;
       expect(drafts.schedule?.pattern).toBe('0 4 * * *');

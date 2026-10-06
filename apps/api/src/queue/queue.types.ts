@@ -8,6 +8,8 @@ export const QUEUE_SEARCH = 'search';
 export const QUEUE_POSTS = 'posts';
 
 export const QUEUE_SAVED_SEARCHES = 'saved-searches';
+/** Geo provider upkeep (call-log retention): one queue, one processor (locations/geocoding/geo-jobs.processor.ts). */
+export const QUEUE_GEO = 'geo';
 
 /** BullMQ has no built-in dead-letter concept — a job that exhausts its retries is relayed onto `<queue>-dlq` instead (queue/dlq.util.ts). */
 export function deadLetterQueueName(queueName: string): string {
@@ -30,6 +32,7 @@ export const JOB_FLUSH_POST_VIEWS = 'flush-post-views';
 export const JOB_MATCH_SAVED_SEARCHES = 'match-saved-searches';
 export const JOB_PAUSE_IDLE_SAVED_SEARCHES = 'pause-idle-saved-searches';
 export const JOB_REFRESH_UNMET_DEMAND = 'refresh-unmet-demand';
+export const JOB_PURGE_GEO_PROVIDER_CALLS = 'purge-geo-provider-calls';
 
 export interface SendEmailJob {
   to: string;
@@ -84,6 +87,9 @@ export interface QueueJobs {
     [JOB_MATCH_SAVED_SEARCHES]: ScheduledJobData;
     [JOB_PAUSE_IDLE_SAVED_SEARCHES]: ScheduledJobData;
     [JOB_REFRESH_UNMET_DEMAND]: ScheduledJobData;
+  };
+  [QUEUE_GEO]: {
+    [JOB_PURGE_GEO_PROVIDER_CALLS]: ScheduledJobData;
   };
   [QUEUE_SEARCH]: {
     [JOB_RELAY_SEARCH_OUTBOX]: SearchJob;

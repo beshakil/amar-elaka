@@ -1,7 +1,27 @@
-import { bigint, date, jsonb, numeric, pgTable, primaryKey, text, uuid } from 'drizzle-orm/pg-core';
+import {
+  bigint,
+  boolean,
+  date,
+  integer,
+  jsonb,
+  numeric,
+  pgTable,
+  primaryKey,
+  smallint,
+  text,
+  uuid,
+} from 'drizzle-orm/pg-core';
 import { auditColumns, id } from './columns';
-import { counterTypes, revenueStreams, settingOverrideScopes, settingValueTypes } from './enums';
+import {
+  counterTypes,
+  geoProviderEndpoints,
+  geoProviderStatuses,
+  revenueStreams,
+  settingOverrideScopes,
+  settingValueTypes,
+} from './enums';
 import { users } from './identity';
+import { tenants } from './tenancy';
 
 /**
  * §2.16 Every number that governs behaviour, as a typed, bounded key-value
@@ -51,5 +71,27 @@ export const vatRates = pgTable('vat_rates', {
   effectiveFrom: date('effective_from').notNull(),
   effectiveTo: date('effective_to'),
   legalReference: text('legal_reference'),
+  ...auditColumns(),
+});
+
+/**
+ * ADR 044 (0039): one row per geo-provider request — a paid call, a cache
+ * hit, or one the budget/breaker refused. A platform cost log, not
+ * tenant-scoped: tenant_id is attribution only. No query text or coordinates.
+ */
+export const geoProviderCalls = pgTable('geo_provider_calls', {
+  id: id(),
+  provider: text('provider').notNull(),
+  endpoint: text('endpoint')
+    .notNull()
+    .references(() => geoProviderEndpoints.code, { onDelete: 'restrict' }),
+  callsCounted: smallint('calls_counted').notNull(),
+  cacheHit: boolean('cache_hit').notNull().default(false),
+  latencyMs: integer('latency_ms'),
+  status: text('status')
+    .notNull()
+    .references(() => geoProviderStatuses.code, { onDelete: 'restrict' }),
+  // Attribution only (SET NULL), never a scope.
+  tenantId: uuid('tenant_id').references(() => tenants.id, { onDelete: 'set null' }),
   ...auditColumns(),
 });

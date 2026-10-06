@@ -1,4 +1,4 @@
-import { OTP_CODE, SELLER_PHONE } from '../stub-api/fixtures';
+import { OTP_CODE, SELLER_PHONE, STUB_URL } from '../stub-api/fixtures';
 import { expect, signInSeller, test, tenantUrl } from './support';
 
 /** A real 1×1 PNG, so the browser's own decode/compress path runs. */
@@ -60,8 +60,15 @@ test.describe('create a post', () => {
       .locator('input[type="file"]')
       .setInputFiles({ name: 'phone.png', mimeType: 'image/png', buffer: PNG });
 
+    // The self-hosted base map (ADR 043) takes clicks once it has loaded.
+    await expect(page.getByTestId('location-map')).toHaveAttribute('data-map-state', 'ready');
     await page.getByTestId('location-map').click({ position: { x: 200, y: 150 } });
     await expect(page.getByTestId('address-label')).toHaveText('মিরপুর ১০, ঢাকা');
+    // A post's pin: the purpose decides which Barikoi fields are asked for (ADR 044).
+    const stats = (await (await page.request.get(`${STUB_URL}/__stats`)).json()) as {
+      lastReversePurpose: string | null;
+    };
+    expect(stats.lastReversePurpose).toBe('post_location');
 
     // The preview is the card buyers will see.
     const preview = page.getByRole('complementary');

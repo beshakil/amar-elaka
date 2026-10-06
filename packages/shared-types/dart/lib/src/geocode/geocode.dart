@@ -4,7 +4,7 @@ import '../tenants/lat_lng.dart';
 
 part 'geocode.g.dart';
 
-/// Mirrors `GeocodeResultDto` (apps/api/src/locations/dto/locations.dto.ts).
+/// Mirrors a `GeoAutocompleteResponseDto` result (apps/api/src/locations/geocoding/geo.dto.ts).
 @JsonSerializable()
 class GeocodeResult {
   const GeocodeResult({
@@ -15,6 +15,8 @@ class GeocodeResult {
     required this.city,
     required this.source,
     required this.distanceMeters,
+    this.kind = 'address',
+    this.refId,
   });
 
   factory GeocodeResult.fromJson(Map<String, dynamic> json) =>
@@ -26,14 +28,21 @@ class GeocodeResult {
   final String? area;
   final String? city;
 
-  /// provider | local
+  /// own (our places, landmarks, stores, areas) | barikoi (show its credit)
   final String source;
   final double? distanceMeters;
+
+  /// landmark | place | store (our directory) | area (our geo_areas) | address (Barikoi's).
+  @JsonKey(defaultValue: 'address')
+  final String kind;
+
+  /// Our place's or store's id; null for an area or a Barikoi address.
+  final String? refId;
 
   Map<String, dynamic> toJson() => _$GeocodeResultToJson(this);
 }
 
-/// `GET /geocode/forward` and `GET /geocode/autocomplete`.
+/// `GET /geo/autocomplete` (ADR 044): our own results first.
 @JsonSerializable()
 class GeocodeResponse {
   const GeocodeResponse({
@@ -48,13 +57,15 @@ class GeocodeResponse {
   final String query;
   final List<GeocodeResult> results;
 
-  /// The provider was down: results come from our own area data only.
+  /// Barikoi was needed but not used (budget, breaker, disabled): own results only.
   final bool degraded;
 
   Map<String, dynamic> toJson() => _$GeocodeResponseToJson(this);
 }
 
-/// `GET /geocode/reverse`.
+/// `GET /geo/reverse` (ADR 044): our own areas always; a Barikoi street
+/// address only for a purpose that shows one (`post_location`,
+/// `store_setup`, `place_marking`), with only the fields settings map to it.
 @JsonSerializable()
 class ReverseGeocode {
   const ReverseGeocode({
@@ -62,19 +73,50 @@ class ReverseGeocode {
     required this.address,
     required this.areas,
     required this.degraded,
+    this.purpose = 'area',
   });
 
   factory ReverseGeocode.fromJson(Map<String, dynamic> json) =>
       _$ReverseGeocodeFromJson(json);
 
   final LatLng location;
-  final GeocodeResult? address;
+
+  /// area | post_location | store_setup | place_marking
+  @JsonKey(defaultValue: 'area')
+  final String purpose;
+  final GeoAddress? address;
 
   /// Our own administrative areas at the point, country first.
   final List<GeoArea> areas;
   final bool degraded;
 
   Map<String, dynamic> toJson() => _$ReverseGeocodeToJson(this);
+}
+
+/// A Barikoi street address (show its credit).
+@JsonSerializable()
+class GeoAddress {
+  const GeoAddress({
+    required this.label,
+    required this.labelBn,
+    this.area,
+    this.city,
+    this.postCode,
+    this.source = 'barikoi',
+  });
+
+  factory GeoAddress.fromJson(Map<String, dynamic> json) =>
+      _$GeoAddressFromJson(json);
+
+  final String label;
+  final String? labelBn;
+  final String? area;
+  final String? city;
+  final String? postCode;
+  @JsonKey(defaultValue: 'barikoi')
+  final String source;
+
+  Map<String, dynamic> toJson() => _$GeoAddressToJson(this);
 }
 
 @JsonSerializable()

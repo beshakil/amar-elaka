@@ -14,7 +14,7 @@ import 'package:amar_elaka_app/features/media_upload/application/upload_queue.da
 import 'package:amar_elaka_app/features/post/application/current_tenant.dart';
 import 'package:amar_elaka_app/features/post/data/posts_api.dart';
 import 'package:amar_elaka_app/features/post/domain/post_step.dart';
-import 'package:amar_elaka_app/features/post/presentation/editor/location_step.dart';
+import 'package:amar_elaka_app/core/map/base_map.dart';
 import 'package:amar_elaka_app/features/post/presentation/editor/post_editor_screen.dart';
 import 'package:amar_elaka_app/features/post/presentation/editor/post_result_screen.dart';
 import 'package:amar_elaka_app/features/post/presentation/my_posts/my_posts_screen.dart';
@@ -347,24 +347,31 @@ class FakePostsApi implements PostsApi {
         needsReview: needsReview,
       );
 
+  /// The `purpose` of the last reverse geocode (decides the Barikoi fields).
+  String? lastReversePurpose;
+
   @override
-  Future<ReverseGeocode> reverseGeocode(double lat, double lng) async =>
-      ReverseGeocode(
-        location: LatLng(lat: lat, lng: lng),
-        address: addressLabelBn == null
-            ? null
-            : GeocodeResult(
-                label: 'Mirpur 10, Dhaka',
-                labelBn: addressLabelBn,
-                location: LatLng(lat: lat, lng: lng),
-                area: 'Mirpur',
-                city: 'Dhaka',
-                source: 'provider',
-                distanceMeters: null,
-              ),
-        areas: const [],
-        degraded: false,
-      );
+  Future<ReverseGeocode> reverseGeocode(
+    double lat,
+    double lng, {
+    String purpose = 'post_location',
+  }) async {
+    lastReversePurpose = purpose;
+    return ReverseGeocode(
+      location: LatLng(lat: lat, lng: lng),
+      purpose: purpose,
+      address: addressLabelBn == null
+          ? null
+          : GeoAddress(
+              label: 'Mirpur 10, Dhaka',
+              labelBn: addressLabelBn,
+              area: 'Mirpur',
+              city: 'Dhaka',
+            ),
+      areas: const [],
+      degraded: false,
+    );
+  }
 
   @override
   Future<GeocodeResponse> autocomplete(
@@ -488,7 +495,7 @@ Future<PostTestApp> pumpPostApp(
         locationServiceProvider.overrideWithValue(
           location ?? FakeLocationService(),
         ),
-        mapTilesEnabledProvider.overrideWithValue(false),
+        baseMapEnabledProvider.overrideWithValue(false),
         isOnlineProvider.overrideWith((ref) => Stream.value(online)),
         uploadQueueProvider.overrideWith((ref, queueId) {
           final queue = UploadQueue(

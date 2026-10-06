@@ -167,3 +167,7 @@ export const ticketPriorities = pgTable('ticket_priorities', enumTableColumns())
 
 // Enum table added by migration 0028 (ADR 031).
 export const scheduledJobs = pgTable('scheduled_jobs', enumTableColumns());
+
+// Enum tables added by migration 0039 (ADR 044).
+export const geoProviderEndpoints = pgTable('geo_provider_endpoints', enumTableColumns());
+export const geoProviderStatuses = pgTable('geo_provider_statuses', enumTableColumns());

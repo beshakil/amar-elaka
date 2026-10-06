@@ -11,10 +11,13 @@ void main() {
   testWidgets('starts at the phone location and shows its address in Bengali', (
     tester,
   ) async {
-    final app = await pumpPostApp(tester);
+    final api = FakePostsApi();
+    final app = await pumpPostApp(tester, api: api);
     await walkTo(tester, PostStep.location);
     expect(find.text('ধাপ ৪/৬: অবস্থান'), findsOneWidget);
     expect(find.text('মিরপুর ১০, ঢাকা'), findsOneWidget);
+    // A post's pin: the server maps the purpose to the minimum Barikoi fields.
+    expect(api.lastReversePurpose, 'post_location');
     expect(
       find.byKey(const ValueKey('location-outside-warning')),
       findsNothing,
@@ -62,7 +65,7 @@ void main() {
             location: LatLng(lat: 23.7907, lng: 90.3760),
             area: 'Mirpur',
             city: 'Dhaka',
-            source: 'provider',
+            source: 'barikoi',
             distanceMeters: null,
           ),
         ];
@@ -89,6 +92,12 @@ void main() {
       );
       await tester.pump(const Duration(milliseconds: 500));
       await tester.pumpAndSettle();
+      // Barikoi's results carry its credit (placeholder wording, ADR 043):
+      // under the search results, and under the address Barikoi gave.
+      expect(
+        find.byKey(const ValueKey('barikoi-attribution')),
+        findsNWidgets(2),
+      );
       await tester.tap(find.widgetWithText(ListTile, 'শেওড়াপাড়া, ঢাকা'));
       await settleSaves(tester);
 

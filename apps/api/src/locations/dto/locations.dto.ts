@@ -5,8 +5,6 @@ import { createZodDto } from '../../common/pipes/zod-dto';
 const MAX_LAT = 90;
 // settings-exempt: see above
 const MAX_LNG = 180;
-// settings-exempt: generic input-length cap, not a business threshold.
-const QUERY_MAX_CHARS = 200;
 // settings-exempt: a bbox has four numbers (minLng,minLat,maxLng,maxLat)
 const BBOX_PARTS = 4;
 
@@ -32,43 +30,30 @@ export const pointQuerySchema = z.object({ lat, lng });
 export class PointQueryDto extends createZodDto(pointQuerySchema) {}
 
 /** `bbox=minLng,minLat,maxLng,maxLat` — the order map libraries use. */
+export const bboxParam = z.string().transform((text, ctx) => {
+  const parts = text.split(',').map((p) => Number(p.trim()));
+  const [minLng, minLat, maxLng, maxLat] = parts;
+  const valid =
+    parts.length === BBOX_PARTS &&
+    parts.every(Number.isFinite) &&
+    Math.abs(minLat!) <= MAX_LAT &&
+    Math.abs(maxLat!) <= MAX_LAT &&
+    Math.abs(minLng!) <= MAX_LNG &&
+    Math.abs(maxLng!) <= MAX_LNG &&
+    minLng! < maxLng! &&
+    minLat! < maxLat!;
+  if (!valid) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'bbox is minLng,minLat,maxLng,maxLat' });
+    return z.NEVER;
+  }
+  return { minLng: minLng!, minLat: minLat!, maxLng: maxLng!, maxLat: maxLat! };
+});
+
 export const viewportQuerySchema = z.object({
-  bbox: z.string().transform((text, ctx) => {
-    const parts = text.split(',').map((p) => Number(p.trim()));
-    const [minLng, minLat, maxLng, maxLat] = parts;
-    const valid =
-      parts.length === BBOX_PARTS &&
-      parts.every(Number.isFinite) &&
-      Math.abs(minLat!) <= MAX_LAT &&
-      Math.abs(maxLat!) <= MAX_LAT &&
-      Math.abs(minLng!) <= MAX_LNG &&
-      Math.abs(maxLng!) <= MAX_LNG &&
-      minLng! < maxLng! &&
-      minLat! < maxLat!;
-    if (!valid) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'bbox is minLng,minLat,maxLng,maxLat' });
-      return z.NEVER;
-    }
-    return { minLng: minLng!, minLat: minLat!, maxLng: maxLng!, maxLat: maxLat! };
-  }),
+  bbox: bboxParam,
   level: z.enum(VIEWPORT_LEVELS).default('upazila'),
 });
 export class ViewportQueryDto extends createZodDto(viewportQuerySchema) {}
-
-const geocodeQuery = {
-  q: z.string().trim().min(1).max(QUERY_MAX_CHARS),
-  /** Optional: the caller's position, to report each result's distance. */
-  lat: lat.optional(),
-  lng: lng.optional(),
-};
-const bothOrNeither = (v: { lat?: number | undefined; lng?: number | undefined }) =>
-  (v.lat === undefined) === (v.lng === undefined);
-
-export const geocodeQuerySchema = z
-  .object(geocodeQuery)
-  .refine(bothOrNeither, { message: 'lat and lng go together', path: ['lat'] });
-export class GeocodeQueryDto extends createZodDto(geocodeQuerySchema) {}
-export type GeocodeQuery = z.infer<typeof geocodeQuerySchema>;
 
 export const tenantIdParamSchema = z.object({ tenantId: z.string().uuid() });
 export class TenantIdParamDto extends createZodDto(tenantIdParamSchema) {}
@@ -155,41 +140,6 @@ export const pointLookupSchema = z.object({
 });
 export type PointLookup = z.infer<typeof pointLookupSchema>;
 export class PointLookupDto extends createZodDto(pointLookupSchema) {}
-
-export const geocodeResultSchema = z.object({
-  label: z.string(),
-  labelBn: z.string().nullable(),
-  location: point,
-  area: z.string().nullable(),
-  city: z.string().nullable(),
-  postCode: z.string().nullable(),
-  /** `provider` (e.g. Barikoi) or `local` (our own area data, when the provider is unavailable). */
-  source: z.enum(['provider', 'local']),
-  /** From the request's lat/lng, when given. */
-  distanceMeters: z.number().nullable(),
-});
-export type GeocodeResultDto = z.infer<typeof geocodeResultSchema>;
-
-export const geocodeResponseSchema = z.object({
-  query: z.string(),
-  results: z.array(geocodeResultSchema),
-  /** The provider was unavailable; results (if any) come from our own area data. */
-  degraded: z.boolean(),
-});
-export type GeocodeResponse = z.infer<typeof geocodeResponseSchema>;
-export class GeocodeResponseDto extends createZodDto(geocodeResponseSchema) {}
-
-export const reverseGeocodeResponseSchema = z.object({
-  /** Always present: the coordinates asked about. */
-  location: point,
-  /** The provider's address, or null (degraded, or nothing known there). */
-  address: geocodeResultSchema.nullable(),
-  /** Our own administrative areas at the point, independent of the provider. */
-  areas: z.array(locationAreaSchema),
-  degraded: z.boolean(),
-});
-export type ReverseGeocodeResponse = z.infer<typeof reverseGeocodeResponseSchema>;
-export class ReverseGeocodeResponseDto extends createZodDto(reverseGeocodeResponseSchema) {}
 
 export const tenantBoundaryResponseSchema = z.object({
   tenantId: z.string(),
