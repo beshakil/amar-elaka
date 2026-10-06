@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { PinoLogger } from 'nestjs-pino';
-import type { KeyValueCache } from '../cache/cache.service';
+import type { TextCache } from '../cache/cache.service';
 import { TenantDb } from '../database/tenant-db';
 import { distanceMeters, type BoundingBox } from '../locations/geo/geodesic';
 import { LocationsService } from '../locations/locations.service';
@@ -22,7 +22,7 @@ const METERS_PER_KM = 1000; // settings-exempt: unit conversion
 const METERS_PER_DEGREE_LAT = 111_320; // settings-exempt: metres per degree of latitude (WGS84 mean)
 const DEGREES_TO_RADIANS = Math.PI / 180; // settings-exempt: unit conversion
 // settings-exempt: cache-key format version; bump when a cached value's shape changes
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2';
 // settings-exempt: a snapped centre's digits in a cache key (~0.1 m, far below a cell)
 const KEY_DECIMALS = 6;
 /** Layers without opening hours: `open_now` leaves them out. */
@@ -52,7 +52,8 @@ function clampToRadius(
  *      centre (discovery is radius-based; tenants never filter what shows),
  *      then rounded out to whole tiles at its zoom.
  *   2. Cached per (layers, filters, zoom, tile-aligned box) for
- *      map_features_cache_seconds: panning inside the same tiles is free.
+ *      map_features_cache_seconds, as the JSON text sent: panning inside the
+ *      same tiles is free, and a hit is never parsed or re-serialized.
  *      When that box reaches past the radius (zoomed out), the radius is
  *      measured from the viewport centre snapped to the clustering grid, and
  *      that centre joins the key.
@@ -66,13 +67,14 @@ export class MapFeaturesService {
     private readonly tenantDb: TenantDb,
     private readonly settings: SettingsService,
     private readonly locations: LocationsService,
-    @Inject(MAP_FEATURES_CACHE) private readonly cache: KeyValueCache,
+    @Inject(MAP_FEATURES_CACHE) private readonly cache: TextCache,
     private readonly logger: PinoLogger,
   ) {
     this.logger.setContext(MapFeaturesService.name);
   }
 
-  async features(query: MapFeaturesQuery): Promise<MapFeaturesResponse> {
+  /** The response as a JSON string (what the controller sends). */
+  async features(query: MapFeaturesQuery): Promise<string> {
     const [radiusKm, untilZoom, cap, ttl, defaults, cellPx] = await Promise.all([
       this.settings.get('map_viewport_max_radius_km'),
       this.settings.get('map_cluster_until_zoom'),
@@ -101,13 +103,15 @@ export class MapFeaturesService {
       layers.join('+'),
       query.category ?? '-',
       query.open_now ? 'open' : 'any',
+      // clipped is per viewport, so it is part of the cached text's key.
+      clipped ? 'clip' : 'fit',
       `${zoom}/${tiles.minX}-${tiles.maxX}/${tiles.minY}-${tiles.maxY}`,
       radiusCenter
         ? `${radiusCenter.lat.toFixed(KEY_DECIMALS)},${radiusCenter.lng.toFixed(KEY_DECIMALS)}`
         : 'tiles',
     ].join(':');
-    const cached = await this.safeCache(() => this.cache.get<MapFeaturesResponse>(key));
-    if (cached !== undefined) return { ...cached, clipped };
+    const cached = await this.safeCache(() => this.cache.getText(key));
+    if (cached !== undefined) return cached;
 
     const rows = await this.tenantDb.transaction(
       (tx) =>
@@ -132,8 +136,9 @@ export class MapFeaturesService {
       open_now_skipped: openNowSkipped,
       features: rows.slice(0, cap).map((row) => feature(row, Math.min(zoom + 1, untilZoom))),
     };
-    await this.safeCache(() => this.cache.set(key, response, ttl));
-    return response;
+    const json = JSON.stringify(response);
+    await this.safeCache(() => this.cache.setText(key, json, ttl));
+    return json;
   }
 
   /** Straight-line distance from PostGIS, instantly; the road route is a separate, explicit request. */

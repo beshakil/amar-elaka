@@ -11,6 +11,12 @@ export interface KeyValueCache {
   remember<T>(key: string, ttlSeconds: number, load: () => Promise<T>): Promise<T>;
 }
 
+/** Text as is — for a caller that caches an already-serialized answer. */
+export interface TextCache {
+  getText(key: string): Promise<string | undefined>;
+  setText(key: string, value: string, ttlSeconds: number): Promise<void>;
+}
+
 /**
  * General-purpose typed Redis cache for future callers. Deliberately
  * separate from the specialized stores this codebase already has
@@ -20,7 +26,7 @@ export interface KeyValueCache {
  * plain "cache the result of this call" need.
  */
 @Injectable()
-export class CacheService implements KeyValueCache, OnModuleDestroy {
+export class CacheService implements KeyValueCache, TextCache, OnModuleDestroy {
   private readonly client: Redis;
 
   constructor(@Inject(APP_CONFIG) env: Pick<Env, 'REDIS_URL'>) {
@@ -34,6 +40,14 @@ export class CacheService implements KeyValueCache, OnModuleDestroy {
 
   async set<T>(key: string, value: T, ttlSeconds: number): Promise<void> {
     await this.client.set(key, JSON.stringify(value), 'EX', ttlSeconds);
+  }
+
+  async getText(key: string): Promise<string | undefined> {
+    return (await this.client.get(key)) ?? undefined;
+  }
+
+  async setText(key: string, value: string, ttlSeconds: number): Promise<void> {
+    await this.client.set(key, value, 'EX', ttlSeconds);
   }
 
   async del(key: string): Promise<void> {

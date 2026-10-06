@@ -6,8 +6,9 @@ import {
 } from './db/test-database';
 
 /**
- * map_features (0039, ADR 045): the map's data from our own tables —
- * posts, stores, places, landmarks and info (emergency services, bus stops)
+ * map_features (0039, 0040, ADR 045): the map's data from our own tables —
+ * posts, stores, places, landmarks and info (emergency services, bus stops,
+ * places in map_info_place_categories such as banks and ATMs)
  * — radius-bounded, grid-clustered by zoom, across tenants, with names in
  * both languages.
  *
@@ -31,6 +32,7 @@ const MEMBER_B = id(42);
 const CATEGORY = id(51);
 const CATEGORY_PLACE = id(53);
 const CATEGORY_PLACE_CHILD = id(54);
+const CATEGORY_BANK = id(55);
 const SCHEMA = id(61);
 
 const CLUSTER_A = [101, 102, 103, 104, 105].map(id);
@@ -46,6 +48,7 @@ const PLACE_CLOSED = id(402);
 const PLACE_CHILD = id(403);
 const LANDMARK_B = id(404);
 const PLACE_GONE = id(405);
+const BANK_ATM = id(406);
 const HOSPITAL_24H = id(501);
 const POLICE = id(502);
 const ROUTE = id(601);
@@ -93,9 +96,10 @@ const ALL = ['posts', 'stores', 'places', 'landmarks', 'info'];
 const VIEW = { minLng: 89.9, minLat: 23.9, maxLng: 90.4, maxLat: 24.2 };
 const CENTER = { lat: 24.05, lng: 90.15 };
 
-describe('map_features (0039)', () => {
+describe('map_features (0039, 0040)', () => {
   let admin: Sql;
   let app: Sql;
+  let infoCategoriesBefore: unknown;
 
   const features = (
     options: {
@@ -181,6 +185,16 @@ describe('map_features (0039)', () => {
       insert into categories (id, kind_code, slug, name_bn, name_en, parent_id)
       values (${CATEGORY_PLACE_CHILD}, 'place', 'features-pharmacy', 'ফার্মেসি', 'Pharmacy', ${CATEGORY_PLACE})`;
     await admin`
+      insert into categories (id, kind_code, slug, name_bn, name_en)
+      values (${CATEGORY_BANK}, 'place', 'features-bank', 'ব্যাংক', 'Bank')`;
+    // The info layer's place categories: this fixture's bank category only.
+    const [setting] = await admin<{ value: unknown }[]>`
+      select value from platform_settings where key = 'map_info_place_categories'`;
+    infoCategoriesBefore = setting!.value;
+    await admin`
+      update platform_settings set value = '["features-bank"]'::jsonb
+      where key = 'map_info_place_categories'`;
+    await admin`
       insert into category_field_schemas (id, category_id, version, json_schema, status_code)
       values (${SCHEMA}, ${CATEGORY}, 1, '{}'::jsonb, 'draft')`;
 
@@ -231,6 +245,7 @@ describe('map_features (0039)', () => {
     await place(PLACE_CHILD, 'features-child', 90.192, { category: CATEGORY_PLACE_CHILD });
     await place(LANDMARK_B, 'features-landmark', 90.193, { landmark: true });
     await place(PLACE_GONE, 'features-gone', 90.194, { status: 'permanently_closed' });
+    await place(BANK_ATM, 'features-atm', 90.195, { category: CATEGORY_BANK });
     // Insert triggers keep a new store pending and a landmark off unless staff
     // approve them: approve both as a tenant admin would.
     await admin.begin(async (tx) => {
@@ -261,6 +276,9 @@ describe('map_features (0039)', () => {
 
   afterAll(async () => {
     try {
+      await admin`
+        update platform_settings set value = ${admin.json(infoCategoriesBefore as never)}
+        where key = 'map_info_place_categories'`;
       await cleanUp();
     } finally {
       await admin.end();
@@ -325,7 +343,22 @@ describe('map_features (0039)', () => {
     expect(ids(await features({ layers: ['landmarks'] }))).toEqual([LANDMARK_B]);
   });
 
-  it('filters by category with its descendants; stores and info have none', async () => {
+  it('shows map_info_place_categories places (banks, ATMs) as info, not as places', async () => {
+    expect(ids(await features({ layers: ['places'] }))).not.toContain(BANK_ATM);
+    const info = await features({ layers: ['info'] });
+    expect(info.find((r) => r.id === BANK_ATM)).toMatchObject({
+      layer: 'info',
+      info_kind: 'features-bank',
+      category_slug: null,
+      name_bn: 'নাম features-atm',
+      name_en: 'Name features-atm',
+      tenant_id: TENANT_B,
+    });
+    // Its category asks for it too.
+    expect(ids(await features({ category: 'features-bank' }))).toEqual([BANK_ATM]);
+  });
+
+  it('filters by category with its descendants; stores, emergency services and stops have none', async () => {
     const rows = await features({ category: 'features-health' });
     expect(new Set(rows.map((r) => r.layer))).toEqual(new Set(['places', 'landmarks']));
     expect(ids(rows)).toEqual(expect.arrayContaining([PLACE_CHILD, LANDMARK_B]));

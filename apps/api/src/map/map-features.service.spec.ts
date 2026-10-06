@@ -1,8 +1,9 @@
 import type { PinoLogger } from 'nestjs-pino';
-import type { KeyValueCache } from '../cache/cache.service';
+import type { TextCache } from '../cache/cache.service';
 import type { TenantDb } from '../database/tenant-db';
 import type { LocationsService } from '../locations/locations.service';
 import type { SettingsService } from '../settings/settings.service';
+import type { MapFeaturesQuery, MapFeaturesResponse } from './map-features.dto';
 import type { FeatureRow, FeaturesRequest } from './map-features.repository';
 import { MapFeaturesService } from './map-features.service';
 
@@ -41,17 +42,15 @@ const point: FeatureRow = {
   open_now: true,
 };
 
-class MemoryCache implements KeyValueCache {
-  store = new Map<string, { value: unknown; ttl: number }>();
-  get<T>(key: string) {
-    return Promise.resolve(this.store.get(key)?.value as T | undefined);
+class MemoryCache implements TextCache {
+  store = new Map<string, { value: string; ttl: number }>();
+  getText(key: string) {
+    return Promise.resolve(this.store.get(key)?.value);
   }
-  set<T>(key: string, value: T, ttl: number) {
+  setText(key: string, value: string, ttl: number) {
     this.store.set(key, { value, ttl });
     return Promise.resolve();
   }
-  del = () => Promise.resolve();
-  remember = <T>(_k: string, _t: number, load: () => Promise<T>) => load();
 }
 
 function setup(rows: FeatureRow[] = [cluster(12), point]) {
@@ -75,7 +74,10 @@ function setup(rows: FeatureRow[] = [cluster(12), point]) {
     cache,
     logger as unknown as PinoLogger,
   );
-  return { service, repo, requests, cache, locations };
+  /** The service answers with JSON text; the tests read it back. */
+  const features = async (q: MapFeaturesQuery) =>
+    JSON.parse(await service.features(q)) as MapFeaturesResponse;
+  return { service, features, repo, requests, cache, locations };
 }
 
 const query = (
@@ -92,8 +94,8 @@ const DHANMONDI = { minLng: 90.371, minLat: 23.751, maxLng: 90.379, maxLat: 23.7
 
 describe('MapFeaturesService', () => {
   it('returns GeoJSON: clusters with count and expansion zoom, points with both names', async () => {
-    const { service } = setup();
-    const response = await service.features(query(DHANMONDI));
+    const { features } = setup();
+    const response = await features(query(DHANMONDI));
     expect(response).toMatchObject({
       type: 'FeatureCollection',
       zoom: 14,
@@ -138,9 +140,11 @@ describe('MapFeaturesService', () => {
     expect(repo.features).toHaveBeenCalledTimes(1);
     const [key, entry] = [...cache.store][0]!;
     expect(key).toMatch(
-      /^map:features:v1:info\+landmarks\+places\+posts\+stores:-:any:14\/\d+-\d+\/\d+-\d+:tiles$/,
+      /^map:features:v2:info\+landmarks\+places\+posts\+stores:-:any:fit:14\/\d+-\d+\/\d+-\d+:tiles$/,
     );
     expect(entry.ttl).toBe(60);
+    // The hit is the cached text itself: never parsed or re-serialized.
+    await expect(service.features(query(DHANMONDI))).resolves.toBe(entry.value);
   });
 
   it('a different layer set, filter or zoom is another cache entry', async () => {
@@ -153,8 +157,8 @@ describe('MapFeaturesService', () => {
   });
 
   it('zoomed out past the radius: clipped, measured from the snapped viewport centre (in the key)', async () => {
-    const { service, requests, cache } = setup();
-    const response = await service.features(
+    const { features, requests, cache } = setup();
+    const response = await features(
       query({ minLng: 88.0, minLat: 20.6, maxLng: 92.7, maxLat: 26.6 }, 7),
     );
     expect(response.clipped).toBe(true);
@@ -164,15 +168,15 @@ describe('MapFeaturesService', () => {
   });
 
   it('caps the features at map_features_max and says it was truncated', async () => {
-    const { service } = setup([cluster(9), cluster(5), cluster(3), point]);
-    const response = await service.features(query(DHANMONDI));
+    const { features } = setup([cluster(9), cluster(5), cluster(3), point]);
+    const response = await features(query(DHANMONDI));
     expect(response.truncated).toBe(true);
     expect(response.features).toHaveLength(3);
   });
 
   it('open_now names the layers it had to skip', async () => {
-    const { service } = setup();
-    const response = await service.features({
+    const { features } = setup();
+    const response = await features({
       ...query(DHANMONDI),
       layers: ['posts', 'places'],
       open_now: true,

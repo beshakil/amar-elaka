@@ -281,6 +281,13 @@
       "when": 1791228213320,
       "tag": "0039_geo_provider_and_map_clusters",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1791300565495,
+      "tag": "0040_map_features_info_places",
+      "breakpoints": true
     }
   ]
 }

@@ -128,7 +128,8 @@ class MapFeatureProperties {
   final String? price;
   final String? slug;
 
-  /// info: the emergency service type, or bus_stop.
+  /// info: the emergency service type, bus_stop, or a place category slug
+  /// from `map_info_place_categories` (bank-atm).
   final String? infoKind;
 
   /// Places/landmarks by their hours, 24h info as true; null when unknown.

@@ -11,6 +11,8 @@
  *      at zoom 12 (clustered) and zoom 16 (every point, capped).
  *   3. Prints p50/p95/p99 and fails (exit 1) if any p95 >= 150 ms.
  *
+ * BENCH_SEED_ONLY=1 seeds and stops (for EXPLAIN); BENCH_KEEP=1 keeps the rows.
+ *
  * Usage (API running against the TEST database; BENCH_REDIS_URL = its Redis):
  *   BENCH_DATABASE_URL=postgresql://ae_dev:…@localhost:5433/amar_elaka_test \
  *   BENCH_API_URL=http://localhost:3100 pnpm --filter @amar-elaka/api bench:map
@@ -189,6 +191,12 @@ async function main(): Promise<void> {
     await redis.connect();
     console.log(`seeding ${Object.values(COUNTS).reduce((a, b) => a + b)} points in one viewport…`);
     await seed(sql);
+    if (process.env.BENCH_SEED_ONLY) {
+      console.log(
+        'seeded; BENCH_SEED_ONLY: no requests, the rows stay (run again without it to clean up)',
+      );
+      return;
+    }
     // Warm-up: connections, prepared statements, the settings cache.
     await run('warm-up', 10, (i) => viewportUrl(14, i));
     const results: Result[] = [];
@@ -220,7 +228,7 @@ async function main(): Promise<void> {
       console.log(`OK: every p95 < ${TARGET_P95_MS} ms`);
     }
   } finally {
-    if (!process.env.BENCH_KEEP) await cleanUp(sql);
+    if (!process.env.BENCH_KEEP && !process.env.BENCH_SEED_ONLY) await cleanUp(sql);
     await flushMapCache(redis).catch(() => undefined);
     redis.disconnect();
     await sql.end();

@@ -528,7 +528,7 @@
   "mapKindStores": "Stores",
   "mapKindPlaces": "Places",
   "mapLayerLandmarks": "Landmarks",
-  "mapLayerInfo": "Emergency & bus stands",
+  "mapLayerInfo": "Emergency, banks & bus stands",
   "mapOpenNow": "Open now",
   "mapOpenNowSkipped": "{layers} have no opening hours, so they're hidden for now",
   "mapIsOpen": "Open now",

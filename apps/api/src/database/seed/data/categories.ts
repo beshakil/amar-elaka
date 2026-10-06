@@ -18,7 +18,7 @@ import {
 } from './category-dsl';
 
 /**
- * The 27 categories of docs/specs/categories.md, in code. Keep the two in
+ * The 28 categories of docs/specs/categories.md, in code. Keep the two in
  * sync by hand: categories.md is the human-readable source of truth and this
  * is its TypeScript mirror (same relationship as docs/specs/schema.md and
  * src/database/schema). Array order is `default_sort_order`; a parent comes
@@ -1933,6 +1933,36 @@ export const CATEGORIES: CategoryDef[] = [
         ['অনলাইন সেবার লিংক', 'Online service link'],
         text(300, { format: 'uri' }),
       ),
+    ],
+  },
+
+  // ---- 28. bank-atm -----------------------------------------------------------
+  {
+    slug: 'bank-atm',
+    kind: 'place',
+    nameBn: 'ব্যাংক ও এটিএম',
+    nameEn: 'Banks & ATMs',
+    icon: 'landmark',
+    costCredits: 0,
+    moderationMode: null,
+    monetizationMode: 'free',
+    expiryDays: null,
+    phase1: false,
+    fields: [
+      field(
+        'point_type',
+        ['ধরন', 'Type'],
+        select([
+          ['branch', 'ব্যাংক শাখা', 'Bank branch'],
+          ['atm', 'এটিএম বুথ', 'ATM'],
+          ['cdm', 'ক্যাশ ডিপোজিট মেশিন', 'Cash deposit machine'],
+          ['agent_banking', 'এজেন্ট ব্যাংকিং', 'Agent banking outlet'],
+        ]),
+        'FSCA',
+        REQ,
+      ),
+      field('bank_name', ['ব্যাংকের নাম', 'Bank'], text(100), 'FSC', REQ),
+      field('open_24h', ['২৪ ঘণ্টা খোলা', 'Open 24h'], bool(), 'FCA'),
     ],
   },
 ];

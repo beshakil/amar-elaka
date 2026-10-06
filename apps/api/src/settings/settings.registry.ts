@@ -296,6 +296,8 @@ export const SETTING_DEFINITIONS = {
   map_features_max: wholeNumber,
   map_features_cache_seconds: wholeNumber,
   map_layers_default: z.array(z.enum(MAP_LAYERS)).nonempty(),
+  // Read by map_features() (0040): place category slugs shown in the info layer.
+  map_info_place_categories: z.array(z.string().regex(/^[a-z0-9]+(-[a-z0-9]+)*$/)),
 } as const satisfies Record<string, z.ZodTypeAny>;
 
 export type SettingKey = keyof typeof SETTING_DEFINITIONS;

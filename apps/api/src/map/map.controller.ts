@@ -1,5 +1,6 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Query, Res } from '@nestjs/common';
 import { ApiOkResponse } from '@nestjs/swagger';
+import type { FastifyReply } from 'fastify';
 import { AllowAnyTenant } from '../database/allow-any-tenant.decorator';
 import { MapConfigDto, type MapConfig } from './map-config.dto';
 import { MapConfigService } from './map-config.service';
@@ -9,7 +10,6 @@ import {
   MapFeaturesQueryDto,
   MapFeaturesResponseDto,
   type MapDistanceResponse,
-  type MapFeaturesResponse,
 } from './map-features.dto';
 import { MapFeaturesService } from './map-features.service';
 
@@ -33,11 +33,17 @@ export class MapController {
    * GeoJSON for a viewport from our own database: posts, stores, places,
    * landmarks and info, each a toggleable layer, clustered on the server at
    * low zoom. Radius-based from the viewport centre; tenants never filter it.
+   * Sent as the JSON text the service built (or cached), not re-serialized.
    */
   @Get('features')
   @ApiOkResponse({ type: MapFeaturesResponseDto })
-  features(@Query() query: MapFeaturesQueryDto): Promise<MapFeaturesResponse> {
-    return this.mapFeatures.features(query);
+  async features(
+    @Query() query: MapFeaturesQueryDto,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ): Promise<string> {
+    const json = await this.mapFeatures.features(query);
+    void reply.type('application/json; charset=utf-8');
+    return json;
   }
 
   /** Straight-line distance, instantly (PostGIS). Road distance/ETA: POST /geo/route, on a tap only. */

@@ -112,7 +112,7 @@ const pointFeature = z.object({
     price: z.string().nullable(),
     /** Stores, places, landmarks: URL slug. */
     slug: z.string().nullable(),
-    /** info: the emergency service type (hospital, pharmacy_24h, police…) or bus_stop. */
+    /** info: the emergency service type (hospital, pharmacy_24h, police…), bus_stop, or the place category slug of a map_info_place_categories place (bank-atm). */
     info_kind: z.string().nullable(),
     /** Places/landmarks by their hours, 24h info as true; null when unknown. */
     open_now: z.boolean().nullable(),

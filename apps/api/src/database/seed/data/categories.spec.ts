@@ -20,9 +20,9 @@ const context: FieldsValidationContext = { today: '2026-09-24', currentYear: 202
 const withSchema = CATEGORIES.filter((c) => c.kind !== 'module');
 
 describe('seed taxonomy (categories.md)', () => {
-  it('has the 27 categories, with unique slugs', () => {
-    expect(CATEGORIES).toHaveLength(27);
-    expect(new Set(CATEGORIES.map((c) => c.slug)).size).toBe(27);
+  it('has the 28 categories, with unique slugs', () => {
+    expect(CATEGORIES).toHaveLength(28);
+    expect(new Set(CATEGORIES.map((c) => c.slug)).size).toBe(28);
   });
 
   it('enables exactly the five phase-1 categories', () => {

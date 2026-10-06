@@ -2,11 +2,13 @@
 
 **Status:** Accepted (2026-10-06). Replaces Decision 6 of [ADR 044](044-geo-provider-and-map-screens.md)
 (`map_clusters` / `GET /map/points`). Builds on [ADR 043](043-self-hosted-pmtiles-basemap.md) (the base map).
+Amended the same day by migration 0040 (Decision 5): banks and ATMs in the info layer, a two-phase query, index use and a
+text cache.
 
 **Code:**
 
 - API: `apps/api/src/map/map-features.{dto,repository,service}.ts`, `map/tiles.ts`, `map/map.controller.ts`
-- Migration: `0039_geo_provider_and_map_clusters` — the function `map_features()`
+- Migrations: `0039_geo_provider_and_map_clusters` (the function `map_features()`), `0040_map_features_info_places`
 - Tests: `src/map/*.spec.ts`, `test/map-features.db-spec.ts`, `test/map.e2e-spec.ts`, `test/geo.e2e-spec.ts`
 - Benchmark: `apps/api/test/bench/map-features.bench.ts` (`pnpm --filter @amar-elaka/api bench:map`)
 - Web: `apps/web/src/components/map/map-explorer.tsx`, proxy `/api/map/features`
@@ -34,20 +36,21 @@ The map has to:
   - A post has one title. It goes to `name_bn` when written in Bengali script, to `name_en` otherwise.
 - **The layers** (`layers=` a comma list; default: setting `map_layers_default`, all five):
 
-  | Layer       | Source                                                                      |
-  | ----------- | --------------------------------------------------------------------------- |
-  | `posts`     | live posts (not sold, hidden or deleted)                                    |
-  | `stores`    | active stores                                                               |
-  | `places`    | published / temporarily closed places that are not landmarks                |
-  | `landmarks` | the same, landmarks                                                         |
-  | `info`      | active emergency services with a location; stops of active transport routes |
+  | Layer       | Source                                                                                                                           |
+  | ----------- | -------------------------------------------------------------------------------------------------------------------------------- |
+  | `posts`     | live posts (not sold, hidden or deleted)                                                                                         |
+  | `stores`    | active stores                                                                                                                    |
+  | `places`    | published / temporarily closed places that are not landmarks                                                                     |
+  | `landmarks` | the same, landmarks                                                                                                              |
+  | `info`      | active emergency services with a location; stops of active transport routes; places in `map_info_place_categories` (banks, ATMs) |
 
 - **Filters.**
-  - `category=` is a category slug, with its descendants. Stores and info have no category, so they drop out.
+  - `category=` is a category slug, with its descendants. Stores, emergency services and bus stops have no category,
+    so they drop out.
   - `open_now=true` keeps places and landmarks open now by `place_hours` (Asia/Dhaka), 24-hour emergency services
     and bus stops. Posts and stores have no hours, so they drop out, and `open_now_skipped` names them so the
     screen can say so.
-- **Banks and ATMs are deferred.** We have no data source for them yet. They will be an `info` kind when we do.
+- **Banks and ATMs** are places in the `bank-atm` category (categories.md §5.28), shown in `info` (Decision 5).
 - **Never a provider call.** An e2e test asserts zero `GeoProvider` calls for features at zoom 8, 12 and 17 and for
   distance.
 
@@ -57,7 +60,7 @@ The map has to:
 executable by `ae_app`.
 
 - **What it returns.** Display columns that each table's public-read policy already shows to anyone, for public-state
-  rows only. One query therefore serves the whole map; there is no per-point hydration.
+  rows only. One query serves the whole map; nothing is hydrated from the search index or a second request.
 - **The grid.** Below `map_cluster_until_zoom` (16), points are grouped per layer into Web Mercator cells of
   `map_cluster_cell_px` (64) pixels at the zoom. The cell size is rounded so a whole number of cells fills a 256 px
   tile, and cells never straddle tiles. A cell holding one feature returns that feature in full.
@@ -78,13 +81,16 @@ In `MapFeaturesService`:
 1. **Clamp.** The viewport is clamped to the square of side 2 × radius around its centre.
 2. **Align.** It is rounded out to the whole tiles that cover it at the zoom.
 3. **Key.** The Redis key is
-   `map:features:v1:{layers sorted}:{category|-}:{open|any}:{z}/{x0}-{x1}/{y0}-{y1}:{tiles | centre}`, with a TTL of
+   `map:features:v2:{layers sorted}:{category|-}:{open|any}:{clip|fit}:{z}/{x0}-{x1}/{y0}-{y1}:{tiles | centre}`, with
+   a TTL of
    `map_features_cache_seconds` (60). The query uses the tile-aligned box, so a small pan inside the same tiles is
    served from the cache. Every user looking at the same tiles shares it.
 4. **Zoomed out.** When the tile-aligned box reaches past the radius around its own centre, the radius is measured from
    the viewport centre, snapped to the clustering grid, and that centre joins the key. A pan smaller than a cell still
    hits the cache. The response is `clipped`.
-5. **Fail-open.** A Redis failure is logged and the database answers.
+5. **Text.** The value is the JSON text sent; a hit goes out as is, never parsed or re-serialized (`clipped` is in the
+   key for that reason).
+6. **Fail-open.** A Redis failure is logged and the database answers.
 
 **Staleness.** A new post shows on the map within one TTL. That is acceptable for a map; the feed and search are live.
 
@@ -98,16 +104,32 @@ In `MapFeaturesService`:
 Road distance and ETA come only from `POST /geo/route` on an explicit tap (ADR 044: a metered Barikoi call), never
 while panning.
 
+## Decision 5 (0040): banks and ATMs, a two-phase query, and the indexes
+
+- **Banks and ATMs.** Setting `map_info_place_categories` (default `["bank-atm"]`) lists place categories, with their
+  subcategories, that the map shows in `info` instead of `places`. Their `info_kind` is the category slug. The data comes
+  from partners, agents and members adding places; it is never copied from a geo provider (ADR 044 storage rule).
+  Importing OSM `amenity=bank|atm` would be a separate, ODbL-attributed task.
+- **Two phases.** Phase 1 reads only id, tenant, point and `open_now` for every feature in the box, clusters and picks
+  at most `map_features_max` + 1. Phase 2 reads names, prices, slugs and categories for the picked single features by
+  primary key. The Bengali-script test on post titles and the category joins no longer run for 5,000 rows.
+- **The indexes.** 0039 filtered with `location::geometry && envelope`; the GiST indexes are on `location`
+  (geography), so that expression could not use them and every map request scanned the tables. 0040 filters with
+  `location && envelope::geography` (index) and keeps the geometry test after it (exactly the box). With a small box
+  the planner now picks `posts_live_category_location_gist_idx` / `places_location_gist_idx`.
+- **Replacing the function** needs `SET LOCAL ROLE ae_rls_bypass` (its owner), as 0024 does.
+
 ## Settings (CLAUDE.md rule 9)
 
-| Setting                      | Default | Meaning                                   |
-| ---------------------------- | ------- | ----------------------------------------- |
-| `map_cluster_cell_px`        | 64      | cluster cell size in screen pixels        |
-| `map_cluster_until_zoom`     | 16      | from this zoom every feature is a point   |
-| `map_viewport_max_radius_km` | 25      | discovery radius from the viewport centre |
-| `map_features_max`           | 500     | hard cap on features per response         |
-| `map_features_cache_seconds` | 60      | Redis TTL per tile-aligned box            |
-| `map_layers_default`         | all     | layers when the client does not say       |
+| Setting                      | Default  | Meaning                                   |
+| ---------------------------- | -------- | ----------------------------------------- |
+| `map_cluster_cell_px`        | 64       | cluster cell size in screen pixels        |
+| `map_cluster_until_zoom`     | 16       | from this zoom every feature is a point   |
+| `map_viewport_max_radius_km` | 25       | discovery radius from the viewport centre |
+| `map_features_max`           | 500      | hard cap on features per response         |
+| `map_features_cache_seconds` | 60       | Redis TTL per tile-aligned box            |
+| `map_layers_default`         | all      | layers when the client does not say       |
+| `map_info_place_categories`  | bank-atm | place categories shown in `info`          |
 
 `map_cluster_max_zoom` and `map_points_max` (from the first ADR 044 draft) are gone. 0039 was edited in place, because
 it has never been committed or deployed.
@@ -132,6 +154,20 @@ laptop is about 3–4× slower than a server.
 | warm, zoom 12 (cache)              | 5 ms    | 7 ms    | 13 ms    | 22 ms    |
 | cold, zoom 16 (500 points, capped) | 45 ms   | 58 ms   | 167 ms   | 249 ms   |
 | warm, zoom 16 (cache)              | 12 ms   | 18 ms   | 63 ms    | 80 ms    |
+
+After 0040 and the text cache (same laptop, same data):
+
+| Scenario                           | c=1 p50 | c=1 p95 | c=10 p50 | c=10 p95 |
+| ---------------------------------- | ------- | ------- | -------- | -------- |
+| cold, zoom 12 (16 clusters)        | 5 ms    | 34 ms   | 66 ms    | 132 ms   |
+| warm, zoom 12 (cache)              | 4 ms    | 5 ms    | 14 ms    | 21 ms    |
+| cold, zoom 16 (500 points, capped) | 42 ms   | 62 ms   | 163 ms   | 249 ms   |
+| warm, zoom 16 (cache)              | 10 ms   | 19 ms   | 50 ms    | 106 ms   |
+
+`map_features()` alone at zoom 16 went from about 30 ms to 22–26 ms (reading 5,000 rows: 20 → 7 ms). The HTTP numbers
+barely moved: on this laptop the database, Redis, the API and the benchmark client share eight cores, so ten parallel
+220 KB answers queue behind each other wherever the work is. The index fix does not show here (every seeded row is in
+the box, so a scan is right); it matters on real tables, where 0039 scanned all of them for every request.
 
 **Results.**
 

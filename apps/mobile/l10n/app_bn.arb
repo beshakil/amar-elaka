@@ -609,7 +609,7 @@
   "mapKindStores": "দোকান",
   "mapKindPlaces": "জায়গা",
   "mapLayerLandmarks": "ল্যান্ডমার্ক",
-  "mapLayerInfo": "জরুরি সেবা ও বাস স্ট্যান্ড",
+  "mapLayerInfo": "জরুরি সেবা, ব্যাংক ও বাস স্ট্যান্ড",
   "mapOpenNow": "এখন খোলা",
   "mapOpenNowSkipped": "{layers}-এর খোলার সময় জানা নেই, তাই এখন দেখানো হচ্ছে না",
   "mapIsOpen": "এখন খোলা আছে",

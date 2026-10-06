@@ -6,7 +6,7 @@ taxonomy. The review decisions are in §7. Implemented by migration
 `apps/api/src/categories/field-schema/`, and the seed data in
 `apps/api/src/database/seed/data/categories.ts`, which mirrors this file.
 
-The platform's global category taxonomy (27 categories: `categories`, `category_field_schemas`,
+The platform's global category taxonomy (28 categories: `categories`, `category_field_schemas`,
 `tenant_categories`; docs/specs/schema.md §3.3–3.5). This file is the
 human-readable source of truth; the seed file is its TypeScript mirror.
 
@@ -59,13 +59,14 @@ taka depends on each tenant's credit packages, so no BDT figure appears here.
 | 25  | `beauty-parlour-salon`     | Beauty Parlour & Salon      | place       | places  | —        | subscription | —    | none           | yes¹            |
 | 26  | `schools-colleges`         | Schools & Colleges          | place       | places  | —        | free         | —    | none           | yes¹            |
 | 27  | `government-services-info` | Government Services & Info  | place       | places  | —        | free         | —    | none           | yes¹            |
+| 28  | `bank-atm`                 | Banks & ATMs                | place       | places  | —        | free         | —    | none           | yes¹            |
 
 1. A member-submitted place always starts as `pending_review` (schema §4.4 RLS). Places created by agents or staff can be published directly.
 2. These three are backed by dedicated tables (§10 of the schema), not by `posts`/`places` + custom fields. They use the new `module` kind (§3.1, change C2).
 3. Each module-backed category has its own lifecycle. The details are in its section.
 4. A job post expires at `application_deadline` if that comes before the category expiry.
 
-Monetization modes used: per_listing ×4, boost ×6, subscription ×8, lead_fee ×3, free ×6.
+Monetization modes used: per_listing ×4, boost ×6, subscription ×8, lead_fee ×3, free ×7.
 
 ---
 
@@ -761,6 +762,22 @@ page. It has no fields of its own here.
 | `head_designation`    | text        | দায়িত্বপ্রাপ্ত পদ / Officer in charge (designation) |     | ≤ 100. A designation, never a person's name.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |     | ✓   |     |     |
 | `citizen_charter_url` | text        | সিটিজেন চার্টার / Citizen's charter link             |     | ≤ 300, https URL                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |     |     |     |     |
 | `online_service_url`  | text        | অনলাইন সেবার লিংক / Online service link              |     | ≤ 300, https URL                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |     |     |     |     |
+
+### 5.28 `bank-atm` — ব্যাংক ও এটিএম
+
+| slug       | name_bn        | name_en      | icon       | parent | kind  | monetization | cost | expiry | approval                                  |
+| ---------- | -------------- | ------------ | ---------- | ------ | ----- | ------------ | ---- | ------ | ----------------------------------------- |
+| `bank-atm` | ব্যাংক ও এটিএম | Banks & ATMs | `landmark` | —      | place | free         | —    | none   | yes¹ (entered mostly by agents and staff) |
+
+Added 2026-10-06 for the map's info layer (ADR 045): setting
+`map_info_place_categories` puts these places in `info`, not `places`. Not in
+phase 1; no data is imported from a geo provider (ADR 044 storage rule).
+
+| key          | type   | label bn / en            | req | options · validation                                                                                 | F   | S   | C   | A   |
+| ------------ | ------ | ------------------------ | --- | ---------------------------------------------------------------------------------------------------- | --- | --- | --- | --- |
+| `point_type` | select | ধরন / Type               | ✓   | `branch` ব্যাংক শাখা · `atm` এটিএম বুথ · `cdm` ক্যাশ ডিপোজিট মেশিন · `agent_banking` এজেন্ট ব্যাংকিং | ✓   | ✓   | ✓   | ✓   |
+| `bank_name`  | text   | ব্যাংকের নাম / Bank      | ✓   | ≤ 100                                                                                                | ✓   | ✓   | ✓   |     |
+| `open_24h`   | bool   | ২৪ ঘণ্টা খোলা / Open 24h |     | A filter shortcut. `place_hours` is still the source of truth.                                       | ✓   |     | ✓   | ✓   |
 
 ---
 
