@@ -2316,6 +2316,661 @@
         ]
       }
     },
+    "/places": {
+      "post": {
+        "operationId": "PlacesController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePlaceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaceDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Places"
+        ]
+      }
+    },
+    "/places/review-queue": {
+      "get": {
+        "operationId": "PlacesController_reviewQueue",
+        "parameters": [
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewQueueDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Places"
+        ]
+      }
+    },
+    "/places/{id}": {
+      "get": {
+        "operationId": "PlacesController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaceDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Places"
+        ]
+      },
+      "patch": {
+        "operationId": "PlacesController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePlaceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaceDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Places"
+        ]
+      }
+    },
+    "/places/{id}/revisions": {
+      "get": {
+        "operationId": "PlacesController_revisions",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevisionPageDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Places"
+        ]
+      }
+    },
+    "/places/{id}/revisions/{revisionId}/revert": {
+      "post": {
+        "operationId": "PlacesController_revert",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "revisionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlaceDecisionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevertResultDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Places"
+        ]
+      }
+    },
+    "/places/{id}/approve": {
+      "post": {
+        "operationId": "PlacesController_approve",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaceDecisionResultDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Places"
+        ]
+      }
+    },
+    "/places/{id}/reject": {
+      "post": {
+        "operationId": "PlacesController_reject",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlaceDecisionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaceDecisionResultDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Places"
+        ]
+      }
+    },
+    "/places/{id}/claim/otp": {
+      "post": {
+        "operationId": "PlaceClaimsController_requestOtp",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClaimOtpDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClaimOtpSentDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "PlaceClaims"
+        ]
+      }
+    },
+    "/places/{id}/claim": {
+      "post": {
+        "operationId": "PlaceClaimsController_create",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateClaimDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClaimDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "PlaceClaims"
+        ]
+      }
+    },
+    "/place-claims/queue": {
+      "get": {
+        "operationId": "PlaceClaimsController_queue",
+        "parameters": [
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClaimQueueDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "PlaceClaims"
+        ]
+      }
+    },
+    "/place-claims/{id}/approve": {
+      "post": {
+        "operationId": "PlaceClaimsController_approve",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApproveClaimDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClaimDecisionResultDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "PlaceClaims"
+        ]
+      }
+    },
+    "/place-claims/{id}/reject": {
+      "post": {
+        "operationId": "PlaceClaimsController_reject",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RejectClaimDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClaimDecisionResultDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "PlaceClaims"
+        ]
+      }
+    },
+    "/places/duplicates": {
+      "get": {
+        "operationId": "DuplicatesController_queue",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "open",
+                "merged",
+                "dismissed"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DuplicatePageDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Duplicates"
+        ]
+      }
+    },
+    "/places/duplicates/{id}/dismiss": {
+      "post": {
+        "operationId": "DuplicatesController_dismiss",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Duplicates"
+        ]
+      }
+    },
+    "/places/{id}/merge-into/{targetId}": {
+      "post": {
+        "operationId": "DuplicatesController_merge",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "targetId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlaceDecisionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MergeResultDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Duplicates"
+        ]
+      }
+    },
+    "/place-merges/{id}/undo": {
+      "post": {
+        "operationId": "DuplicatesController_undo",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UndoResultDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Duplicates"
+        ]
+      }
+    },
     "/search": {
       "get": {
         "operationId": "SearchController_find",
@@ -3747,7 +4402,8 @@
                 "match-saved-searches",
                 "pause-idle-saved-searches",
                 "refresh-unmet-demand",
-                "purge-geo-provider-calls"
+                "purge-geo-provider-calls",
+                "detect-duplicates"
               ],
               "type": "string"
             }
@@ -3792,7 +4448,8 @@
                 "match-saved-searches",
                 "pause-idle-saved-searches",
                 "refresh-unmet-demand",
-                "purge-geo-provider-calls"
+                "purge-geo-provider-calls",
+                "detect-duplicates"
               ],
               "type": "string"
             }
@@ -7335,6 +7992,1099 @@
           "reasonCode",
           "reasonText",
           "evidenceRefs"
+        ]
+      },
+      "CreatePlaceDto": {
+        "type": "object",
+        "properties": {
+          "nameBn": {
+            "type": "string",
+            "minLength": 1
+          },
+          "nameEn": {
+            "type": "string",
+            "minLength": 1
+          },
+          "categoryId": {
+            "type": "string"
+          },
+          "location": {
+            "type": "object",
+            "properties": {
+              "lat": {
+                "type": "number",
+                "minimum": -90,
+                "maximum": 90
+              },
+              "lng": {
+                "type": "number",
+                "minimum": -180,
+                "maximum": 180
+              }
+            },
+            "required": [
+              "lat",
+              "lng"
+            ]
+          },
+          "phone": {
+            "type": "string",
+            "minLength": 1
+          },
+          "photos": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "streetPhoto": {
+            "type": "string"
+          },
+          "businessHours": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "day": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 7
+                },
+                "opens": {
+                  "type": "string",
+                  "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                },
+                "closes": {
+                  "type": "string",
+                  "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                }
+              },
+              "required": [
+                "day",
+                "opens",
+                "closes"
+              ]
+            }
+          },
+          "addressText": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1
+          },
+          "isLandmark": {
+            "type": "boolean"
+          },
+          "landmarkRadiusKm": {
+            "type": "number",
+            "minimum": 0
+          },
+          "confirmNotDuplicate": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "nameBn",
+          "categoryId",
+          "location"
+        ]
+      },
+      "PlaceDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending_review",
+              "published",
+              "temporarily_closed",
+              "permanently_closed",
+              "rejected"
+            ]
+          },
+          "categoryId": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "nameBn": {
+            "type": "string"
+          },
+          "nameEn": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "phones": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "addressText": {
+            "type": "string",
+            "nullable": true
+          },
+          "location": {
+            "type": "object",
+            "properties": {
+              "lat": {
+                "type": "number"
+              },
+              "lng": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "lat",
+              "lng"
+            ]
+          },
+          "geoAreaId": {
+            "type": "string",
+            "nullable": true
+          },
+          "outsideBoundary": {
+            "type": "boolean"
+          },
+          "isLandmark": {
+            "type": "boolean"
+          },
+          "landmarkRadiusKm": {
+            "type": "number",
+            "nullable": true
+          },
+          "source": {
+            "type": "string"
+          },
+          "fieldVerified": {
+            "type": "boolean"
+          },
+          "photos": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "thumbhash": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "thumbUrl": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "cardUrl": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "fullUrl": {
+                  "type": "string",
+                  "nullable": true
+                }
+              },
+              "required": [
+                "id",
+                "thumbhash",
+                "thumbUrl",
+                "cardUrl",
+                "fullUrl"
+              ]
+            }
+          },
+          "streetPhoto": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "thumbhash": {
+                "type": "string",
+                "nullable": true
+              },
+              "thumbUrl": {
+                "type": "string",
+                "nullable": true
+              },
+              "cardUrl": {
+                "type": "string",
+                "nullable": true
+              },
+              "fullUrl": {
+                "type": "string",
+                "nullable": true
+              }
+            },
+            "required": [
+              "id",
+              "thumbhash",
+              "thumbUrl",
+              "cardUrl",
+              "fullUrl"
+            ],
+            "nullable": true
+          },
+          "businessHours": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "day": {
+                  "type": "number"
+                },
+                "opens": {
+                  "type": "string"
+                },
+                "closes": {
+                  "type": "string"
+                },
+                "closesNextDay": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "day",
+                "opens",
+                "closes",
+                "closesNextDay"
+              ]
+            }
+          },
+          "claim": {
+            "type": "object",
+            "properties": {
+              "claimed": {
+                "type": "boolean"
+              },
+              "storeId": {
+                "type": "string",
+                "nullable": true
+              }
+            },
+            "required": [
+              "claimed",
+              "storeId"
+            ]
+          },
+          "rating": {
+            "type": "object",
+            "properties": {
+              "avg": {
+                "type": "number",
+                "nullable": true
+              },
+              "count": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "avg",
+              "count"
+            ]
+          },
+          "isMine": {
+            "type": "boolean"
+          },
+          "canEdit": {
+            "type": "boolean"
+          },
+          "redirectedFrom": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "tenantId",
+          "status",
+          "categoryId",
+          "slug",
+          "nameBn",
+          "nameEn",
+          "description",
+          "phones",
+          "addressText",
+          "location",
+          "geoAreaId",
+          "outsideBoundary",
+          "isLandmark",
+          "landmarkRadiusKm",
+          "source",
+          "fieldVerified",
+          "photos",
+          "streetPhoto",
+          "businessHours",
+          "claim",
+          "rating",
+          "isMine",
+          "canEdit",
+          "redirectedFrom",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "ReviewQueueDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "nameBn": {
+                  "type": "string"
+                },
+                "nameEn": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "categoryId": {
+                  "type": "string"
+                },
+                "location": {
+                  "type": "object",
+                  "properties": {
+                    "lat": {
+                      "type": "number"
+                    },
+                    "lng": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "lat",
+                    "lng"
+                  ]
+                },
+                "outsideBoundary": {
+                  "type": "boolean"
+                },
+                "photoCount": {
+                  "type": "number"
+                },
+                "createdByUserId": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "queuedAt": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "nameBn",
+                "nameEn",
+                "categoryId",
+                "location",
+                "outsideBoundary",
+                "photoCount",
+                "createdByUserId",
+                "queuedAt"
+              ]
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ]
+      },
+      "UpdatePlaceDto": {
+        "type": "object",
+        "properties": {
+          "nameBn": {
+            "type": "string",
+            "minLength": 1
+          },
+          "nameEn": {
+            "type": "string",
+            "minLength": 1,
+            "nullable": true
+          },
+          "categoryId": {
+            "type": "string"
+          },
+          "location": {
+            "type": "object",
+            "properties": {
+              "lat": {
+                "type": "number",
+                "minimum": -90,
+                "maximum": 90
+              },
+              "lng": {
+                "type": "number",
+                "minimum": -180,
+                "maximum": 180
+              }
+            },
+            "required": [
+              "lat",
+              "lng"
+            ]
+          },
+          "phones": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "businessHours": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "day": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 7
+                },
+                "opens": {
+                  "type": "string",
+                  "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                },
+                "closes": {
+                  "type": "string",
+                  "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                }
+              },
+              "required": [
+                "day",
+                "opens",
+                "closes"
+              ]
+            }
+          },
+          "addressText": {
+            "type": "string",
+            "minLength": 1,
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "published",
+              "temporarily_closed",
+              "permanently_closed"
+            ]
+          },
+          "isLandmark": {
+            "type": "boolean"
+          },
+          "landmarkRadiusKm": {
+            "type": "number",
+            "minimum": 0,
+            "nullable": true
+          }
+        }
+      },
+      "RevisionPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "created",
+                    "edited",
+                    "claimed",
+                    "reverted"
+                  ]
+                },
+                "changedFields": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "object",
+                    "properties": {
+                      "from": {},
+                      "to": {}
+                    },
+                    "required": [
+                      "from",
+                      "to"
+                    ]
+                  }
+                },
+                "changedByUserId": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "revertsRevisionId": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "createdAt": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "kind",
+                "changedFields",
+                "changedByUserId",
+                "revertsRevisionId",
+                "createdAt"
+              ]
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ]
+      },
+      "PlaceDecisionDto": {
+        "type": "object",
+        "properties": {
+          "reasonCode": {
+            "type": "string",
+            "enum": [
+              "spam",
+              "wrong_category",
+              "duplicate",
+              "policy_violation",
+              "prohibited_item",
+              "scam_suspected",
+              "poor_quality_listing",
+              "contact_info_exposed",
+              "other",
+              "illegal_content",
+              "doxxing",
+              "csam",
+              "credible_threat"
+            ]
+          },
+          "reasonText": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "reasonCode"
+        ]
+      },
+      "RevertResultDto": {
+        "type": "object",
+        "properties": {
+          "placeId": {
+            "type": "string"
+          },
+          "revisionId": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "placeId",
+          "revisionId"
+        ]
+      },
+      "PlaceDecisionResultDto": {
+        "type": "object",
+        "properties": {
+          "placeId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending_review",
+              "published",
+              "temporarily_closed",
+              "permanently_closed",
+              "rejected"
+            ]
+          }
+        },
+        "required": [
+          "placeId",
+          "status"
+        ]
+      },
+      "ClaimOtpDto": {
+        "type": "object",
+        "properties": {
+          "phoneIndex": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "ClaimOtpSentDto": {
+        "type": "object",
+        "properties": {
+          "sentTo": {
+            "type": "string"
+          },
+          "resendAfterSeconds": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "sentTo",
+          "resendAfterSeconds"
+        ]
+      },
+      "CreateClaimDto": {
+        "type": "object",
+        "properties": {
+          "evidence": {
+            "type": "object",
+            "properties": {
+              "otp": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "pattern": "^\\d+$"
+                  },
+                  "phoneIndex": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "code"
+                ]
+              },
+              "shopFrontPhotos": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "tradeLicence": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "note": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "evidence"
+        ]
+      },
+      "ClaimDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "placeId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "approved",
+              "rejected",
+              "withdrawn",
+              "revoked"
+            ]
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "otpVerified": {
+            "type": "boolean"
+          },
+          "storeId": {
+            "type": "string",
+            "nullable": true
+          },
+          "rejectionReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "reviewedAt": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "placeId",
+          "status",
+          "evidence",
+          "otpVerified",
+          "storeId",
+          "rejectionReason",
+          "createdAt",
+          "reviewedAt"
+        ]
+      },
+      "ClaimQueueDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "place": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "nameBn": {
+                      "type": "string"
+                    },
+                    "phones": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "nameBn",
+                    "phones"
+                  ]
+                },
+                "claimantMemberId": {
+                  "type": "string"
+                },
+                "claimantUserId": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "evidence": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "otpVerifiedPhone": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "documentIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "note": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "competingClaims": {
+                  "type": "number"
+                },
+                "queuedAt": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "place",
+                "claimantMemberId",
+                "claimantUserId",
+                "evidence",
+                "otpVerifiedPhone",
+                "documentIds",
+                "note",
+                "competingClaims",
+                "queuedAt"
+              ]
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ]
+      },
+      "ApproveClaimDto": {
+        "type": "object",
+        "properties": {
+          "storeId": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "ClaimDecisionResultDto": {
+        "type": "object",
+        "properties": {
+          "claimId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "approved",
+              "rejected",
+              "withdrawn",
+              "revoked"
+            ]
+          },
+          "storeId": {
+            "type": "string",
+            "nullable": true
+          },
+          "supersededClaimIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "claimId",
+          "status",
+          "storeId",
+          "supersededClaimIds"
+        ]
+      },
+      "RejectClaimDto": {
+        "type": "object",
+        "properties": {
+          "reasonCode": {
+            "type": "string",
+            "enum": [
+              "spam",
+              "wrong_category",
+              "duplicate",
+              "policy_violation",
+              "prohibited_item",
+              "scam_suspected",
+              "poor_quality_listing",
+              "contact_info_exposed",
+              "other",
+              "illegal_content",
+              "doxxing",
+              "csam",
+              "credible_threat",
+              "place_already_claimed"
+            ]
+          },
+          "reasonText": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "reasonCode"
+        ]
+      },
+      "DuplicatePageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "entityType": {
+                  "type": "string",
+                  "enum": [
+                    "place",
+                    "store"
+                  ]
+                },
+                "entity": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "nameBn": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "nameBn"
+                  ]
+                },
+                "candidate": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "tenantId": {
+                      "type": "string"
+                    },
+                    "nameBn": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "tenantId",
+                    "nameBn"
+                  ]
+                },
+                "score": {
+                  "type": "number"
+                },
+                "classification": {
+                  "type": "string",
+                  "enum": [
+                    "likely",
+                    "possible"
+                  ]
+                },
+                "signals": {
+                  "type": "object",
+                  "additionalProperties": {}
+                },
+                "source": {
+                  "type": "string",
+                  "enum": [
+                    "create",
+                    "batch"
+                  ]
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "open",
+                    "merged",
+                    "dismissed"
+                  ]
+                },
+                "createdAt": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "entityType",
+                "entity",
+                "candidate",
+                "score",
+                "classification",
+                "signals",
+                "source",
+                "status",
+                "createdAt"
+              ]
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ]
+      },
+      "MergeResultDto": {
+        "type": "object",
+        "properties": {
+          "mergeId": {
+            "type": "string"
+          },
+          "loserPlaceId": {
+            "type": "string"
+          },
+          "targetPlaceId": {
+            "type": "string"
+          },
+          "undoUntil": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "mergeId",
+          "loserPlaceId",
+          "targetPlaceId",
+          "undoUntil"
+        ]
+      },
+      "UndoResultDto": {
+        "type": "object",
+        "properties": {
+          "mergeId": {
+            "type": "string"
+          },
+          "restoredPlaceId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "mergeId",
+          "restoredPlaceId"
         ]
       },
       "SearchResponseDto": {
@@ -11146,7 +12896,8 @@
               "match-saved-searches",
               "pause-idle-saved-searches",
               "refresh-unmet-demand",
-              "purge-geo-provider-calls"
+              "purge-geo-provider-calls",
+              "detect-duplicates"
             ]
           },
           "queue": {
@@ -11411,7 +13162,8 @@
               "match-saved-searches",
               "pause-idle-saved-searches",
               "refresh-unmet-demand",
-              "purge-geo-provider-calls"
+              "purge-geo-provider-calls",
+              "detect-duplicates"
             ]
           },
           "queue": {
