@@ -125,26 +125,41 @@ export const catalogCategorySchema = z.object({
 export type CatalogCategory = z.infer<typeof catalogCategorySchema>;
 
 const point = z.object({ lat: z.number(), lng: z.number() });
+/** GET /geo/autocomplete (ADR 044): our own places, landmarks, stores and areas first. */
 export const geocodeResultSchema = z.object({
   label: z.string(),
   labelBn: z.string().nullable(),
   location: point,
   area: z.string().nullable(),
   city: z.string().nullable(),
+  /** `own` (our data) or `barikoi` (show its attribution). */
+  source: z.enum(['own', 'barikoi']),
 });
 export type GeocodeResult = z.infer<typeof geocodeResultSchema>;
 export const geocodeResponseSchema = z.object({
   results: z.array(geocodeResultSchema),
   degraded: z.boolean(),
 });
+/** GET /geo/reverse: areas from our geo_areas always; a Barikoi address only for purposes that show one. */
 export const reverseGeocodeSchema = z.object({
-  address: geocodeResultSchema.nullable(),
+  address: z
+    .object({
+      label: z.string(),
+      labelBn: z.string().nullable(),
+      source: z.literal('barikoi'),
+    })
+    .nullable(),
   areas: z.array(
     z.object({ level: z.string(), name: z.object({ bn: z.string().nullable(), en: z.string() }) }),
   ),
   degraded: z.boolean(),
 });
 export type ReverseGeocode = z.infer<typeof reverseGeocodeSchema>;
+
+export type _GeoContract = [
+  Assert<Accepts<z.infer<typeof geocodeResponseSchema>, Api['GeoAutocompleteResponseDto']>>,
+  Assert<Accepts<ReverseGeocode, Api['GeoReverseResponseDto']>>,
+];
 
 // ---- media --------------------------------------------------------------------
 
@@ -521,4 +536,93 @@ export type _PublicPagesContract = [
   Assert<Accepts<z.infer<typeof savedSearchCreatedSchema>, Api['SavedSearchDto']>>,
   Assert<Accepts<ContactReveal, Api['ContactRevealDto']>>,
   Assert<Accepts<TenantConfig, Api['TenantConfigDto']>>,
+];
+
+// ---- base map (ADR 043) -------------------------------------------------------
+
+/** GET /map/config: the live tiles archive, where fonts and sprites are, and the label language. */
+export const mapConfigSchema = z.object({
+  tiles: z
+    .object({
+      url: z.string(),
+      version: z.string(),
+      maxZoom: z.number(),
+      bounds: z.array(z.number()),
+    })
+    .nullable(),
+  assetsBaseUrl: z.string(),
+  labelLanguage: z.enum(['bn', 'en']),
+  fallbackStyleUrl: z.string().nullable(),
+});
+export type MapConfig = z.infer<typeof mapConfigSchema>;
+
+export type _MapContract = [Assert<Accepts<MapConfig, Api['MapConfigDto']>>];
+
+// ---- map features (ADR 045) and routes (ADR 044) -------------------------------
+
+export const MAP_LAYERS = ['posts', 'stores', 'places', 'landmarks', 'info'] as const;
+const mapLayer = z.enum(MAP_LAYERS);
+const pointGeometry = z.object({
+  type: z.literal('Point'),
+  /** [lng, lat] */
+  coordinates: z.array(z.number()).length(2),
+});
+const mapClusterFeature = z.object({
+  type: z.literal('Feature'),
+  geometry: pointGeometry,
+  properties: z.object({
+    cluster: z.literal(true),
+    layer: mapLayer,
+    count: z.number(),
+    expansion_zoom: z.number(),
+  }),
+});
+const mapPointFeature = z.object({
+  type: z.literal('Feature'),
+  id: z.string(),
+  geometry: pointGeometry,
+  properties: z.object({
+    cluster: z.literal(false),
+    layer: mapLayer,
+    id: z.string(),
+    tenant_id: z.string(),
+    name_bn: z.string().nullable(),
+    name_en: z.string().nullable(),
+    category_slug: z.string().nullable(),
+    price: z.string().nullable(),
+    slug: z.string().nullable(),
+    info_kind: z.string().nullable(),
+    open_now: z.boolean().nullable(),
+  }),
+});
+export const mapFeaturesResponseSchema = z.object({
+  type: z.literal('FeatureCollection'),
+  zoom: z.number(),
+  layers: z.array(mapLayer),
+  clustered: z.boolean(),
+  clipped: z.boolean(),
+  truncated: z.boolean(),
+  open_now_skipped: z.array(mapLayer),
+  features: z.array(z.union([mapClusterFeature, mapPointFeature])),
+});
+export type MapLayer = z.infer<typeof mapLayer>;
+export type MapFeatures = z.infer<typeof mapFeaturesResponseSchema>;
+export type MapFeature = MapFeatures['features'][number];
+export type MapPointFeature = z.infer<typeof mapPointFeature>;
+export type MapClusterFeature = z.infer<typeof mapClusterFeature>;
+
+export const routeResponseSchema = z.object({
+  mode: z.enum(['car', 'foot']),
+  distanceMeters: z.number(),
+  durationSeconds: z.number().nullable(),
+  /** GeoJSON LineString coordinates ([lng, lat] pairs); null when degraded. */
+  polyline: z.array(z.array(z.number()).length(2)).nullable(),
+  source: z.enum(['barikoi', 'straight_line']),
+  degraded: z.boolean(),
+});
+export type RouteAnswer = z.infer<typeof routeResponseSchema>;
+
+export type _MapFeaturesContract = [
+  Assert<Accepts<MapFeatures, Api['MapFeaturesResponseDto']>>,
+  Assert<Accepts<RouteAnswer, Api['GeoRouteResponseDto']>>,
 ];

@@ -66,6 +66,18 @@ const INFRASTRUCTURE_PATHS: ReadonlyArray<{ prefix: string; reason: string }> = 
       'sizes and colours — presentation, not platform behaviour.',
   },
   {
+    prefix: 'map/tiles.ts',
+    reason:
+      "Web Mercator / slippy-map tile maths: the 256 px tile, the projection's latitude limit and " +
+      'formula constants are facts of the scheme every map library uses, not tunable values.',
+  },
+  {
+    prefix: 'locations/geocoding/providers/fake.provider.ts',
+    reason:
+      'The test-only FakeProvider (ADR 044): a fixed sample address, suggestion and route it ' +
+      'answers with — fixture data, never bound by the module, read by no request.',
+  },
+  {
     prefix: 'database/seed/',
     reason:
       'Dev-only fixture data (db:seed) — row counts, fake price ranges, blood-group indices ' +

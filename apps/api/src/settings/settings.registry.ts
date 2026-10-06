@@ -14,6 +14,28 @@ const decimal = z.number().nonnegative();
 const money = z.string().regex(/^\d+\.\d{2}$/);
 const textArray = z.array(z.string());
 const flag = z.boolean();
+/**
+ * Optional Barikoi reverse-geocode fields a purpose may ask for (ADR 044).
+ * Each one is an extra billed call; the base answer already has the English
+ * address, area and city, and our own geo_areas give every admin area.
+ */
+export const REVERSE_FIELDS = [
+  'bangla',
+  'post_code',
+  'address',
+  'area',
+  'district',
+  'sub_district',
+  'thana',
+  'union',
+  'pauroshova',
+  'division',
+  'country',
+  'location_type',
+] as const;
+const reverseFields = z.array(z.enum(REVERSE_FIELDS));
+/** The map's layers (ADR 045, GET /map/features). */
+export const MAP_LAYERS = ['posts', 'stores', 'places', 'landmarks', 'info'] as const;
 
 export const SETTING_DEFINITIONS = {
   // Tenant lifecycle (§13.30)
@@ -186,10 +208,8 @@ export const SETTING_DEFINITIONS = {
   search_zero_result_report_limit: wholeNumber,
 
   // Locations & geocoding (ADR 026, migration 0021)
-  geocode_cache_days: wholeNumber,
   geocode_results_max: wholeNumber,
   geocode_autocomplete_min_chars: wholeNumber,
-  geocode_reverse_cache_decimals: wholeNumber,
   map_viewport_max_areas: wholeNumber,
   tenant_service_radius_max_km: decimal,
 
@@ -241,6 +261,41 @@ export const SETTING_DEFINITIONS = {
 
   // Category + area landing pages (ADR 042, migration 0036)
   seo_area_page_min_listings: wholeNumber,
+
+  // Self-hosted base map (ADR 043, migration 0038)
+  map_tiles_max_zoom: wholeNumber,
+  map_label_language: z.enum(['bn', 'en']),
+  // Empty = disabled. A Barikoi style here costs 4 Barikoi API calls per map load.
+  map_style_fallback: z.union([z.literal(''), z.string().url()]),
+
+  // Geo provider (Barikoi) and map viewport (ADR 044, migration 0039)
+  geo_provider: z.enum(['barikoi', 'null']),
+  barikoi_daily_call_budget: wholeNumber,
+  barikoi_budget_warn_pct: wholeNumber,
+  barikoi_cost_autocomplete: wholeNumber,
+  barikoi_cost_reverse_base: wholeNumber,
+  barikoi_cost_reverse_per_field: wholeNumber,
+  barikoi_cost_rupantor: wholeNumber,
+  barikoi_cost_route: wholeNumber,
+  geo_cache_ttl_hours: wholeNumber,
+  reverse_geocode_cache_precision: wholeNumber,
+  geo_reverse_fields_post_location: reverseFields,
+  geo_reverse_fields_store_setup: reverseFields,
+  geo_reverse_fields_place_marking: reverseFields,
+  geo_own_results_min: wholeNumber,
+  geo_own_radius_km: decimal,
+  geo_autocomplete_per_client_per_minute: wholeNumber,
+  geo_breaker_cooldown_seconds: wholeNumber,
+  geo_provider_calls_retention_days: wholeNumber,
+  geo_usage_report_days_max: wholeNumber,
+  route_point_decimals: wholeNumber,
+  route_requests_per_client_per_hour: wholeNumber,
+  map_cluster_cell_px: wholeNumber,
+  map_cluster_until_zoom: wholeNumber,
+  map_viewport_max_radius_km: decimal,
+  map_features_max: wholeNumber,
+  map_features_cache_seconds: wholeNumber,
+  map_layers_default: z.array(z.enum(MAP_LAYERS)).nonempty(),
 } as const satisfies Record<string, z.ZodTypeAny>;
 
 export type SettingKey = keyof typeof SETTING_DEFINITIONS;

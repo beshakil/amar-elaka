@@ -12,6 +12,7 @@ import '../../features/form_preview/form_preview_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
 import '../../features/info/presentation/info_screen.dart';
 import '../../features/map/presentation/map_screen.dart';
+import '../../features/map_debug/presentation/map_debug_screen.dart';
 import '../../features/post/presentation/editor/post_editor_screen.dart';
 import '../../features/post/presentation/editor/post_result_screen.dart';
 import '../../features/post/presentation/my_posts/my_posts_screen.dart';
@@ -136,6 +137,11 @@ GoRouter appRouter(Ref ref) {
         GoRoute(
           path: RoutePaths.formPreview,
           builder: (context, state) => const FormPreviewScreen(),
+        ),
+      if (kDebugMode)
+        GoRoute(
+          path: RoutePaths.mapDebug,
+          builder: (context, state) => const MapDebugScreen(),
         ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>

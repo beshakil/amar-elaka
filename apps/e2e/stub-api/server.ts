@@ -13,7 +13,10 @@
  * shorten token lifetimes) and `GET /__stats` (call counts).
  */
 import { randomUUID } from 'node:crypto';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
+import { dirname, join, normalize, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import type { components } from '@amar-elaka/shared-types';
 import {
   OTP_CODE,
@@ -185,6 +188,13 @@ interface State {
   idempotency: Map<string, string>;
   /** Uploads by media id: whether the bytes arrived at the storage URL. */
   media: Map<string, { stored: boolean }>;
+  /** Base map: range requests answered (206), and files asked for that the fixture lacks. */
+  mapRanges: number;
+  mapMisses: string[];
+  /** The last GET /map/features query string, as sent. */
+  lastMapQuery: Record<string, string> | null;
+  /** `purpose` of the last GET /geo/reverse (decides which Barikoi fields are asked for). */
+  lastReversePurpose: string | null;
   /** Posts deleted in this run: their public URLs answer 410 (ADR 039). */
   gone: Set<string>;
   /** sitemap_urls_per_file, lowered by tests to see the sitemap split. */
@@ -212,6 +222,10 @@ function freshState(): State {
     posts: new Map(),
     idempotency: new Map(),
     media: new Map(),
+    mapRanges: 0,
+    mapMisses: [],
+    lastMapQuery: null,
+    lastReversePurpose: null,
     gone: new Set(),
     sitemapUrlsPerFile: 10_000,
     lastSearch: null,
@@ -837,6 +851,169 @@ const can = (viewer: Persona, module: string, action: string) =>
   );
 
 // ---------------------------------------------------------------------------
+// Base map (ADR 043): the API serves the .pmtiles archive, fonts and sprites
+// as static files with range requests. The stub does the same from the
+// z0–6 fixture build (fixtures/map, made by scripts/map/build-tiles.sh).
+// ---------------------------------------------------------------------------
+
+const MAP_FIXTURE_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'fixtures', 'map');
+const MAP_MANIFEST = JSON.parse(readFileSync(join(MAP_FIXTURE_DIR, 'current.json'), 'utf8')) as {
+  version: string;
+  file: string;
+  maxZoom: number;
+  bbox: number[];
+};
+
+/** Map features around Mirpur: a cluster of posts, a post, a landmark and a 24h pharmacy. */
+export const MAP_POST_ID = '0191e3a0-0000-7000-8000-00000000e001';
+type MapFeatures = Schemas['MapFeaturesResponseDto'];
+const ALL_LAYERS: MapFeatures['layers'] = ['posts', 'stores', 'places', 'landmarks', 'info'];
+const NO_HOURS = new Set(['posts', 'stores']);
+function mapPoint(
+  layer: MapFeatures['layers'][number],
+  id: string,
+  lngLat: [number, number],
+  more: Partial<Extract<MapFeatures['features'][number], { id: string }>['properties']>,
+): MapFeatures['features'][number] {
+  return {
+    type: 'Feature',
+    id,
+    geometry: { type: 'Point', coordinates: lngLat },
+    properties: {
+      cluster: false,
+      layer,
+      id,
+      tenant_id: TENANT_MIRPUR,
+      name_bn: null,
+      name_en: null,
+      category_slug: null,
+      price: null,
+      slug: null,
+      info_kind: null,
+      open_now: null,
+      ...more,
+    },
+  };
+}
+function mapFeatures(layersParam: string | null, openNow: boolean): MapFeatures {
+  const layers = layersParam
+    ? ALL_LAYERS.filter((l) => layersParam.split(',').includes(l))
+    : ALL_LAYERS;
+  const features: MapFeatures['features'] = [
+    {
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: [90.37, 23.81] },
+      properties: { cluster: true, layer: 'posts', count: 12, expansion_zoom: 14 },
+    },
+    mapPoint('posts', MAP_POST_ID, [90.3687, 23.8069], {
+      name_bn: 'আইফোন ১৩, ১২৮ জিবি',
+      price: '65000.00',
+      category_slug: 'mobile-phones',
+    }),
+    mapPoint('landmarks', '0191e3a0-0000-7000-8000-00000000e002', [90.366, 23.805], {
+      name_bn: 'মিরপুর স্টেডিয়াম',
+      name_en: 'Mirpur Stadium',
+      slug: 'mirpur-stadium',
+      open_now: false,
+    }),
+    mapPoint('info', '0191e3a0-0000-7000-8000-00000000e003', [90.365, 23.808], {
+      name_bn: 'মিরপুর ২৪ ঘণ্টা ফার্মেসি',
+      name_en: 'Mirpur 24h Pharmacy',
+      info_kind: 'pharmacy_24h',
+      open_now: true,
+    }),
+  ];
+  return {
+    type: 'FeatureCollection',
+    zoom: 13,
+    layers,
+    clustered: true,
+    clipped: false,
+    truncated: false,
+    open_now_skipped: openNow ? layers.filter((l) => NO_HOURS.has(l)) : [],
+    features: features.filter(
+      (f) =>
+        layers.includes(f.properties.layer) &&
+        !(
+          openNow &&
+          (NO_HOURS.has(f.properties.layer) ||
+            ('open_now' in f.properties && f.properties.open_now === false))
+        ),
+    ),
+  };
+}
+
+function mapConfig(): Schemas['MapConfigDto'] {
+  return {
+    tiles: {
+      url: `${STUB_URL}/tiles/${MAP_MANIFEST.file}`,
+      version: MAP_MANIFEST.version,
+      maxZoom: MAP_MANIFEST.maxZoom,
+      bounds: MAP_MANIFEST.bbox,
+    },
+    assetsBaseUrl: `${STUB_URL}/tiles`,
+    labelLanguage: 'en',
+    fallbackStyleUrl: null,
+  };
+}
+
+/** GET/HEAD /tiles/<path>, honouring a single `Range: bytes=a-b`, with CORS for the web apps. */
+function serveTile(req: IncomingMessage, res: ServerResponse, pathname: string): void {
+  const cors = {
+    'access-control-allow-origin': String(req.headers.origin ?? '*'),
+    'access-control-expose-headers': 'Content-Range, Content-Length, ETag, Accept-Ranges',
+    vary: 'Origin',
+  };
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204, { ...cors, 'access-control-allow-headers': 'Range, If-Match' });
+    res.end();
+    return;
+  }
+  const relative = normalize(decodeURIComponent(pathname.slice('/tiles/'.length)));
+  const file = join(MAP_FIXTURE_DIR, relative);
+  if (relative.startsWith('..') || !file.startsWith(MAP_FIXTURE_DIR + sep) || !existsSync(file)) {
+    state.mapMisses.push(relative);
+    res.writeHead(404, cors);
+    res.end();
+    return;
+  }
+  const size = statSync(file).size;
+  const range = /^bytes=(\d+)-(\d*)$/.exec(String(req.headers.range ?? ''));
+  const type = file.endsWith('.json')
+    ? 'application/json'
+    : file.endsWith('.png')
+      ? 'image/png'
+      : file.endsWith('.ttf')
+        ? 'font/ttf'
+        : 'application/octet-stream';
+  const headers = {
+    ...cors,
+    'content-type': type,
+    'accept-ranges': 'bytes',
+    etag: `"${MAP_MANIFEST.version}-${size}"`,
+  };
+  if (!range) {
+    res.writeHead(200, { ...headers, 'content-length': String(size) });
+    res.end(req.method === 'HEAD' ? undefined : readFileSync(file));
+    return;
+  }
+  const start = Number(range[1]);
+  const end = Math.min(range[2] ? Number(range[2]) : size - 1, size - 1);
+  if (start >= size || end < start) {
+    res.writeHead(416, { ...cors, 'content-range': `bytes */${size}` });
+    res.end();
+    return;
+  }
+  state.mapRanges += 1;
+  res.writeHead(206, {
+    ...headers,
+    'content-range': `bytes ${start}-${end}/${size}`,
+    'content-length': String(end - start + 1),
+  });
+  res.end(req.method === 'HEAD' ? undefined : readFileSync(file).subarray(start, end + 1));
+}
+
+// ---------------------------------------------------------------------------
 // HTTP
 // ---------------------------------------------------------------------------
 
@@ -918,8 +1095,11 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
       posts: [...state.posts.values()],
       lastSearch: state.lastSearch,
       savedSearches: state.savedSearches,
+      map: { ranges: state.mapRanges, misses: state.mapMisses, lastQuery: state.lastMapQuery },
+      lastReversePurpose: state.lastReversePurpose,
     });
   }
+  if (url.pathname.startsWith('/tiles/')) return serveTile(req, res, url.pathname);
   // The presigned upload target (what object storage is in a real deployment).
   const storageMatch = /^\/storage\/([^/]+)$/.exec(url.pathname);
   if (storageMatch && req.method === 'PUT') {
@@ -937,6 +1117,32 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
   if (!url.pathname.startsWith(PREFIX)) return fail(res, 404, 'NOT_FOUND');
   const path = url.pathname.slice(PREFIX.length);
   const tenantId = String(req.headers['x-tenant-id'] ?? '');
+
+  // --- base map (public, no tenant) ----------------------------------------
+  if (req.method === 'GET' && path === '/map/config') return send(res, 200, mapConfig());
+  if (req.method === 'GET' && path === '/map/features') {
+    state.lastMapQuery = Object.fromEntries(url.searchParams);
+    return send(
+      res,
+      200,
+      mapFeatures(url.searchParams.get('layers'), url.searchParams.get('open_now') === 'true'),
+    );
+  }
+  if (req.method === 'POST' && path === '/geo/route') {
+    const asked = await readJson(req);
+    const body: Schemas['GeoRouteResponseDto'] = {
+      mode: asked?.mode === 'car' ? 'car' : 'foot',
+      distanceMeters: 1971,
+      durationSeconds: 1782,
+      polyline: [
+        [90.3687, 23.8069],
+        [90.3695, 23.8075],
+      ],
+      source: 'barikoi',
+      degraded: false,
+    };
+    return send(res, 200, body);
+  }
 
   // --- tenants (public) ----------------------------------------------------
   if (req.method === 'GET' && path === '/tenants/resolve') {
@@ -1026,7 +1232,7 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
   if (!viewer) return fail(res, 401, 'UNAUTHENTICATED');
 
   // --- geocoding, ownership --------------------------------------------------
-  if (req.method === 'GET' && (path === '/geocode/reverse' || path === '/posts/ownership')) {
+  if (req.method === 'GET' && (path === '/geo/reverse' || path === '/posts/ownership')) {
     const lat = Number(url.searchParams.get('lat'));
     const lng = Number(url.searchParams.get('lng'));
     if (path === '/posts/ownership') {
@@ -1040,25 +1246,25 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
       };
       return send(res, 200, ownership);
     }
-    const reverse: Schemas['ReverseGeocodeResponseDto'] = {
+    state.lastReversePurpose = url.searchParams.get('purpose');
+    const reverse: Schemas['GeoReverseResponseDto'] = {
       location: { lat, lng },
+      purpose: 'post_location',
       address: {
         label: 'Mirpur 10, Dhaka',
         labelBn: 'মিরপুর ১০, ঢাকা',
-        location: { lat, lng },
         area: 'Mirpur',
         city: 'Dhaka',
         postCode: '1216',
-        source: 'provider',
-        distanceMeters: null,
+        source: 'barikoi',
       },
       areas: [],
       degraded: false,
     };
     return send(res, 200, reverse);
   }
-  if (req.method === 'GET' && path === '/geocode/autocomplete') {
-    const found: Schemas['GeocodeResponseDto'] = {
+  if (req.method === 'GET' && path === '/geo/autocomplete') {
+    const found: Schemas['GeoAutocompleteResponseDto'] = {
       query: url.searchParams.get('q') ?? '',
       results: [
         {
@@ -1068,7 +1274,9 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
           area: 'Mirpur',
           city: 'Dhaka',
           postCode: '1216',
-          source: 'provider',
+          source: 'barikoi',
+          kind: 'address',
+          refId: null,
           distanceMeters: null,
         },
       ],

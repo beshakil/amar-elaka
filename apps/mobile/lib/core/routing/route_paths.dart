@@ -36,4 +36,5 @@ abstract final class RoutePaths {
 
   static const String designSystem = '/design-system';
   static const String formPreview = '/form-preview';
+  static const String mapDebug = '/map-debug';
 }

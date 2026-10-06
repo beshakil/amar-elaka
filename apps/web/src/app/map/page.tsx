@@ -1,7 +1,10 @@
 import type { Metadata } from 'next';
-import { getTranslations } from 'next-intl/server';
+import { NextIntlClientProvider } from 'next-intl';
+import { getMessages, getTranslations } from 'next-intl/server';
+import { MapExplorer } from '@/components/map/map-explorer';
 import { NoCoverage } from '@/components/no-coverage';
-import { PlaceholderPage } from '@/components/placeholder-page';
+import { pickMessages } from '@/lib/i18n-messages';
+import { loadMapConfig } from '@/lib/map/config';
 import { currentTenantConfig, tenantConfigForChrome } from '@/lib/tenant';
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -13,21 +16,25 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
+/**
+ * The area map (ADR 044): posts, stores and places around the tenant's
+ * centre, clustered by the API, on our self-hosted base map (ADR 043).
+ */
 export default async function MapPage() {
-  const tenant = await currentTenantConfig();
+  const [tenant, config, messages] = await Promise.all([
+    currentTenantConfig(),
+    loadMapConfig(),
+    getMessages(),
+  ]);
   if (!tenant) return <NoCoverage />;
-
-  const t = await getTranslations('placeholder');
-  const tNav = await getTranslations('nav');
+  const t = await getTranslations('map.explorer');
 
   return (
-    <PlaceholderPage
-      title={tNav('map')}
-      body={t('map')}
-      breadcrumbs={[
-        { name: tNav('home'), path: '/' },
-        { name: tNav('map'), path: '/map' },
-      ]}
-    />
+    <main id="main" className="mx-auto max-w-6xl space-y-4 px-4 py-6">
+      <h1 className="text-xl font-semibold">{t('title')}</h1>
+      <NextIntlClientProvider messages={pickMessages(messages, ['map'])}>
+        <MapExplorer config={config} center={tenant.mapCenter} />
+      </NextIntlClientProvider>
+    </main>
   );
 }

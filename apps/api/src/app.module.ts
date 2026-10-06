@@ -24,6 +24,7 @@ import { ModerationModule } from './moderation/moderation.module';
 import { PostsModule } from './posts/posts.module';
 import { PlatformJobsModule } from './jobs/platform-jobs.module';
 import { LocationsModule } from './locations/locations.module';
+import { MapModule } from './map/map.module';
 import { SearchModule } from './search/search.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { EngagementModule } from './engagement/engagement.module';
@@ -57,6 +58,7 @@ import { TenantsModule } from './tenants/tenants.module';
     AnalyticsModule,
     SeoModule,
     LocationsModule,
+    MapModule,
     PlatformJobsModule,
   ],
   providers: [

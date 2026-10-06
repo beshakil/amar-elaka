@@ -127,6 +127,12 @@ class ProfileScreen extends ConsumerWidget {
             icon: Icons.dynamic_form_outlined,
             onPressed: () => context.push(RoutePaths.formPreview),
           ),
+          AppButton(
+            label: l10n.mapDebugOpen,
+            variant: AppButtonVariant.text,
+            icon: Icons.translate_outlined,
+            onPressed: () => context.push(RoutePaths.mapDebug),
+          ),
         ],
       ],
     );

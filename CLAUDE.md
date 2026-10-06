@@ -95,3 +95,21 @@ Week 6 focus: feed ranking, post detail, contact actions, lead tracking, saved i
 
 Week 7 focus: search UX, suggestions, saved searches (in-app delivery only),
 unmet demand analytics.
+
+Week 8 focus: self-hosted OSM tiles, Barikoi geo provider behind our API,
+geo query layer, server-side clustering, map screens.
+
+## Map rules
+
+- Base map tiles: our own PMTiles file built from OSM data. Never
+  tile.openstreetmap.org, never public Nominatim, never Barikoi map tiles in
+  production (each Barikoi map load costs 4 API calls).
+- Barikoi (autocomplete, reverse geocode, rupantor, routing) is called ONLY from
+  apps/api through the GeoProvider interface. The Barikoi key never appears in
+  apps/mobile, apps/web or apps/admin.
+- Own data first: places, landmarks and geo_areas are searched before Barikoi.
+- Every Barikoi call is cached, counted against settings.barikoi_daily_call_budget
+  and logged to geo_provider_calls. Over budget or 429 -> graceful fallback.
+- Request only the reverse-geocode parameters a screen actually needs;
+  every extra parameter is an extra billed call.
+- Route/ETA only on explicit user action, never while panning.

@@ -26,6 +26,7 @@
     "db:reset": "tsx src/database/seed/reset.ts && tsx src/database/seed/seed.ts",
     "fixtures:export": "tsx src/database/seed/export-client-fixtures.ts",
     "geo:import": "tsx src/locations/geo-import/geo-import.ts",
+    "bench:map": "tsx test/bench/map-features.bench.ts",
     "search:synonyms": "tsx src/search/synonyms/export-synonyms.ts && prettier --write src/search/synonyms/search-synonyms.generated.ts",
     "search:reindex": "nest build && node dist/search/cli/reindex.js",
     "search:zero-results": "nest build && node dist/search/cli/zero-results.js",
