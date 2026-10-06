@@ -1,3 +1,5 @@
+import 'package:amar_elaka_app/core/map/geo_api.dart';
+import 'package:amar_elaka_app/core/map/map_config_provider.dart';
 import 'dart:io';
 
 import 'package:amar_elaka_api/amar_elaka_api.dart';
@@ -30,6 +32,8 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../media_upload/upload_fakes.dart';
+
+import '../../core/map/map_test_support.dart';
 
 // ---- fixtures ----------------------------------------------------------------
 
@@ -192,7 +196,9 @@ ApiException apiError(String code, {int status = 409, Object? details}) =>
 // ---- fakes -------------------------------------------------------------------
 
 /// The API, in memory, recording what the app sent.
-class FakePostsApi implements PostsApi {
+/// The post editor's API — and the geo lookups its LocationPicker makes
+/// (`geoApiProvider` is overridden with the same instance).
+class FakePostsApi implements PostsApi, GeoApi {
   List<CatalogCategory> categoryList = [phoneCategory, rentCategory, bloodTile];
   Object? categoriesError;
 
@@ -351,10 +357,14 @@ class FakePostsApi implements PostsApi {
   String? lastReversePurpose;
 
   @override
-  Future<ReverseGeocode> reverseGeocode(
+  Future<PointAreas> areasAt(double lat, double lng) async =>
+      const PointAreas(areas: mirpurAreas);
+
+  @override
+  Future<ReverseGeocode> reverse(
     double lat,
     double lng, {
-    String purpose = 'post_location',
+    required String purpose,
   }) async {
     lastReversePurpose = purpose;
     return ReverseGeocode(
@@ -489,6 +499,8 @@ Future<PostTestApp> pumpPostApp(
     ProviderScope(
       overrides: [
         postsApiProvider.overrideWithValue(fakeApi),
+        geoApiProvider.overrideWithValue(fakeApi),
+        mapConfigProvider.overrideWith((ref) async => testMapConfig),
         appDatabaseProvider.overrideWithValue(database),
         authControllerProvider.overrideWith(FakeAuthController.new),
         currentTenantConfigProvider.overrideWithValue(testTenant),

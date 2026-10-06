@@ -6,7 +6,7 @@ import {
 } from './db/test-database';
 
 /**
- * map_features (0039, 0040, ADR 045): the map's data from our own tables —
+ * map_features (0039–0041, ADR 045, 046): the map's data from our own tables —
  * posts, stores, places, landmarks and info (emergency services, bus stops,
  * places in map_info_place_categories such as banks and ATMs)
  * — radius-bounded, grid-clustered by zoom, across tenants, with names in
@@ -89,6 +89,7 @@ interface Row {
   price: string | null;
   info_kind: string | null;
   open_now: boolean | null;
+  kind: string | null;
 }
 
 const ALL = ['posts', 'stores', 'places', 'landmarks', 'info'];
@@ -96,10 +97,11 @@ const ALL = ['posts', 'stores', 'places', 'landmarks', 'info'];
 const VIEW = { minLng: 89.9, minLat: 23.9, maxLng: 90.4, maxLat: 24.2 };
 const CENTER = { lat: 24.05, lng: 90.15 };
 
-describe('map_features (0039, 0040)', () => {
+describe('map_features (0039–0041)', () => {
   let admin: Sql;
   let app: Sql;
   let infoCategoriesBefore: unknown;
+  let kindsBefore: unknown;
 
   const features = (
     options: {
@@ -110,6 +112,7 @@ describe('map_features (0039, 0040)', () => {
       openNow?: boolean;
       center?: { lat: number; lng: number } | null;
       limit?: number;
+      kinds?: string[] | null;
     } = {},
     context: Context = AS_ANONYMOUS,
   ) => {
@@ -120,11 +123,11 @@ describe('map_features (0039, 0040)', () => {
       context,
       (tx) => tx<Row[]>`
         select layer, point_count, lng, lat, id, tenant_id, name_bn, name_en,
-               category_slug, price, info_kind, open_now
+               category_slug, price, info_kind, open_now, kind
         from public.map_features(${box.minLng}, ${box.minLat}, ${box.maxLng}, ${box.maxLat},
           ${options.zoom ?? 16}, ${options.layers ?? ALL}::text[], ${options.category ?? null},
           ${options.openNow ?? false}, ${center?.lat ?? null}, ${center?.lng ?? null},
-          ${options.limit ?? 100})`,
+          ${options.limit ?? 100}, ${options.kinds ?? null}::text[])`,
     );
   };
   const ids = (rows: Row[]) => rows.map((r) => r.id);
@@ -191,6 +194,29 @@ describe('map_features (0039, 0040)', () => {
     const [setting] = await admin<{ value: unknown }[]>`
       select value from platform_settings where key = 'map_info_place_categories'`;
     infoCategoriesBefore = setting!.value;
+    // map_kinds: this fixture's own categories (order = priority).
+    const [kinds] = await admin<{ value: unknown }[]>`
+      select value from platform_settings where key = 'map_kinds'`;
+    kindsBefore = kinds!.value;
+    const kind = (code: string, sources: Record<string, string | string[]>[]) => ({
+      code,
+      icon: code,
+      label_bn: code,
+      label_en: code,
+      sources,
+    });
+    await admin`
+      update platform_settings set value = ${admin.json([
+        kind('health', [
+          { table: 'places', categories: ['features-health'] },
+          { table: 'emergency', service_types: ['hospital'] },
+        ]),
+        kind('bank', [{ table: 'places', categories: ['features-bank'] }]),
+        kind('bus', [{ table: 'bus_stops' }]),
+        kind('shops', [{ table: 'stores' }]),
+        kind('phones', [{ table: 'posts', categories: ['features-phones'] }]),
+      ])}
+      where key = 'map_kinds'`;
     await admin`
       update platform_settings set value = '["features-bank"]'::jsonb
       where key = 'map_info_place_categories'`;
@@ -279,6 +305,9 @@ describe('map_features (0039, 0040)', () => {
       await admin`
         update platform_settings set value = ${admin.json(infoCategoriesBefore as never)}
         where key = 'map_info_place_categories'`;
+      await admin`
+        update platform_settings set value = ${admin.json(kindsBefore as never)}
+        where key = 'map_kinds'`;
       await cleanUp();
     } finally {
       await admin.end();
@@ -356,6 +385,31 @@ describe('map_features (0039, 0040)', () => {
     });
     // Its category asks for it too.
     expect(ids(await features({ category: 'features-bank' }))).toEqual([BANK_ATM]);
+  });
+
+  it('gives each feature its map_kinds kind (first match; descendants count; none = null)', async () => {
+    const kindOf = new Map((await features()).map((r) => [r.id, r.kind]));
+    expect(kindOf.get(PLACE_CHILD)).toBe('health'); // a subcategory of features-health
+    expect(kindOf.get(LANDMARK_B)).toBe('health');
+    expect(kindOf.get(HOSPITAL_24H)).toBe('health');
+    expect(kindOf.get(POLICE)).toBeNull(); // no kind lists police
+    expect(kindOf.get(BANK_ATM)).toBe('bank');
+    expect(kindOf.get(STOP)).toBe('bus');
+    expect(kindOf.get(STORE_B)).toBe('shops');
+    expect(kindOf.get(POST_B)).toBe('phones');
+  });
+
+  it('keeps only the asked kinds, and clusters each kind on its own', async () => {
+    const health = await features({ kinds: ['health'] });
+    expect(new Set(ids(health))).toEqual(
+      new Set([PLACE_OPEN, PLACE_CLOSED, PLACE_CHILD, LANDMARK_B, HOSPITAL_24H]),
+    );
+    expect(ids(await features({ kinds: ['bank', 'bus'] })).sort()).toEqual([BANK_ATM, STOP].sort());
+    expect(await features({ kinds: ['no-such-kind'] })).toEqual([]);
+    // Zoomed out, health places and the bank share cells but not clusters.
+    const clusters = await features({ zoom: 10, kinds: ['health', 'bank'] });
+    expect(new Set(clusters.map((r) => r.kind))).toEqual(new Set(['health', 'bank']));
+    expect(clusters.reduce((n, r) => n + r.point_count, 0)).toBe(6);
   });
 
   it('filters by category with its descendants; stores, emergency services and stops have none', async () => {

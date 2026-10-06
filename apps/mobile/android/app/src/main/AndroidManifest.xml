@@ -57,6 +57,12 @@
             <action android:name="android.intent.action.DIAL"/>
             <data android:scheme="tel"/>
         </intent>
+        <!-- Map tab directions (ADR 046): is Google Maps installed? Else the
+             https link opens in the browser. -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="google.navigation"/>
+        </intent>
         <intent>
             <action android:name="android.intent.action.SENDTO"/>
             <data android:scheme="sms"/>

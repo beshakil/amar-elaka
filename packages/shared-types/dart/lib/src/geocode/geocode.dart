@@ -149,3 +149,19 @@ class GeoAreaName {
 
   Map<String, dynamic> toJson() => _$GeoAreaNameToJson(this);
 }
+
+/// `GET /locations/lookup`: our own administrative areas at a point (no
+/// provider, no cost) — what LocationPicker shows at once, before the
+/// street address arrives.
+@JsonSerializable(explicitToJson: true)
+class PointAreas {
+  const PointAreas({required this.areas});
+
+  factory PointAreas.fromJson(Map<String, dynamic> json) =>
+      _$PointAreasFromJson(json);
+
+  /// Country first.
+  final List<GeoArea> areas;
+
+  Map<String, dynamic> toJson() => _$PointAreasToJson(this);
+}

@@ -3586,6 +3586,14 @@
               ],
               "type": "string"
             }
+          },
+          {
+            "name": "kinds",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -3595,6 +3603,59 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/MapFeaturesResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Map"
+        ]
+      }
+    },
+    "/map/features/{layer}/{id}": {
+      "get": {
+        "operationId": "MapController_preview",
+        "parameters": [
+          {
+            "name": "layer",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "enum": [
+                "posts",
+                "stores",
+                "places",
+                "landmarks",
+                "info"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tenant",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MapPreviewResponseDto"
                 }
               }
             }
@@ -10600,13 +10661,80 @@
           "fallbackStyleUrl": {
             "type": "string",
             "nullable": true
+          },
+          "kinds": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "string"
+                },
+                "icon": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "object",
+                  "properties": {
+                    "bn": {
+                      "type": "string"
+                    },
+                    "en": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "bn",
+                    "en"
+                  ]
+                }
+              },
+              "required": [
+                "code",
+                "icon",
+                "label"
+              ]
+            }
+          },
+          "client": {
+            "type": "object",
+            "properties": {
+              "pickerIdleDebounceMs": {
+                "type": "number"
+              },
+              "autocompleteDebounceMs": {
+                "type": "number"
+              },
+              "autocompleteMinChars": {
+                "type": "number"
+              },
+              "searchAreaMoveRatio": {
+                "type": "number"
+              },
+              "pinLabelMinZoom": {
+                "type": "number"
+              },
+              "pinLabelMax": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "pickerIdleDebounceMs",
+              "autocompleteDebounceMs",
+              "autocompleteMinChars",
+              "searchAreaMoveRatio",
+              "pinLabelMinZoom",
+              "pinLabelMax"
+            ]
           }
         },
         "required": [
           "tiles",
           "assetsBaseUrl",
           "labelLanguage",
-          "fallbackStyleUrl"
+          "fallbackStyleUrl",
+          "kinds",
+          "client"
         ]
       },
       "MapFeaturesResponseDto": {
@@ -10709,6 +10837,10 @@
                             "info"
                           ]
                         },
+                        "kind": {
+                          "type": "string",
+                          "nullable": true
+                        },
                         "count": {
                           "type": "number"
                         },
@@ -10719,6 +10851,7 @@
                       "required": [
                         "cluster",
                         "layer",
+                        "kind",
                         "count",
                         "expansion_zoom"
                       ]
@@ -10782,6 +10915,10 @@
                             "info"
                           ]
                         },
+                        "kind": {
+                          "type": "string",
+                          "nullable": true
+                        },
                         "id": {
                           "type": "string"
                         },
@@ -10820,6 +10957,7 @@
                       "required": [
                         "cluster",
                         "layer",
+                        "kind",
                         "id",
                         "tenant_id",
                         "name_bn",
@@ -10852,6 +10990,80 @@
           "truncated",
           "open_now_skipped",
           "features"
+        ]
+      },
+      "MapPreviewResponseDto": {
+        "type": "object",
+        "properties": {
+          "layer": {
+            "type": "string",
+            "enum": [
+              "posts",
+              "stores",
+              "places",
+              "landmarks",
+              "info"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "object",
+            "properties": {
+              "bn": {
+                "type": "string",
+                "nullable": true
+              },
+              "en": {
+                "type": "string",
+                "nullable": true
+              }
+            },
+            "required": [
+              "bn",
+              "en"
+            ]
+          },
+          "photo": {
+            "type": "object",
+            "properties": {
+              "url": {
+                "type": "string"
+              },
+              "thumbhash": {
+                "type": "string",
+                "nullable": true
+              }
+            },
+            "required": [
+              "url",
+              "thumbhash"
+            ],
+            "nullable": true
+          },
+          "phones": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "address": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "layer",
+          "id",
+          "tenantId",
+          "name",
+          "photo",
+          "phones",
+          "address"
         ]
       },
       "MapDistanceResponseDto": {

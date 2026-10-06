@@ -18,11 +18,39 @@ const manifest = (version: string) => ({
 
 describe('MapConfigService', () => {
   let root: string;
+  const values: Record<string, unknown> = {
+    map_label_language: 'bn',
+    map_style_fallback: 'https://maps.example/style.json',
+    map_kinds: [
+      {
+        code: 'bank',
+        icon: 'bank',
+        label_bn: 'ব্যাংক ও এটিএম',
+        label_en: 'Banks & ATMs',
+        sources: [{ table: 'places', categories: ['bank-atm'] }],
+      },
+    ],
+    geo_picker_idle_debounce_ms: 600,
+    geo_autocomplete_debounce_ms: 400,
+    geocode_autocomplete_min_chars: 3,
+    map_search_area_move_ratio: 0.3,
+    map_pin_label_min_zoom: 17,
+    map_pin_label_max: 40,
+  };
   const settings = {
-    get: jest.fn((key: string) =>
-      Promise.resolve(key === 'map_label_language' ? 'bn' : 'https://maps.example/style.json'),
-    ),
+    get: jest.fn((key: string) => Promise.resolve(values[key])),
   } as unknown as SettingsService;
+  const shared = {
+    kinds: [{ code: 'bank', icon: 'bank', label: { bn: 'ব্যাংক ও এটিএম', en: 'Banks & ATMs' } }],
+    client: {
+      pickerIdleDebounceMs: 600,
+      autocompleteDebounceMs: 400,
+      autocompleteMinChars: 3,
+      searchAreaMoveRatio: 0.3,
+      pinLabelMinZoom: 17,
+      pinLabelMax: 40,
+    },
+  };
   const logger = { setContext: jest.fn(), warn: jest.fn(), error: jest.fn() };
   const service = (publicUrl?: string) =>
     new MapConfigService(
@@ -42,6 +70,7 @@ describe('MapConfigService', () => {
       assetsBaseUrl: 'http://api.test/tiles',
       labelLanguage: 'bn',
       fallbackStyleUrl: 'https://maps.example/style.json',
+      ...shared,
     });
   });
 

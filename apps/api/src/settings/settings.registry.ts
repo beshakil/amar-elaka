@@ -37,6 +37,34 @@ const reverseFields = z.array(z.enum(REVERSE_FIELDS));
 /** The map's layers (ADR 045, GET /map/features). */
 export const MAP_LAYERS = ['posts', 'stores', 'places', 'landmarks', 'info'] as const;
 
+/** Where a map kind's features come from (map_kinds, migration 0041). */
+export const MAP_KIND_SOURCE_TABLES = [
+  'posts',
+  'stores',
+  'places',
+  'emergency',
+  'bus_stops',
+] as const;
+const slug = z.string().regex(/^[a-z0-9]+(-[a-z0-9]+)*$/);
+const code = z.string().regex(/^[a-z][a-z0-9_]*$/);
+export const mapKindSchema = z.object({
+  code,
+  /** An icon key the clients know (hospital, pharmacy, food, gas, bank, bus, shop, listing…). */
+  icon: code,
+  label_bn: z.string().min(1),
+  label_en: z.string().min(1),
+  sources: z
+    .array(
+      z.object({
+        table: z.enum(MAP_KIND_SOURCE_TABLES),
+        categories: z.array(slug).optional(),
+        service_types: z.array(code).optional(),
+      }),
+    )
+    .nonempty(),
+});
+export type MapKind = z.infer<typeof mapKindSchema>;
+
 export const SETTING_DEFINITIONS = {
   // Tenant lifecycle (§13.30)
   grace_past_due_days: wholeNumber,
@@ -298,6 +326,19 @@ export const SETTING_DEFINITIONS = {
   map_layers_default: z.array(z.enum(MAP_LAYERS)).nonempty(),
   // Read by map_features() (0040): place category slugs shown in the info layer.
   map_info_place_categories: z.array(z.string().regex(/^[a-z0-9]+(-[a-z0-9]+)*$/)),
+
+  // The app's Map tab and LocationPicker (ADR 046, migration 0041)
+  geo_picker_idle_debounce_ms: wholeNumber,
+  geo_autocomplete_debounce_ms: wholeNumber,
+  map_search_area_move_ratio: decimal,
+  map_pin_label_min_zoom: wholeNumber,
+  map_pin_label_max: wholeNumber,
+  map_kinds: z
+    .array(mapKindSchema)
+    .refine(
+      (kinds) => new Set(kinds.map((k) => k.code)).size === kinds.length,
+      'kind codes are unique',
+    ),
 } as const satisfies Record<string, z.ZodTypeAny>;
 
 export type SettingKey = keyof typeof SETTING_DEFINITIONS;

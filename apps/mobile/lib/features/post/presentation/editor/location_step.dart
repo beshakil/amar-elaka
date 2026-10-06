@@ -3,264 +3,86 @@ import 'dart:async';
 import 'package:amar_elaka_api/amar_elaka_api.dart' as api;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:maplibre_gl/maplibre_gl.dart';
 
 import '../../../../core/design/tokens/app_colors.dart';
 import '../../../../core/design/tokens/app_radii.dart';
 import '../../../../core/design/tokens/app_spacing.dart';
-import '../../../../core/design/widgets/app_text_field.dart';
-import '../../../../core/map/barikoi_attribution.dart';
-import '../../../../core/map/base_map.dart';
+import '../../../../core/map/location_picker.dart';
 import '../../../../core/network/api_exception.dart';
 import '../../../../l10n/app_localizations.dart';
-import '../../../tenant_bootstrap/data/location_service.dart';
 import '../../application/current_tenant.dart';
 import '../../application/post_editor.dart';
 import '../../data/posts_api.dart';
 import 'step_gate.dart';
 
-/// A point as the post stores it: the exact doubles from GPS, the draft or a
-/// search result. MapLibre's [LatLng] wraps longitudes with float arithmetic
-/// (90.3687 → 90.36869999999999), so it is used for the camera only.
-typedef _Point = ({double lat, double lng});
-
-LatLng _camera(_Point p) => LatLng(p.lat, p.lng);
-
-const _searchDelay = Duration(milliseconds: 400);
-const _initialZoom = 16.0;
-
-/// Step 4: where the post is. The map (our self-hosted base map, ADR 043)
-/// starts at the phone's location (else the draft's point, else the area's
-/// centre); the pin stays in the middle while the map moves under it. Each
-/// point the camera comes to rest at is reverse-geocoded for
-/// a readable address and checked against the area's boundary — outside it
-/// is a warning, never a block (the server places the post in the right
-/// area). Address search is the fallback when GPS or the map can't help.
+/// Step 4: where the post is — the shared [LocationPicker] (ADR 046) with
+/// `purpose=post_location`. The point and the address text the user kept
+/// (or edited) are saved to the draft; each settled point is also checked
+/// against the area's boundary — outside it is a warning, never a block (the
+/// server places the post in the right area).
 class LocationStep extends ConsumerStatefulWidget {
-  const LocationStep({required this.editor, required this.gate, super.key});
+  const LocationStep({
+    required this.editor,
+    required this.gate,
+    this.pickerController,
+    super.key,
+  });
 
   final PostEditor editor;
   final StepGate gate;
+
+  /// Tests drive the camera through it (no native map in widget tests).
+  final LocationPickerController? pickerController;
 
   @override
   ConsumerState<LocationStep> createState() => _LocationStepState();
 }
 
 class _LocationStepState extends ConsumerState<LocationStep> {
-  MapLibreMapController? _map;
-  final _search = TextEditingController();
-  Timer? _searchDebounce;
-
-  /// Where the app last sent the camera (GPS, a search result, the start):
-  /// its camera-idle is not a new point to look up — that is already done.
-  _Point? _movedTo;
-
-  /// A point chosen before the map existed (a GPS fix on the first frame).
-  _Point? _pendingCenter;
-  int _lookup = 0;
-
-  api.ReverseGeocode? _address;
   api.PostOwnership? _ownership;
-  bool _lookingUp = false;
-  String? _notice;
-  List<api.GeocodeResult>? _results;
+  int _check = 0;
   bool _showRequired = false;
 
   @override
   void initState() {
     super.initState();
-    widget.gate.register(_check);
-    // After the first frame: the lookups read the locale and the messages.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final draft = widget.editor.draft!;
-      // The map opens here: its first camera-idle is not a new point.
-      _movedTo = _start;
-      if (draft.hasLocation) {
-        _lookUp((lat: draft.lat!, lng: draft.lng!));
-      } else {
-        unawaited(_useMyLocation(initial: true));
-      }
-    });
+    widget.gate.register(_gate);
   }
 
   @override
   void dispose() {
-    widget.gate.unregister(_check);
-    _searchDebounce?.cancel();
-    _search.dispose();
+    widget.gate.unregister(_gate);
     super.dispose();
   }
 
-  bool _check() {
+  bool _gate() {
     final ok = widget.editor.draft!.hasLocation;
     setState(() => _showRequired = !ok);
     return ok;
   }
 
-  _Point get _start {
-    final draft = widget.editor.draft!;
-    if (draft.hasLocation) return (lat: draft.lat!, lng: draft.lng!);
-    final center = ref.read(currentTenantConfigProvider)?.mapCenter;
-    // Bootstrapped apps always have a tenant; Dhaka only for a bare test/edge case.
-    return center == null
-        ? (lat: 23.8103, lng: 90.4125)
-        : (lat: center.lat, lng: center.lng);
-  }
-
-  Future<void> _useMyLocation({bool initial = false}) async {
-    final l10n = AppLocalizations.of(context)!;
-    final result = await ref
-        .read(locationServiceProvider)
-        .requestAndGetPosition();
-    if (!mounted) return;
-    switch (result) {
-      case LocationGranted(:final latitude, :final longitude):
-        _moveTo((lat: latitude, lng: longitude));
-      case LocationDenied() || LocationPermanentlyDenied():
-        setState(() => _notice = l10n.postLocationPermissionDenied);
-        if (initial) _moveTo(_start);
-      case LocationServiceDisabled():
-        setState(() => _notice = l10n.postLocationServiceOff);
-        if (initial) _moveTo(_start);
-      case LocationError():
-        if (initial) _moveTo(_start);
-    }
-  }
-
-  void _moveTo(_Point point) {
-    _movedTo = point;
-    final map = _map;
-    if (map == null) {
-      _pendingCenter = point; // applied when the map is created
-    } else {
-      unawaited(
-        map.animateCamera(
-          CameraUpdate.newLatLngZoom(_camera(point), _initialZoom),
-        ),
-      );
-    }
-    _lookUp(point);
-  }
-
-  void _onMapCreated(MapLibreMapController controller) {
-    _map = controller;
-    final pending = _pendingCenter;
-    _pendingCenter = null;
-    if (pending != null) {
-      unawaited(
-        controller.moveCamera(
-          CameraUpdate.newLatLngZoom(_camera(pending), _initialZoom),
-        ),
-      );
-    }
-  }
-
-  /// The user moved the map and let go: the point under the pin is new.
-  void _onCameraIdle(CameraPosition? position) {
-    if (position == null) return;
-    final target = (
-      lat: position.target.latitude,
-      lng: position.target.longitude,
+  void _onChanged(PickedLocation picked) {
+    widget.editor.update(
+      (d) => d.copyWith(
+        lat: picked.point.lat,
+        lng: picked.point.lng,
+        addressLabel: picked.label,
+      ),
     );
-    final movedTo = _movedTo;
-    // A millionth of a degree (~0.1 m): the camera settled where it was sent.
-    const samePoint = 1e-6;
-    if (movedTo != null &&
-        (target.lat - movedTo.lat).abs() < samePoint &&
-        (target.lng - movedTo.lng).abs() < samePoint) {
-      return;
-    }
-    _movedTo = target;
-    _lookUp(target);
+    if (_showRequired) setState(() => _showRequired = false);
   }
 
-  /// Saves the point, then fetches its address and ownership — the latest
-  /// request wins; answers for points the user already left are dropped.
-  Future<void> _lookUp(_Point point) async {
-    widget.editor.update((d) => d.copyWith(lat: point.lat, lng: point.lng));
-    final requestId = ++_lookup;
-    setState(() {
-      _lookingUp = true;
-      _showRequired = false;
-    });
-    final posts = ref.read(postsApiProvider);
-    final l10n = AppLocalizations.of(context)!;
-    final locale = Localizations.localeOf(context).languageCode;
+  /// Inside the area or not, for the warning; the latest point wins.
+  Future<void> _checkOwnership(GeoPoint point) async {
+    final id = ++_check;
     try {
-      final (address, ownership) = await (
-        // A post's pin: settings decide which Barikoi fields that costs (ADR 044).
-        posts.reverseGeocode(point.lat, point.lng),
-        posts.ownership(point.lat, point.lng),
-      ).wait;
-      if (!mounted || requestId != _lookup) return;
-      final label = _label(address, locale);
-      widget.editor.update((d) => d.copyWith(addressLabel: label));
-      setState(() {
-        _address = address;
-        _ownership = ownership;
-        _lookingUp = false;
-      });
-    } on ParallelWaitError<
-      (api.ReverseGeocode?, api.PostOwnership?),
-      (AsyncError?, AsyncError?)
-    > catch (e) {
-      if (!mounted || requestId != _lookup) return;
-      // Either lookup may fail on its own (offline, provider down): keep
-      // whatever came back; the point itself is already saved.
-      setState(() {
-        _address = e.values.$1;
-        _ownership = e.values.$2;
-        _lookingUp = false;
-        if (e.errors.$1?.error is NetworkException) {
-          _notice = l10n.postErrorNetwork;
-        }
-      });
+      final ownership = await ref
+          .read(postsApiProvider)
+          .ownership(point.lat, point.lng);
+      if (mounted && id == _check) setState(() => _ownership = ownership);
+    } on AppException {
+      if (mounted && id == _check) setState(() => _ownership = null);
     }
-  }
-
-  /// The provider's address in the reader's script, else our own area names
-  /// (union, upazila, district), else nothing.
-  static String? _label(api.ReverseGeocode geo, String locale) {
-    final address = geo.address;
-    if (address != null) {
-      return locale == 'bn'
-          ? (address.labelBn ?? address.label)
-          : address.label;
-    }
-    final areas = geo.areas.reversed
-        .where((a) => a.level != 'country' && a.level != 'division')
-        .take(3)
-        .map((a) => a.name.of(locale));
-    return areas.isEmpty ? null : areas.join(', ');
-  }
-
-  void _onSearchChanged(String query) {
-    _searchDebounce?.cancel();
-    if (query.trim().isEmpty) {
-      setState(() => _results = null);
-      return;
-    }
-    _searchDebounce = Timer(_searchDelay, () async {
-      final draft = widget.editor.draft!;
-      try {
-        final response = await ref
-            .read(postsApiProvider)
-            .autocomplete(query.trim(), lat: draft.lat, lng: draft.lng);
-        if (mounted && _search.text.trim() == query.trim()) {
-          setState(() => _results = response.results);
-        }
-      } on AppException {
-        if (mounted) setState(() => _results = const []);
-      }
-    });
-  }
-
-  void _pickResult(api.GeocodeResult result) {
-    FocusScope.of(context).unfocus();
-    _search.clear();
-    setState(() => _results = null);
-    _moveTo((lat: result.location.lat, lng: result.location.lng));
   }
 
   @override
@@ -273,184 +95,57 @@ class _LocationStepState extends ConsumerState<LocationStep> {
         ? AppColors.dark
         : AppColors.light;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.md,
-            AppSpacing.sm,
-            AppSpacing.md,
-            0,
-          ),
-          child: AppTextField(
-            key: const ValueKey('location-search'),
-            label: l10n.postLocationSearchHint,
-            controller: _search,
-            prefixIcon: Icons.search,
-            textInputAction: TextInputAction.search,
-            onChanged: _onSearchChanged,
-          ),
-        ),
-        if (_results case final results?)
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxHeight: 220),
-            child: results.isEmpty
-                ? Padding(
-                    padding: const EdgeInsets.all(AppSpacing.md),
-                    child: Text(l10n.postLocationSearchEmpty),
-                  )
-                : ListView(
-                    shrinkWrap: true,
-                    children: [
-                      for (final result in results)
-                        ListTile(
-                          leading: const Icon(Icons.place_outlined),
-                          title: Text(result.labelBn ?? result.label),
-                          subtitle: result.area == null
-                              ? null
-                              : Text(result.area!),
-                          onTap: () => _pickResult(result),
-                        ),
-                      if (results.any((r) => r.source == 'barikoi'))
-                        const Padding(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: AppSpacing.md,
-                            vertical: AppSpacing.xs,
-                          ),
-                          child: BarikoiAttribution(),
-                        ),
-                    ],
-                  ),
-          ),
-        const SizedBox(height: AppSpacing.sm),
-        Expanded(
-          child: Stack(
-            children: [
-              BaseMap(
-                initialCenter: _camera(_pendingCenter ?? _start),
-                initialZoom: _initialZoom,
-                onMapCreated: _onMapCreated,
-                onCameraIdle: _onCameraIdle,
+    return LocationPicker(
+      purpose: 'post_location',
+      initial: draft.hasLocation ? (lat: draft.lat!, lng: draft.lng!) : null,
+      controller: widget.pickerController,
+      onChanged: _onChanged,
+      onPointSettled: (point) => unawaited(_checkOwnership(point)),
+      below: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (_ownership case final ownership? when ownership.outsideBoundary)
+            Container(
+              key: const ValueKey('location-outside-warning'),
+              margin: const EdgeInsets.only(top: AppSpacing.sm),
+              padding: const EdgeInsets.all(AppSpacing.sm),
+              decoration: BoxDecoration(
+                color: warningColors.warning.withValues(alpha: 0.15),
+                borderRadius: AppRadii.mdRadius,
               ),
-              // The pin stays centred; its tip marks the point.
-              IgnorePointer(
-                child: Center(
-                  child: Transform.translate(
-                    offset: const Offset(0, -20),
-                    child: Icon(
-                      Icons.location_pin,
-                      size: 44,
-                      color: theme.colorScheme.error,
-                      semanticLabel: l10n.postLocationHint,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.warning_amber_rounded,
+                    color: warningColors.warning,
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Text(
+                      [
+                        l10n.postLocationOutsideWarning(tenantName),
+                        if (ownership.needsReview) l10n.postLocationNeedsReview,
+                      ].join(' '),
+                      style: theme.textTheme.bodySmall,
                     ),
                   ),
+                ],
+              ),
+            ),
+          if (_showRequired)
+            Padding(
+              padding: const EdgeInsets.only(top: AppSpacing.xs),
+              child: Text(
+                l10n.postLocationRequired,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.error,
                 ),
               ),
-              Positioned(
-                right: AppSpacing.md,
-                bottom: AppSpacing.md,
-                child: FloatingActionButton.small(
-                  heroTag: 'my-location',
-                  tooltip: l10n.postLocationMyLocation,
-                  onPressed: _useMyLocation,
-                  child: const Icon(Icons.my_location),
-                ),
-              ),
-            ],
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(l10n.postLocationHint, style: theme.textTheme.bodySmall),
-              const SizedBox(height: AppSpacing.xs),
-              if (_lookingUp)
-                Text(
-                  l10n.postLocationLookingUp,
-                  style: theme.textTheme.bodyMedium,
-                )
-              else if (draft.addressLabel case final label?)
-                Row(
-                  children: [
-                    const Icon(Icons.place_outlined, size: 18),
-                    const SizedBox(width: AppSpacing.xs),
-                    Expanded(
-                      child: Text(
-                        label,
-                        key: const ValueKey('location-address'),
-                        style: theme.textTheme.titleSmall,
-                      ),
-                    ),
-                  ],
-                )
-              else if (draft.hasLocation)
-                Text(
-                  l10n.postLocationUnknownAddress,
-                  style: theme.textTheme.bodySmall,
-                ),
-              if (!_lookingUp &&
-                  draft.addressLabel != null &&
-                  _address?.address?.source == 'barikoi')
-                const BarikoiAttribution(),
-              if (_address?.degraded == true)
-                Text(
-                  l10n.postLocationDegraded,
-                  style: theme.textTheme.bodySmall,
-                ),
-              if (_ownership case final ownership?
-                  when ownership.outsideBoundary)
-                Container(
-                  key: const ValueKey('location-outside-warning'),
-                  margin: const EdgeInsets.only(top: AppSpacing.sm),
-                  padding: const EdgeInsets.all(AppSpacing.sm),
-                  decoration: BoxDecoration(
-                    color: warningColors.warning.withValues(alpha: 0.15),
-                    borderRadius: AppRadii.mdRadius,
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(
-                        Icons.warning_amber_rounded,
-                        color: warningColors.warning,
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(
-                        child: Text(
-                          [
-                            l10n.postLocationOutsideWarning(tenantName),
-                            if (ownership.needsReview)
-                              l10n.postLocationNeedsReview,
-                          ].join(' '),
-                          style: theme.textTheme.bodySmall,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              if (_notice case final notice?)
-                Padding(
-                  padding: const EdgeInsets.only(top: AppSpacing.xs),
-                  child: Text(notice, style: theme.textTheme.bodySmall),
-                ),
-              if (_showRequired)
-                Padding(
-                  padding: const EdgeInsets.only(top: AppSpacing.xs),
-                  child: Text(
-                    l10n.postLocationRequired,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.error,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ],
+            ),
+        ],
+      ),
     );
   }
 }

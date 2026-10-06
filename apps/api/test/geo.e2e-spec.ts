@@ -22,6 +22,15 @@ const TENANT = '0191e3a0-6e0e-7000-8000-000000000021';
 const ADMIN = '0191e3a0-6e0e-7000-8000-000000000031';
 const USER = '0191e3a0-6e0e-7000-8000-000000000032';
 const NO_MEMBER = '00000000-0000-7000-8000-000000000000';
+// Map preview fixtures (ADR 046).
+const MEMBER = '0191e3a0-6e0e-7000-8000-000000000041';
+const CATEGORY = '0191e3a0-6e0e-7000-8000-000000000051';
+const CATEGORY_PLACE = '0191e3a0-6e0e-7000-8000-000000000052';
+const SCHEMA = '0191e3a0-6e0e-7000-8000-000000000061';
+const POST = '0191e3a0-6e0e-7000-8000-000000000101';
+const POST_HIDDEN = '0191e3a0-6e0e-7000-8000-000000000102';
+const PLACE = '0191e3a0-6e0e-7000-8000-000000000201';
+const HOSPITAL = '0191e3a0-6e0e-7000-8000-000000000301';
 
 interface Usage {
   days: { day: string; requests: number; calls: number; cacheHits: number }[];
@@ -49,6 +58,12 @@ describe('Geo provider layer (e2e)', () => {
     (await get('/analytics/geo-usage', 'platformAdmin')).json<Usage>();
 
   async function cleanUp(): Promise<void> {
+    await admin`delete from emergency_contacts where tenant_id::text like ${FIXTURE}`;
+    await admin`delete from posts where tenant_id::text like ${FIXTURE}`;
+    await admin`delete from places where tenant_id::text like ${FIXTURE}`;
+    await admin`delete from category_field_schemas where category_id::text like ${FIXTURE}`;
+    await admin`delete from categories where id::text like ${FIXTURE}`;
+    await admin`delete from tenant_members where tenant_id::text like ${FIXTURE}`;
     await admin`delete from tenant_settings where tenant_id::text like ${FIXTURE}`;
     await admin`delete from tenants where id::text like ${FIXTURE}`;
     await admin`delete from partners where id::text like ${FIXTURE}`;
@@ -72,6 +87,37 @@ describe('Geo provider layer (e2e)', () => {
       insert into tenants (id, partner_id, geo_area_id, slug, name_bn, name_en, map_center, status_code)
       values (${TENANT}, ${PARTNER}, ${AREA}, 'geo-e2e', 'জি', 'G', 'SRID=4326;POINT(90 24)', 'active')`;
     await admin`insert into tenant_settings (tenant_id) values (${TENANT})`;
+    await admin`
+      insert into tenant_members (id, tenant_id, user_id, role_code)
+      values (${MEMBER}, ${TENANT}, ${USER}, 'member')`;
+    await admin`
+      insert into categories (id, kind_code, slug, name_bn, name_en) values
+        (${CATEGORY}, 'marketplace', 'geo-e2e-phones', 'ফোন', 'Phones'),
+        (${CATEGORY_PLACE}, 'place', 'geo-e2e-health', 'স্বাস্থ্য', 'Health')`;
+    await admin`
+      insert into category_field_schemas (id, category_id, version, json_schema, status_code)
+      values (${SCHEMA}, ${CATEGORY}, 1, '{}'::jsonb, 'draft')`;
+    for (const [id, hidden] of [
+      [POST, false],
+      [POST_HIDDEN, true],
+    ] as const) {
+      await admin`
+        insert into posts (id, tenant_id, author_member_id, category_id, field_schema_id, title,
+                           status_code, published_at, bumped_at, location, fields, hidden_by_owner)
+        values (${id}, ${TENANT}, ${MEMBER}, ${CATEGORY}, ${SCHEMA}, 'আইফোন ১৩', 'live', now(), now(),
+                'SRID=4326;POINT(90.37 23.75)', '{"price": "65000.00"}'::jsonb, ${hidden})`;
+    }
+    await admin`
+      insert into places (id, tenant_id, category_id, slug, name_bn, name_en, phones, address_text,
+                          location, source_code, status_code)
+      values (${PLACE}, ${TENANT}, ${CATEGORY_PLACE}, 'geo-e2e-clinic', 'লাইফ ক্লিনিক', 'Life Clinic',
+              '{"+8801799300555"}', 'রোড ৫, ধানমন্ডি', 'SRID=4326;POINT(90.371 23.751)',
+              'user_submitted', 'published')`;
+    await admin`
+      insert into emergency_contacts (id, tenant_id, service_type_code, name_bn, name_en, phones,
+                                      address_text, location, is_24h)
+      values (${HOSPITAL}, ${TENANT}, 'hospital', 'সরকারি হাসপাতাল', 'Govt Hospital',
+              '{"16263", "+8801799300777"}', 'হাসপাতাল রোড', 'SRID=4326;POINT(90.372 23.752)', true)`;
 
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(BarikoiProvider)
@@ -187,6 +233,42 @@ describe('Geo provider layer (e2e)', () => {
     expect(fake.calls).toEqual([]);
     const after = await usage();
     expect(after.today.calls).toBe(before.today.calls);
+  });
+
+  it('GET /map/features/:layer/:id previews a tapped feature from its own tenant, never a provider', async () => {
+    fake.calls = [];
+    const preview = (layer: string, id: string, tenant = TENANT) =>
+      get(`/map/features/${layer}/${id}?tenant=${tenant}`);
+
+    const place = await preview('places', PLACE);
+    expect(place.statusCode).toBe(200);
+    expect(place.json()).toEqual({
+      layer: 'places',
+      id: PLACE,
+      tenantId: TENANT,
+      name: { bn: 'লাইফ ক্লিনিক', en: 'Life Clinic' },
+      photo: null,
+      phones: ['+8801799300555'],
+      address: 'রোড ৫, ধানমন্ডি',
+    });
+    expect((await preview('info', HOSPITAL)).json()).toMatchObject({
+      name: { bn: 'সরকারি হাসপাতাল', en: 'Govt Hospital' },
+      phones: ['16263', '+8801799300777'],
+      address: 'হাসপাতাল রোড',
+    });
+    // A post: its Bengali title as name_bn, and no phone (calls go through its contact action).
+    expect((await preview('posts', POST)).json()).toMatchObject({
+      name: { bn: 'আইফোন ১৩', en: null },
+      phones: [],
+    });
+
+    // Hidden, wrong layer, another tenant's context, nonsense: not found / invalid.
+    expect((await preview('posts', POST_HIDDEN)).statusCode).toBe(404);
+    expect((await preview('stores', PLACE)).statusCode).toBe(404);
+    expect((await preview('places', PLACE, NO_MEMBER)).statusCode).toBe(404);
+    expect((await preview('rivers', PLACE)).statusCode).toBe(400);
+    expect((await get(`/map/features/places/${PLACE}`)).statusCode).toBe(400); // no tenant
+    expect(fake.calls).toEqual([]);
   });
 
   it('logs never the query, only what was spent', async () => {

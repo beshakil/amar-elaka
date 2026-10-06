@@ -27,6 +27,7 @@ class BaseMap extends ConsumerStatefulWidget {
     this.onMapCreated,
     this.onStyleLoaded,
     this.onCameraIdle,
+    this.onCameraMove,
     this.labelLanguage,
     this.dark,
     super.key,
@@ -41,6 +42,9 @@ class BaseMap extends ConsumerStatefulWidget {
 
   /// The camera came to rest (after a gesture or an animation).
   final void Function(CameraPosition? position)? onCameraIdle;
+
+  /// Every frame while the camera moves (keep it cheap: no rebuilds).
+  final void Function(CameraPosition position)? onCameraMove;
 
   /// Overrides the `map_label_language` setting (the shaping debug screen).
   final String? labelLanguage;
@@ -136,6 +140,7 @@ class _BaseMapState extends ConsumerState<BaseMap> {
             final controller = _controller;
             if (controller != null) widget.onStyleLoaded?.call(controller);
           },
+          onCameraMove: widget.onCameraMove,
           onCameraIdle: () =>
               widget.onCameraIdle?.call(_controller?.cameraPosition),
         ),

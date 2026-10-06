@@ -288,6 +288,13 @@
       "when": 1791300565495,
       "tag": "0040_map_features_info_places",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1791303119374,
+      "tag": "0041_map_kinds_and_client_settings",
+      "breakpoints": true
     }
   ]
 }

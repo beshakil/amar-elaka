@@ -16,6 +16,8 @@ const MAX_LNG = 180;
 const POINT_PARTS = 2;
 // settings-exempt: generic input-length cap, not a business threshold
 const SLUG_MAX_CHARS = 100;
+// settings-exempt: generic input cap on a comma list, not a business threshold
+const KINDS_MAX = 50;
 
 /** `lat,lng` → a point. */
 const pointParam = z.string().transform((text, ctx) => {
@@ -68,6 +70,19 @@ export const mapFeaturesQuerySchema = z.object({
     .enum(['true', 'false'])
     .optional()
     .transform((v) => v === 'true'),
+  /** map_kinds codes (GET /map/config `kinds`), comma-separated: only features of these kinds. */
+  kinds: z
+    .string()
+    .optional()
+    .transform((text, ctx) => {
+      if (text === undefined || text.trim() === '') return undefined;
+      const kinds = [...new Set(text.split(',').map((k) => k.trim()))];
+      if (kinds.length > KINDS_MAX || !kinds.every((k) => /^[a-z][a-z0-9_]*$/.test(k))) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'kinds are map_kinds codes' });
+        return z.NEVER;
+      }
+      return kinds;
+    }),
 });
 export class MapFeaturesQueryDto extends createZodDto(mapFeaturesQuerySchema) {}
 export type MapFeaturesQuery = z.infer<typeof mapFeaturesQuerySchema>;
@@ -89,6 +104,8 @@ const clusterFeature = z.object({
   properties: z.object({
     cluster: z.literal(true),
     layer: z.enum(MAP_LAYERS),
+    /** map_kinds code of the cluster's features (clusters group per layer and kind); null = none. */
+    kind: z.string().nullable(),
     count: z.number(),
     /** Zoom to go to on a tap: the cluster splits there (or every point shows). */
     expansion_zoom: z.number(),
@@ -102,6 +119,8 @@ const pointFeature = z.object({
   properties: z.object({
     cluster: z.literal(false),
     layer: z.enum(MAP_LAYERS),
+    /** map_kinds code (the pin's icon); null when the feature matches no kind. */
+    kind: z.string().nullable(),
     id: z.string(),
     tenant_id: z.string(),
     /** Both always present (null when unknown), so a client can show Bengali in its own UI whatever the map label language. */

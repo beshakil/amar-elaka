@@ -94,6 +94,7 @@ class MapFeatureProperties {
   const MapFeatureProperties({
     required this.cluster,
     required this.layer,
+    this.kind,
     this.count,
     this.expansionZoom,
     this.id,
@@ -114,6 +115,9 @@ class MapFeatureProperties {
 
   /// posts | stores | places | landmarks | info
   final String layer;
+
+  /// `map_kinds` code (the pin's icon); null when the feature matches none.
+  final String? kind;
   final int? count;
 
   /// Zoom to go to on a tap: the cluster splits there (or every point shows).
@@ -136,6 +140,79 @@ class MapFeatureProperties {
   final bool? openNow;
 
   Map<String, dynamic> toJson() => _$MapFeaturePropertiesToJson(this);
+}
+
+/// Mirrors `MapPreviewResponseDto`: `GET /map/features/:layer/:id?tenant=`,
+/// what the preview sheet adds to a tapped feature (ADR 046).
+@JsonSerializable(explicitToJson: true)
+class MapPreview {
+  const MapPreview({
+    required this.layer,
+    required this.id,
+    required this.tenantId,
+    required this.name,
+    required this.photo,
+    required this.phones,
+    required this.address,
+  });
+
+  factory MapPreview.fromJson(Map<String, dynamic> json) =>
+      _$MapPreviewFromJson(json);
+
+  final String layer;
+  final String id;
+  final String tenantId;
+  final MapName name;
+
+  /// Card-size cover and its thumbhash; null when there is none.
+  final MapPreviewPhoto? photo;
+
+  /// Public numbers. Always empty for a post: calling goes through the
+  /// post's contact action (lead tracking).
+  final List<String> phones;
+  final String? address;
+
+  Map<String, dynamic> toJson() => _$MapPreviewToJson(this);
+}
+
+@JsonSerializable()
+class MapName {
+  const MapName({required this.bn, required this.en});
+
+  factory MapName.fromJson(Map<String, dynamic> json) =>
+      _$MapNameFromJson(json);
+
+  final String? bn;
+  final String? en;
+
+  Map<String, dynamic> toJson() => _$MapNameToJson(this);
+}
+
+@JsonSerializable()
+class MapPreviewPhoto {
+  const MapPreviewPhoto({required this.url, required this.thumbhash});
+
+  factory MapPreviewPhoto.fromJson(Map<String, dynamic> json) =>
+      _$MapPreviewPhotoFromJson(json);
+
+  final String url;
+  final String? thumbhash;
+
+  Map<String, dynamic> toJson() => _$MapPreviewPhotoToJson(this);
+}
+
+/// Mirrors `MapDistanceResponseDto`: `GET /map/distance` (PostGIS, free).
+@JsonSerializable()
+class MapDistance {
+  const MapDistance({required this.straightLineMeters});
+
+  factory MapDistance.fromJson(Map<String, dynamic> json) =>
+      _$MapDistanceFromJson(json);
+
+  @JsonKey(name: 'straight_line_meters')
+  final double straightLineMeters;
+
+  Map<String, dynamic> toJson() => _$MapDistanceToJson(this);
 }
 
 /// Mirrors `GeoRouteResponseDto`: `POST /geo/route`, asked for on a tap only.

@@ -32,19 +32,6 @@ abstract interface class PostsApi {
   Future<PostView> setHidden(String id, {required bool hidden});
   Future<void> delete(String id);
   Future<PostOwnership> ownership(double lat, double lng);
-
-  /// `GET /geo/reverse`. [purpose] decides which Barikoi fields are asked
-  /// for (settings, ADR 044); areas always come from our own geo_areas.
-  Future<ReverseGeocode> reverseGeocode(
-    double lat,
-    double lng, {
-    String purpose = 'post_location',
-  });
-  Future<GeocodeResponse> autocomplete(
-    String query, {
-    double? lat,
-    double? lng,
-  });
 }
 
 class DioPostsApi implements PostsApi {
@@ -151,32 +138,6 @@ class DioPostsApi implements PostsApi {
       queryParameters: {'lat': lat, 'lng': lng},
     );
     return PostOwnership.fromJson(response.data!);
-  });
-
-  @override
-  Future<ReverseGeocode> reverseGeocode(
-    double lat,
-    double lng, {
-    String purpose = 'post_location',
-  }) => _call(() async {
-    final response = await _dio.get<Map<String, dynamic>>(
-      '/geo/reverse',
-      queryParameters: {'lat': lat, 'lng': lng, 'purpose': purpose},
-    );
-    return ReverseGeocode.fromJson(response.data!);
-  });
-
-  @override
-  Future<GeocodeResponse> autocomplete(
-    String query, {
-    double? lat,
-    double? lng,
-  }) => _call(() async {
-    final response = await _dio.get<Map<String, dynamic>>(
-      '/geo/autocomplete',
-      queryParameters: {'q': query, 'lat': ?lat, 'lng': ?lng},
-    );
-    return GeocodeResponse.fromJson(response.data!);
   });
 }
 

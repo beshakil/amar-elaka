@@ -30,6 +30,7 @@ const cluster = (n: number): FeatureRow => ({
   slug: null,
   info_kind: null,
   open_now: null,
+  kind: 'listings',
 });
 const point: FeatureRow = {
   ...cluster(1),
@@ -40,6 +41,7 @@ const point: FeatureRow = {
   name_en: 'Crescent Lake',
   slug: 'crescent-lake',
   open_now: true,
+  kind: null,
 };
 
 class MemoryCache implements TextCache {
@@ -89,6 +91,7 @@ const query = (
   layers: undefined,
   category: undefined,
   open_now: false,
+  kinds: undefined as string[] | undefined,
 });
 const DHANMONDI = { minLng: 90.371, minLat: 23.751, maxLng: 90.379, maxLat: 23.759 };
 
@@ -105,7 +108,13 @@ describe('MapFeaturesService', () => {
     expect(response.features[0]).toEqual({
       type: 'Feature',
       geometry: { type: 'Point', coordinates: [90.37, 23.75] },
-      properties: { cluster: true, layer: 'posts', count: 12, expansion_zoom: 15 },
+      properties: {
+        cluster: true,
+        layer: 'posts',
+        kind: 'listings',
+        count: 12,
+        expansion_zoom: 15,
+      },
     });
     expect(response.features[1]).toMatchObject({
       type: 'Feature',
@@ -129,6 +138,7 @@ describe('MapFeaturesService', () => {
     expect(asked.box.maxLat).toBeGreaterThanOrEqual(DHANMONDI.maxLat);
     expect(asked.limit).toBe(4); // map_features_max + 1, to know it was cut
     expect(asked.layers).toEqual(['info', 'landmarks', 'places', 'posts', 'stores']);
+    expect(asked.kinds).toBeNull();
   });
 
   it('a small pan inside the same tiles is served from the cache (one database query)', async () => {
@@ -140,7 +150,7 @@ describe('MapFeaturesService', () => {
     expect(repo.features).toHaveBeenCalledTimes(1);
     const [key, entry] = [...cache.store][0]!;
     expect(key).toMatch(
-      /^map:features:v2:info\+landmarks\+places\+posts\+stores:-:any:fit:14\/\d+-\d+\/\d+-\d+:tiles$/,
+      /^map:features:v3:info\+landmarks\+places\+posts\+stores:-:\*:any:fit:14\/\d+-\d+\/\d+-\d+:tiles$/,
     );
     expect(entry.ttl).toBe(60);
     // The hit is the cached text itself: never parsed or re-serialized.
@@ -153,7 +163,9 @@ describe('MapFeaturesService', () => {
     await service.features({ ...query(DHANMONDI), layers: ['posts'] });
     await service.features({ ...query(DHANMONDI), open_now: true });
     await service.features(query(DHANMONDI, 15));
-    expect(repo.features).toHaveBeenCalledTimes(4);
+    await service.features({ ...query(DHANMONDI), kinds: ['bank', 'hospital'] });
+    await service.features({ ...query(DHANMONDI), kinds: ['hospital', 'bank'] }); // same set: cached
+    expect(repo.features).toHaveBeenCalledTimes(5);
   });
 
   it('zoomed out past the radius: clipped, measured from the snapped viewport centre (in the key)', async () => {

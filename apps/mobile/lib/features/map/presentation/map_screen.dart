@@ -7,63 +7,69 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 
-import '../../../core/design/tokens/app_radii.dart';
 import '../../../core/design/tokens/app_spacing.dart';
 import '../../../core/dynamic_form/bn_numerals.dart';
-import '../../../core/map/barikoi_attribution.dart';
 import '../../../core/map/base_map.dart';
+import '../../../core/map/directions.dart';
 import '../../../core/map/map_config_provider.dart';
+import '../../../core/map/map_pin_images.dart';
 import '../../../core/network/api_exception.dart';
+import '../../../core/platform/external_apps.dart';
 import '../../../core/routing/route_paths.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../post/application/current_tenant.dart';
+import '../../post_detail/application/contact_actions.dart';
 import '../../tenant_bootstrap/data/location_service.dart';
+import '../application/map_viewport.dart';
+import '../application/route_cache.dart';
+import 'map_layers_sheet.dart';
+import 'map_preview_sheet.dart';
 
-const _pointsSource = 'ae-points';
-const _routeSource = 'ae-route';
+typedef _Point = ({double lat, double lng});
+
+const _source = 'ae-features';
 const _clusterLayer = 'ae-clusters';
-const _pointLayer = 'ae-point-dots';
+const _clusterCountLayer = 'ae-cluster-count';
+const _pinLayer = 'ae-pins';
+const _labelLayer = 'ae-pin-labels';
 
-const _initialZoom = 13.0;
+const _initialZoom = 14.0;
 // Web Mercator facts: 256 px tiles; 360 degrees of longitude per world width.
 const _tilePx = 256.0;
 const _degreesAround = 360.0;
-const _metersPerKm = 1000;
-const _secondsPerMinute = 60;
-
-/// One colour per layer (presentation), readable on both map themes.
-const _colourByLayer = [
-  'match',
-  ['get', 'layer'],
-  'posts',
-  '#d6336c',
-  'stores',
-  '#1c7ed6',
-  'places',
-  '#2f9e44',
-  'landmarks',
-  '#f59f00',
-  '#e03131',
-];
-const _isLandmark = [
-  '==',
-  ['get', 'layer'],
-  'landmarks',
-];
+const _routeMode = 'car';
 
 const _emptyCollection = {'type': 'FeatureCollection', 'features': <Object>[]};
 
-enum _RouteState { idle, loading, needsLocation, limited, failed }
+/// Drives the Map tab from the camera: the native map does in the app, tests
+/// do directly (no platform view in widget tests).
+class MapScreenController {
+  _MapScreenState? _state;
 
-/// The area map (ADR 044, 045): our base map with the API's GeoJSON
-/// features (posts, stores, places, landmarks, info), clustered on the
-/// server for the viewport, fetched when the camera comes to rest — never while it
-/// moves. A cluster zooms in on a tap; a point opens its card; a route is
-/// asked for only by the card's button, from the user's own location
-/// (Barikoi, metered on the server). The list gives the same items without
-/// the map.
+  /// The camera came to rest showing [box] at [zoom].
+  void cameraIdle(LatLngBox box, double zoom) =>
+      _state?._onCameraIdle(box, zoom);
+}
+
+/// The Map tab (ADR 046) on our own base map (ADR 043):
+///
+/// * opens at the user's location, the area's centre as fallback;
+/// * features from GET /map/features (ADR 045) — clustered on the server,
+///   our own data only — for the toggled `map_kinds` and "open now";
+/// * fetched on open, on a toggle change and on a cluster tap; a pan only
+///   offers "এই এলাকায় খুঁজুন" (no refetch per pan);
+/// * pins are icons (style images drawn by Flutter); from
+///   `map_pin_label_min_zoom` the nearest `map_pin_label_max` pins also carry
+///   their Bengali name as an image — never map text;
+/// * a pin opens a preview sheet (photo, name, distance, open/closed, call,
+///   directions, "রাস্তায় কত দূর?" — one paid route per place per session);
+/// * map / list show the same results;
+/// * OpenStreetMap + Protomaps credit always on the map; Barikoi's where its
+///   answer is shown.
 class MapScreen extends ConsumerStatefulWidget {
-  const MapScreen({super.key});
+  const MapScreen({this.controller, super.key});
+
+  final MapScreenController? controller;
 
   @override
   ConsumerState<MapScreen> createState() => _MapScreenState();
@@ -71,123 +77,323 @@ class MapScreen extends ConsumerStatefulWidget {
 
 class _MapScreenState extends ConsumerState<MapScreen> {
   MapLibreMapController? _map;
-  final Set<String> _shown = {...api.mapLayers};
+  bool _styleReady = false;
+
+  Set<String>? _kinds;
   bool _openNow = false;
-  api.MapFeatures? _points;
+
+  api.MapFeatures? _features;
+  bool _loading = false;
   bool _failed = false;
   int _request = 0;
-  api.MapFeature? _selected;
-  api.RouteAnswer? _route;
-  _RouteState _routeState = _RouteState.idle;
+
+  /// What the shown features were fetched for, and where the camera is.
+  LatLngBox? _fetchedBox;
+  double _fetchedZoom = _initialZoom;
   LatLngBox? _box;
   double _zoom = _initialZoom;
+  bool _offerSearch = false;
+  bool _fetchOnIdle = false;
+
+  _Point? _user;
+  bool _showList = false;
+  final _labels = PinLabelCache();
+  final _labelOf = <String, String>{};
 
   @override
   void initState() {
     super.initState();
-    // Before the map exists (or without it): the viewport around the area's
-    // centre at the opening zoom, for this screen's size.
+    widget.controller?._state = this;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      _box = _viewportAround(_center, _initialZoom, MediaQuery.sizeOf(context));
-      unawaited(_load());
+      if (mounted) unawaited(_start());
     });
   }
 
-  LatLng get _center {
+  @override
+  void dispose() {
+    if (widget.controller?._state == this) widget.controller?._state = null;
+    super.dispose();
+  }
+
+  _Point get _center {
     final center = ref.read(currentTenantConfigProvider)?.mapCenter;
     // Bootstrapped apps always have a tenant; Dhaka only for a bare test/edge case.
     return center == null
-        ? const LatLng(23.8103, 90.4125)
-        : LatLng(center.lat, center.lng);
+        ? (lat: 23.8103, lng: 90.4125)
+        : (lat: center.lat, lng: center.lng);
   }
 
-  static LatLngBox _viewportAround(LatLng center, double zoom, Size size) {
+  api.MapConfig? get _config => ref.read(mapConfigProvider).asData?.value;
+
+  /// One request on open: where (the user, else the area's centre) and
+  /// which kinds (GET /map/config) are settled first.
+  Future<void> _start() async {
+    final located = await ref
+        .read(locationServiceProvider)
+        .requestAndGetPosition();
+    try {
+      await ref.read(mapConfigProvider.future);
+    } on Object {
+      // No config: features of every kind; the map itself shows its notice.
+    }
+    if (!mounted) return;
+    final start = switch (located) {
+      LocationGranted(:final latitude, :final longitude) => (
+        lat: latitude,
+        lng: longitude,
+      ),
+      _ => _center,
+    };
+    if (located is LocationGranted) setState(() => _user = start);
+    _box = _viewportAround(start, _zoom, MediaQuery.sizeOf(context));
+    final map = _map;
+    if (map != null && located is LocationGranted) {
+      unawaited(
+        map.animateCamera(
+          CameraUpdate.newLatLngZoom(LatLng(start.lat, start.lng), _zoom),
+        ),
+      );
+    }
+    await _load();
+  }
+
+  static LatLngBox _viewportAround(_Point center, double zoom, Size size) {
     final degreesPerPx = _degreesAround / (_tilePx * math.pow(2, zoom));
     final halfLng = size.width / 2 * degreesPerPx;
     final halfLat =
-        size.height /
-        2 *
-        degreesPerPx *
-        math.cos(center.latitude * math.pi / 180);
+        size.height / 2 * degreesPerPx * math.cos(center.lat * math.pi / 180);
     return (
-      minLng: center.longitude - halfLng,
-      minLat: center.latitude - halfLat,
-      maxLng: center.longitude + halfLng,
-      maxLat: center.latitude + halfLat,
+      minLng: center.lng - halfLng,
+      minLat: center.lat - halfLat,
+      maxLng: center.lng + halfLng,
+      maxLat: center.lat + halfLat,
     );
   }
+
+  // ---- data -----------------------------------------------------------------
 
   Future<void> _load() async {
     final box = _box;
     if (box == null) return;
     final id = ++_request;
+    final zoom = _zoom;
+    setState(() {
+      _loading = true;
+      _offerSearch = false;
+    });
     try {
-      final points = await ref
+      final features = await ref
           .read(mapApiProvider)
-          .features(bbox: box, zoom: _zoom, layers: _shown, openNow: _openNow);
+          .features(
+            bbox: box,
+            zoom: zoom,
+            // The toggles; until one is changed, every kind of map_kinds.
+            kinds: _kinds ?? _config?.kinds.map((k) => k.code).toSet(),
+            openNow: _openNow,
+          );
       if (!mounted || id != _request) return;
       setState(() {
-        _points = points;
+        _features = features;
+        _fetchedBox = box;
+        _fetchedZoom = zoom;
         _failed = false;
+        _loading = false;
       });
-      await _map?.setGeoJsonSource(_pointsSource, _collection(points.features));
+      _labelOf.clear();
+      await _draw();
+      await _updateLabels();
     } on AppException {
-      if (mounted && id == _request) setState(() => _failed = true);
+      if (mounted && id == _request) {
+        setState(() {
+          _failed = true;
+          _loading = false;
+        });
+      }
     }
   }
 
-  /// The API's GeoJSON as is, each feature's id its index so a tap finds
-  /// the full feature again.
-  static Map<String, dynamic> _collection(List<api.MapFeature> features) => {
-    'type': 'FeatureCollection',
-    'features': [
-      for (final (index, feature) in features.indexed)
-        {...feature.toJson(), 'id': index},
-    ],
-  };
+  /// The features as the map's GeoJSON source: the API's, plus each pin's
+  /// style image name and its name image (when it has one).
+  Map<String, dynamic> _collection() {
+    final kinds = {
+      for (final k in _config?.kinds ?? <api.MapKind>[]) k.code: k,
+    };
+    final features = _features?.features ?? const <api.MapFeature>[];
+    return {
+      'type': 'FeatureCollection',
+      'features': [
+        for (final (index, feature) in features.indexed)
+          {
+            ...feature.toJson(),
+            // MapLibre hands a tapped feature's id back: its index here.
+            'id': index,
+            'properties': {
+              ...feature.properties.toJson(),
+              'icon': MapPinImages.imageName(
+                kinds[feature.properties.kind]?.icon,
+              ),
+              'colour': _hex(
+                MapPinImages.colourFor(kinds[feature.properties.kind]?.icon),
+              ),
+              'label': ?_labelOf[feature.properties.id],
+            },
+          },
+      ],
+    };
+  }
+
+  static String _hex(Color colour) =>
+      '#${(colour.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0')}';
+
+  Future<void> _draw() async {
+    final map = _map;
+    if (map == null || !_styleReady) return;
+    await map.setGeoJsonSource(_source, _collection());
+  }
+
+  // ---- camera ---------------------------------------------------------------
+
+  void _onCameraIdle(LatLngBox box, double zoom) {
+    _box = box;
+    _zoom = zoom;
+    if (_fetchOnIdle) {
+      _fetchOnIdle = false;
+      unawaited(_load());
+      return;
+    }
+    final fetched = _fetchedBox;
+    final client = _config?.client;
+    if (fetched != null && client != null) {
+      final moved = movedEnough(
+        fetched: fetched,
+        fetchedZoom: _fetchedZoom,
+        now: box,
+        nowZoom: zoom,
+        ratio: client.searchAreaMoveRatio,
+      );
+      if (moved != _offerSearch) setState(() => _offerSearch = moved);
+    }
+    unawaited(_updateLabels());
+  }
+
+  Future<void> _onNativeCameraIdle(CameraPosition? position) async {
+    final map = _map;
+    if (map == null || position == null) return;
+    final region = await map.getVisibleRegion();
+    _onCameraIdle((
+      minLng: region.southwest.longitude,
+      minLat: region.southwest.latitude,
+      maxLng: region.northeast.longitude,
+      maxLat: region.northeast.latitude,
+    ), position.zoom);
+  }
+
+  /// From `map_pin_label_min_zoom`, the nearest `map_pin_label_max` pins
+  /// get their Bengali name — drawn by Flutter, one image slot each. Only
+  /// at rest, never while the camera moves.
+  Future<void> _updateLabels() async {
+    final map = _map;
+    final client = _config?.client;
+    final box = _box;
+    final features = _features?.features;
+    if (map == null || !_styleReady || client == null || box == null) return;
+    if (features == null || _zoom < client.pinLabelMinZoom) {
+      if (_labelOf.isEmpty) return;
+      _labelOf.clear();
+      await _draw();
+      return;
+    }
+    final centre = (
+      lat: (box.minLat + box.maxLat) / 2,
+      lng: (box.minLng + box.maxLng) / 2,
+    );
+    double d2(api.MapFeature f) =>
+        math.pow(f.lat - centre.lat, 2) + math.pow(f.lng - centre.lng, 2)
+            as double;
+    final named =
+        features
+            .where(
+              (f) =>
+                  !f.isCluster &&
+                  (f.properties.nameBn ?? f.properties.nameEn) != null,
+            )
+            .toList()
+          ..sort((a, b) => d2(a).compareTo(d2(b)));
+    final pick = named.take(client.pinLabelMax);
+    if (!mounted) return;
+    final theme = Theme.of(context);
+    final ratio = MediaQuery.devicePixelRatioOf(context);
+    final next = <String, String>{};
+    for (final feature in pick) {
+      final id = feature.properties.id!;
+      final slot = _labels.assign(id, client.pinLabelMax);
+      final name = PinLabelCache.imageName(slot.slot);
+      if (slot.draw) {
+        final bytes = await MapPinImages.label(
+          feature.properties.nameBn ?? feature.properties.nameEn!,
+          pixelRatio: ratio,
+          style: theme.textTheme.labelMedium!.copyWith(
+            color: theme.colorScheme.onSurface,
+          ),
+          background: theme.colorScheme.surface.withValues(alpha: 0.9),
+        );
+        await map.addImage(name, bytes);
+      }
+      next[id] = name;
+    }
+    if (!mounted) return;
+    _labelOf
+      ..clear()
+      ..addAll(next);
+    await _draw();
+  }
+
+  // ---- map --------------------------------------------------------------------
 
   void _onMapCreated(MapLibreMapController controller) {
     _map = controller;
-    controller.onFeatureTapped.add((
-      point,
-      coordinates,
-      id,
-      layerId,
-      annotation,
-    ) {
-      if (layerId != _clusterLayer && layerId != _pointLayer) return;
+    controller.onFeatureTapped.add((point, latLng, id, layerId, annotation) {
+      if (layerId != _clusterLayer && layerId != _pinLayer) return;
       final index = int.tryParse(id);
-      final items = _points?.features;
-      if (index == null || items == null || index >= items.length) return;
-      _activate(items[index]);
+      final features = _features?.features;
+      if (index == null || features == null || index >= features.length) {
+        return;
+      }
+      _activate(features[index]);
     });
+    final user = _user;
+    if (user != null) {
+      unawaited(
+        controller.moveCamera(
+          CameraUpdate.newLatLngZoom(LatLng(user.lat, user.lng), _zoom),
+        ),
+      );
+    }
   }
 
-  /// Our layers over the base map; re-added after every style change (theme).
+  /// Our images, source and layers over the base map; again after every
+  /// style change (theme), which drops them.
   Future<void> _onStyleLoaded(MapLibreMapController map) async {
-    await map.addGeoJsonSource(_routeSource, _routeCollection(_route));
-    await map.addLineLayer(
-      _routeSource,
-      'ae-route-line',
-      const LineLayerProperties(
-        lineColor: '#1c7ed6',
-        lineWidth: 5,
-        lineOpacity: 0.85,
-        lineCap: 'round',
-        lineJoin: 'round',
-      ),
-      enableInteraction: false,
-    );
-    await map.addGeoJsonSource(
-      _pointsSource,
-      _points == null ? _emptyCollection : _collection(_points!.features),
-    );
+    _styleReady = false;
+    _labels.clear();
+    _labelOf.clear();
+    final ratio = MediaQuery.devicePixelRatioOf(context);
+    final icons = {
+      for (final k in _config?.kinds ?? <api.MapKind>[]) k.icon,
+      null,
+    };
+    for (final icon in icons) {
+      await map.addImage(
+        MapPinImages.imageName(icon),
+        await MapPinImages.pin(icon, pixelRatio: ratio),
+      );
+    }
+    await map.addGeoJsonSource(_source, _emptyCollection);
     await map.addCircleLayer(
-      _pointsSource,
+      _source,
       _clusterLayer,
       const CircleLayerProperties(
-        circleColor: _colourByLayer,
+        circleColor: ['get', 'colour'],
         circleOpacity: 0.85,
         circleRadius: [
           'step',
@@ -210,9 +416,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       ],
     );
     await map.addSymbolLayer(
-      _pointsSource,
-      'ae-cluster-count',
+      _source,
+      _clusterCountLayer,
       const SymbolLayerProperties(
+        // Digits only: no Bengali shaping needed.
         textField: [
           'to-string',
           ['get', 'count'],
@@ -229,14 +436,24 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       ],
       enableInteraction: false,
     );
-    await map.addCircleLayer(
-      _pointsSource,
-      _pointLayer,
-      const CircleLayerProperties(
-        circleColor: _colourByLayer,
-        circleRadius: ['case', _isLandmark, 9, 7],
-        circleStrokeWidth: ['case', _isLandmark, 3, 2],
-        circleStrokeColor: '#ffffff',
+    await map.addSymbolLayer(
+      _source,
+      _labelLayer,
+      const SymbolLayerProperties(
+        iconImage: ['get', 'label'],
+        iconAnchor: 'top',
+        iconOffset: [0, 16],
+        iconAllowOverlap: false,
+      ),
+      filter: ['has', 'label'],
+      enableInteraction: false,
+    );
+    await map.addSymbolLayer(
+      _source,
+      _pinLayer,
+      const SymbolLayerProperties(
+        iconImage: ['get', 'icon'],
+        iconAllowOverlap: true,
       ),
       filter: [
         '==',
@@ -244,179 +461,77 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         false,
       ],
     );
+    _styleReady = true;
+    await _draw();
+    await _updateLabels();
   }
 
-  Future<void> _onCameraIdle(CameraPosition? position) async {
-    final map = _map;
-    if (map == null || position == null) return;
-    final region = await map.getVisibleRegion();
-    _box = (
-      minLng: region.southwest.longitude,
-      minLat: region.southwest.latitude,
-      maxLng: region.northeast.longitude,
-      maxLat: region.northeast.latitude,
-    );
-    _zoom = position.zoom;
-    await _load();
-  }
+  // ---- actions ----------------------------------------------------------------
 
-  void _activate(api.MapFeature item) {
-    if (item.isCluster) {
-      unawaited(
-        _map?.animateCamera(
-          CameraUpdate.newLatLngZoom(
-            LatLng(item.lat, item.lng),
-            (item.properties.expansionZoom ?? _zoom + 1).toDouble(),
+  void _activate(api.MapFeature feature) {
+    if (feature.isCluster) {
+      // An explicit tap: zoom in and fetch for where it lands.
+      _fetchOnIdle = true;
+      final zoom = (feature.properties.expansionZoom ?? _zoom + 1).toDouble();
+      final map = _map;
+      if (map != null) {
+        unawaited(
+          map.animateCamera(
+            CameraUpdate.newLatLngZoom(LatLng(feature.lat, feature.lng), zoom),
           ),
-        ),
-      );
+        );
+      } else {
+        _zoom = zoom;
+        _box = _viewportAround(
+          (lat: feature.lat, lng: feature.lng),
+          zoom,
+          MediaQuery.sizeOf(context),
+        );
+        _fetchOnIdle = false;
+        unawaited(_load());
+      }
       return;
     }
-    setState(() {
-      _selected = item;
-      _route = null;
-      _routeState = _RouteState.idle;
-    });
-    unawaited(_map?.setGeoJsonSource(_routeSource, _emptyCollection));
-  }
-
-  Future<void> _showRoute(String mode) async {
-    final target = _selected;
-    if (target == null) return;
-    setState(() => _routeState = _RouteState.loading);
-    final position = await ref
-        .read(locationServiceProvider)
-        .requestAndGetPosition();
-    if (!mounted) return;
-    if (position is! LocationGranted) {
-      setState(() => _routeState = _RouteState.needsLocation);
-      return;
-    }
-    try {
-      final route = await ref
-          .read(mapApiProvider)
-          .route(
-            fromLat: position.latitude,
-            fromLng: position.longitude,
-            toLat: target.lat,
-            toLng: target.lng,
-            mode: mode,
-          );
-      if (!mounted) return;
-      setState(() {
-        _route = route;
-        _routeState = _RouteState.idle;
-      });
-      await _drawRoute(route);
-    } on ApiException catch (e) {
-      if (!mounted) return;
-      setState(
-        () => _routeState = e.statusCode == 429
-            ? _RouteState.limited
-            : _RouteState.failed,
-      );
-    } on AppException {
-      if (mounted) setState(() => _routeState = _RouteState.failed);
-    }
-  }
-
-  Future<void> _drawRoute(api.RouteAnswer route) async {
-    final map = _map;
-    final line = route.polyline;
-    if (map == null) return;
-    await map.setGeoJsonSource(_routeSource, _routeCollection(route));
-    if (line == null || line.length < 2) return;
-    final lngs = line.map((c) => c[0]);
-    final lats = line.map((c) => c[1]);
-    await map.animateCamera(
-      CameraUpdate.newLatLngBounds(
-        LatLngBounds(
-          southwest: LatLng(lats.reduce(math.min), lngs.reduce(math.min)),
-          northeast: LatLng(lats.reduce(math.max), lngs.reduce(math.max)),
-        ),
-        left: AppSpacing.xxl,
-        top: AppSpacing.xxl,
-        right: AppSpacing.xxl,
-        bottom: AppSpacing.xxl,
-      ),
-    );
-  }
-
-  static Map<String, dynamic> _routeCollection(api.RouteAnswer? route) {
-    final polyline = route?.polyline;
-    if (polyline == null) return _emptyCollection;
-    return {
-      'type': 'FeatureCollection',
-      'features': [
-        {
-          'type': 'Feature',
-          'properties': <String, Object>{},
-          'geometry': {'type': 'LineString', 'coordinates': polyline},
-        },
-      ],
-    };
-  }
-
-  static String _layerLabel(AppLocalizations l10n, String layer) =>
-      switch (layer) {
-        'posts' => l10n.mapKindPosts,
-        'stores' => l10n.mapKindStores,
-        'places' => l10n.mapKindPlaces,
-        'landmarks' => l10n.mapLayerLandmarks,
-        _ => l10n.mapLayerInfo,
-      };
-
-  String _distance(AppLocalizations l10n, double meters, String locale) {
-    if (meters >= _metersPerKm) {
-      final km = (meters / _metersPerKm)
-          .toStringAsFixed(1)
-          .replaceFirst(RegExp(r'\.0$'), '');
-      return l10n.mapKm(localizeDigits(km, locale));
-    }
-    return l10n.mapMeters(localizeDigits('${meters.round()}', locale));
-  }
-
-  void _openList(AppLocalizations l10n, String locale) {
-    final items = _points?.features ?? const <api.MapFeature>[];
     unawaited(
       showModalBottomSheet<void>(
         context: context,
         showDragHandle: true,
-        builder: (sheet) => items.isEmpty
-            ? Padding(
-                padding: const EdgeInsets.all(AppSpacing.lg),
-                child: Text(l10n.mapEmpty),
-              )
-            : ListView(
-                children: [
-                  for (final item in items)
-                    ListTile(
-                      leading: Icon(
-                        item.isCluster
-                            ? Icons.bubble_chart_outlined
-                            : Icons.place_outlined,
-                      ),
-                      title: Text(
-                        item.isCluster
-                            ? l10n.mapClusterItem(
-                                localizeDigits(
-                                  '${item.properties.count}',
-                                  locale,
-                                ),
-                                _layerLabel(l10n, item.properties.layer),
-                              )
-                            : (item.properties.nameBn ??
-                                  item.properties.nameEn ??
-                                  l10n.mapUnnamed),
-                      ),
-                      onTap: () {
-                        Navigator.of(sheet).pop();
-                        _activate(item);
-                      },
-                    ),
-                ],
-              ),
+        isScrollControlled: true,
+        builder: (_) => _PreviewLoader(feature: feature, user: _user),
       ),
+    );
+  }
+
+  Future<void> _chooseLayers() async {
+    final config = _config;
+    if (config == null) return;
+    final choice = await showMapLayersSheet(
+      context,
+      kinds: config.kinds,
+      selected: _kinds ?? {for (final k in config.kinds) k.code},
+      openNow: _openNow,
+    );
+    if (choice == null || !mounted) return;
+    setState(() {
+      _kinds = choice.kinds;
+      _openNow = choice.openNow;
+    });
+    await _load();
+  }
+
+  String _clusterTitle(
+    AppLocalizations l10n,
+    api.MapFeature feature,
+    String locale,
+  ) {
+    final kind = _config?.kinds
+        .where((k) => k.code == feature.properties.kind)
+        .firstOrNull;
+    return l10n.mapClusterItem(
+      localizeDigits('${feature.properties.count}', locale),
+      kind == null
+          ? l10n.mapKindOther
+          : (locale == 'bn' ? kind.label.bn : kind.label.en),
     );
   }
 
@@ -425,7 +540,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     final l10n = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
     final locale = Localizations.localeOf(context).languageCode;
-    final points = _points;
+    final features = _features;
+    // The kinds and timings live in GET /map/config: keep it loaded.
+    ref.watch(mapConfigProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -439,82 +556,78 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           ),
           child: Row(
             children: [
-              Expanded(
-                child: Wrap(
-                  spacing: AppSpacing.xs,
-                  children: [
-                    for (final layer in api.mapLayers)
-                      FilterChip(
-                        key: ValueKey('map-layer-$layer'),
-                        label: Text(_layerLabel(l10n, layer)),
-                        selected: _shown.contains(layer),
-                        onSelected: (on) {
-                          if (!on && _shown.length == 1) return;
-                          setState(
-                            () => on ? _shown.add(layer) : _shown.remove(layer),
-                          );
-                          unawaited(_load());
-                        },
-                      ),
-                    FilterChip(
-                      key: const ValueKey('map-open-now'),
-                      avatar: const Icon(Icons.schedule, size: 18),
-                      label: Text(l10n.mapOpenNow),
-                      selected: _openNow,
-                      onSelected: (on) {
-                        setState(() => _openNow = on);
-                        unawaited(_load());
-                      },
-                    ),
-                  ],
-                ),
+              SegmentedButton<bool>(
+                key: const ValueKey('map-view-toggle'),
+                segments: [
+                  ButtonSegment(
+                    value: false,
+                    icon: const Icon(Icons.map_outlined),
+                    label: Text(l10n.mapViewMap),
+                  ),
+                  ButtonSegment(
+                    value: true,
+                    icon: const Icon(Icons.list),
+                    label: Text(l10n.mapViewList),
+                  ),
+                ],
+                selected: {_showList},
+                onSelectionChanged: (value) =>
+                    setState(() => _showList = value.single),
               ),
-              IconButton(
-                key: const ValueKey('map-list'),
-                tooltip: l10n.mapList,
-                icon: const Icon(Icons.list_alt_outlined),
-                onPressed: () => _openList(l10n, locale),
+              const Spacer(),
+              TextButton.icon(
+                key: const ValueKey('map-layers'),
+                icon: const Icon(Icons.layers_outlined),
+                label: Text(l10n.mapLayersButton),
+                onPressed: _chooseLayers,
               ),
             ],
           ),
         ),
         for (final notice in [
-          if (points?.clipped ?? false) l10n.mapClipped,
-          if (points?.truncated ?? false) l10n.mapTruncated,
-          if (points != null && points.openNowSkipped.isNotEmpty)
-            l10n.mapOpenNowSkipped(
-              points.openNowSkipped.map((l) => _layerLabel(l10n, l)).join(', '),
-            ),
+          if (features?.clipped ?? false) l10n.mapClipped,
+          if (features?.truncated ?? false) l10n.mapTruncated,
           if (_failed) l10n.mapLoadFailed,
         ])
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
             child: Text(notice, style: theme.textTheme.bodySmall),
           ),
-        const SizedBox(height: AppSpacing.xs),
+        if (_loading) const LinearProgressIndicator(minHeight: 2),
         Expanded(
           child: Stack(
             children: [
-              BaseMap(
-                initialCenter: _center,
-                initialZoom: _initialZoom,
-                onMapCreated: _onMapCreated,
-                onStyleLoaded: (map) => unawaited(_onStyleLoaded(map)),
-                onCameraIdle: (position) => unawaited(_onCameraIdle(position)),
+              // Kept alive under the list, so switching back is instant.
+              Offstage(
+                offstage: _showList,
+                child: BaseMap(
+                  initialCenter: LatLng(_center.lat, _center.lng),
+                  initialZoom: _initialZoom,
+                  onMapCreated: _onMapCreated,
+                  onStyleLoaded: (map) => unawaited(_onStyleLoaded(map)),
+                  onCameraIdle: (position) =>
+                      unawaited(_onNativeCameraIdle(position)),
+                ),
               ),
-              if (_selected case final item?)
+              if (_showList)
+                _ResultList(
+                  features: features?.features ?? const [],
+                  user: _user,
+                  clusterTitle: (f) => _clusterTitle(l10n, f, locale),
+                  onTap: _activate,
+                ),
+              if (_offerSearch)
                 Positioned(
-                  left: AppSpacing.sm,
-                  right: AppSpacing.sm,
-                  bottom: AppSpacing.xl,
-                  child: _PointCard(
-                    key: const ValueKey('map-card'),
-                    item: item,
-                    route: _route,
-                    routeState: _routeState,
-                    distance: (m) => _distance(l10n, m, locale),
-                    onClose: () => setState(() => _selected = null),
-                    onRoute: (mode) => unawaited(_showRoute(mode)),
+                  top: AppSpacing.sm,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: FilledButton.tonalIcon(
+                      key: const ValueKey('map-search-area'),
+                      icon: const Icon(Icons.refresh),
+                      label: Text(l10n.mapSearchThisArea),
+                      onPressed: () => unawaited(_load()),
+                    ),
                   ),
                 ),
             ],
@@ -525,124 +638,261 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   }
 }
 
-class _PointCard extends StatelessWidget {
-  const _PointCard({
-    required this.item,
-    required this.route,
-    required this.routeState,
-    required this.distance,
-    required this.onClose,
-    required this.onRoute,
-    super.key,
+/// The same results as the map, nearest first (from the user, else in the
+/// API's order), clusters as "N items — zoom in".
+class _ResultList extends StatelessWidget {
+  const _ResultList({
+    required this.features,
+    required this.user,
+    required this.clusterTitle,
+    required this.onTap,
   });
 
-  final api.MapFeature item;
-  final api.RouteAnswer? route;
-  final _RouteState routeState;
-  final String Function(double meters) distance;
-  final VoidCallback onClose;
-  final void Function(String mode) onRoute;
+  final List<api.MapFeature> features;
+  final _Point? user;
+  final String Function(api.MapFeature) clusterTitle;
+  final void Function(api.MapFeature) onTap;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
-    final locale = Localizations.localeOf(context).languageCode;
-    final card = item.properties;
-    final name = card.nameBn ?? card.nameEn;
-    final route = this.route;
-
-    return Material(
-      elevation: 4,
-      borderRadius: AppRadii.mdRadius,
-      color: theme.colorScheme.surface,
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        name ?? l10n.mapUnnamed,
-                        style: theme.textTheme.titleMedium,
-                      ),
-                      Text(
-                        _MapScreenState._layerLabel(l10n, card.layer),
-                        style: theme.textTheme.bodySmall,
-                      ),
-                      if (card.openNow case final open?)
-                        Text(
-                          open ? l10n.mapIsOpen : l10n.mapIsClosed,
-                          style: theme.textTheme.bodySmall,
-                        ),
-                      if (card.price case final price?)
-                        Text('৳ ${formatMoney(price, locale)}'),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
-                  icon: const Icon(Icons.close),
-                  onPressed: onClose,
-                ),
-              ],
-            ),
-            Wrap(
-              spacing: AppSpacing.sm,
-              children: [
-                if (card.layer == 'posts' && card.id != null)
-                  FilledButton(
-                    onPressed: () =>
-                        context.push(RoutePaths.postDetailFor(card.id!)),
-                    child: Text(l10n.mapOpen),
-                  ),
-                OutlinedButton.icon(
-                  icon: const Icon(Icons.directions_walk),
-                  label: Text(l10n.mapRouteWalk),
-                  onPressed: () => onRoute('foot'),
-                ),
-                OutlinedButton.icon(
-                  icon: const Icon(Icons.directions_car),
-                  label: Text(l10n.mapRouteCar),
-                  onPressed: () => onRoute('car'),
-                ),
-              ],
-            ),
-            switch (routeState) {
-              _RouteState.loading => Text(l10n.mapRouting),
-              _RouteState.needsLocation => Text(l10n.mapRouteNeedsLocation),
-              _RouteState.limited => Text(l10n.mapRouteLimited),
-              _RouteState.failed => Text(l10n.mapRouteFailed),
-              _RouteState.idle when route != null => Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    key: const ValueKey('map-route'),
-                    route.durationSeconds == null
-                        ? l10n.mapRouteStraight(distance(route.distanceMeters))
-                        : l10n.mapRouteResult(
-                            distance(route.distanceMeters),
-                            localizeDigits(
-                              '${math.max(1, (route.durationSeconds! / _secondsPerMinute).round())}',
-                              locale,
-                            ),
-                          ),
-                  ),
-                  if (route.source == 'barikoi') const BarikoiAttribution(),
-                ],
-              ),
-              _ => const SizedBox.shrink(),
-            },
-          ],
+    if (features.isEmpty) {
+      return Material(
+        color: theme.colorScheme.surface,
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: Text(l10n.mapEmpty, textAlign: TextAlign.center),
+          ),
         ),
+      );
+    }
+    final sorted = [...features];
+    final from = user;
+    if (from != null) {
+      double d2(api.MapFeature f) =>
+          math.pow(f.lat - from.lat, 2) + math.pow(f.lng - from.lng, 2)
+              as double;
+      sorted.sort((a, b) => d2(a).compareTo(d2(b)));
+    }
+    return Material(
+      color: theme.colorScheme.surface,
+      child: ListView.builder(
+        key: const ValueKey('map-list'),
+        itemCount: sorted.length,
+        itemBuilder: (context, index) {
+          final f = sorted[index];
+          return ListTile(
+            leading: Icon(
+              f.isCluster ? Icons.bubble_chart_outlined : Icons.place_outlined,
+            ),
+            title: Text(
+              f.isCluster
+                  ? clusterTitle(f)
+                  : (f.properties.nameBn ??
+                        f.properties.nameEn ??
+                        l10n.mapUnnamed),
+            ),
+            onTap: () => onTap(f),
+          );
+        },
       ),
+    );
+  }
+}
+
+/// The preview sheet's requests: the preview and the straight-line distance
+/// on open (both our own data), the road only on its button (session cache).
+class _PreviewLoader extends ConsumerStatefulWidget {
+  const _PreviewLoader({required this.feature, required this.user});
+
+  final api.MapFeature feature;
+  final _Point? user;
+
+  @override
+  ConsumerState<_PreviewLoader> createState() => _PreviewLoaderState();
+}
+
+class _PreviewLoaderState extends ConsumerState<_PreviewLoader> {
+  api.MapPreview? _preview;
+  bool _loading = true;
+  bool _failed = false;
+  double? _straight;
+  RoadState _road = const RoadIdle();
+
+  api.MapFeatureProperties get _props => widget.feature.properties;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_loadPreview());
+    unawaited(_loadDistance());
+    // Reopened: a road already asked for this session shows at once.
+    final cached = ref.read(routeCacheProvider).cached(_props.id!, _routeMode);
+    if (cached != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) unawaited(_showRoad(cached));
+      });
+    }
+  }
+
+  Future<void> _loadPreview() async {
+    try {
+      final preview = await ref
+          .read(mapApiProvider)
+          .preview(
+            layer: _props.layer,
+            id: _props.id!,
+            tenantId: _props.tenantId!,
+          );
+      if (mounted) {
+        setState(() {
+          _preview = preview;
+          _loading = false;
+        });
+      }
+    } on AppException {
+      if (mounted) {
+        setState(() {
+          _failed = true;
+          _loading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _loadDistance() async {
+    final user = widget.user;
+    if (user == null) return;
+    try {
+      final distance = await ref
+          .read(mapApiProvider)
+          .distance(
+            fromLat: user.lat,
+            fromLng: user.lng,
+            toLat: widget.feature.lat,
+            toLng: widget.feature.lng,
+          );
+      if (mounted) setState(() => _straight = distance.straightLineMeters);
+    } on AppException {
+      // The distance is a nicety; the sheet works without it.
+    }
+  }
+
+  Future<void> _askRoad() async {
+    final user = widget.user;
+    if (user == null) return;
+    await _showRoad(
+      ref
+          .read(routeCacheProvider)
+          .route(
+            featureId: _props.id!,
+            mode: _routeMode,
+            fromLat: user.lat,
+            fromLng: user.lng,
+            toLat: widget.feature.lat,
+            toLng: widget.feature.lng,
+          ),
+    );
+  }
+
+  Future<void> _showRoad(Future<api.RouteAnswer> answer) async {
+    final l10n = AppLocalizations.of(context)!;
+    setState(() => _road = const RoadLoading());
+    try {
+      final route = await answer;
+      if (mounted) setState(() => _road = RoadAnswered(route));
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(
+        () => _road = RoadFailed(
+          e.statusCode == 429 ? l10n.mapRouteLimited : l10n.mapRouteFailed,
+        ),
+      );
+    } on AppException {
+      if (mounted) setState(() => _road = RoadFailed(l10n.mapRouteFailed));
+    }
+  }
+
+  Future<void> _directions() async {
+    final opened = await Directions.open(
+      ref.read(externalAppsProvider),
+      widget.feature.lat,
+      widget.feature.lng,
+    );
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.mapDirectionsFailed),
+        ),
+      );
+    }
+  }
+
+  /// A post: through its contact action (the lead). Others: the first public
+  /// number, straight to the dialer.
+  Future<void> _call() async {
+    final l10n = AppLocalizations.of(context)!;
+    final messenger = ScaffoldMessenger.of(context);
+    bool ok;
+    if (_props.layer == 'posts') {
+      final outcome = await ref.read(contactActionsProvider).call(_props.id!);
+      ok = outcome is ContactOpened;
+    } else {
+      final phone = _preview!.phones.first;
+      ok = await ref
+          .read(externalAppsProvider)
+          .open(Uri(scheme: 'tel', path: phone));
+    }
+    if (!ok && mounted) {
+      messenger.showSnackBar(SnackBar(content: Text(l10n.mapCallFailed)));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final kind = ref
+        .watch(mapConfigProvider)
+        .asData
+        ?.value
+        .kinds
+        .where((k) => k.code == _props.kind)
+        .firstOrNull;
+    final canCall =
+        _props.layer == 'posts' || (_preview?.phones.isNotEmpty ?? false);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        MapPreviewSheet(
+          feature: widget.feature,
+          kind: kind,
+          preview: _preview,
+          loading: _loading,
+          failed: _failed,
+          straightMeters: _straight,
+          road: _road,
+          onRoad: widget.user == null ? null : () => unawaited(_askRoad()),
+          onDirections: () => unawaited(_directions()),
+          onCall: canCall ? () => unawaited(_call()) : null,
+        ),
+        if (_props.layer == 'posts')
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              0,
+              AppSpacing.md,
+              AppSpacing.md,
+            ),
+            child: TextButton(
+              key: const ValueKey('map-preview-open-post'),
+              onPressed: () =>
+                  context.push(RoutePaths.postDetailFor(_props.id!)),
+              child: Text(AppLocalizations.of(context)!.mapOpen),
+            ),
+          ),
+      ],
     );
   }
 }

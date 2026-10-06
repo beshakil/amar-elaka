@@ -114,6 +114,23 @@ describe('Base map (e2e)', () => {
       });
     });
 
+    it('takes kinds (map_kinds codes) and gives every feature its kind', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/v1/map/features?bbox=90.35,23.74,90.42,23.8&zoom=17&kinds=hospital,bank',
+      });
+      expect(response.statusCode).toBe(200);
+      for (const feature of response.json<{ features: { properties: { kind: string } }[] }>()
+        .features) {
+        expect(['hospital', 'bank']).toContain(feature.properties.kind);
+      }
+      const bad = await app.inject({
+        method: 'GET',
+        url: '/api/v1/map/features?bbox=90.35,23.74,90.42,23.8&zoom=17&kinds=Bad Kind',
+      });
+      expect(bad.statusCode).toBe(400);
+    });
+
     it('validates the viewport, zoom, layers and category', async () => {
       expect((await features('bbox=90.4,23.7,90.3,23.8&zoom=12')).statusCode).toBe(400);
       expect((await features('bbox=90.3,23.7,90.4,23.8&zoom=30')).statusCode).toBe(400);
@@ -172,6 +189,34 @@ describe('Base map (e2e)', () => {
       assetsBaseUrl: 'https://tiles.amarelaka.test/tiles',
       labelLanguage: 'en',
       fallbackStyleUrl: null,
+      kinds: expect.any(Array) as unknown,
+      client: {
+        pickerIdleDebounceMs: 600,
+        autocompleteDebounceMs: 400,
+        autocompleteMinChars: 3,
+        searchAreaMoveRatio: 0.3,
+        pinLabelMinZoom: 17,
+        pinLabelMax: 40,
+      },
+    });
+    // The seeded map_kinds: the Map tab's eight toggles, in order.
+    const kinds = response.json<{
+      kinds: { code: string; icon: string; label: { bn: string } }[];
+    }>().kinds;
+    expect(kinds.map((k) => k.code)).toEqual([
+      'hospital',
+      'pharmacy',
+      'food',
+      'gas',
+      'bank',
+      'bus_stand',
+      'shops',
+      'listings',
+    ]);
+    expect(kinds[0]).toEqual({
+      code: 'hospital',
+      icon: 'hospital',
+      label: { bn: 'হাসপাতাল', en: 'Hospitals' },
     });
   });
 });

@@ -22,7 +22,7 @@ const METERS_PER_KM = 1000; // settings-exempt: unit conversion
 const METERS_PER_DEGREE_LAT = 111_320; // settings-exempt: metres per degree of latitude (WGS84 mean)
 const DEGREES_TO_RADIANS = Math.PI / 180; // settings-exempt: unit conversion
 // settings-exempt: cache-key format version; bump when a cached value's shape changes
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 // settings-exempt: a snapped centre's digits in a cache key (~0.1 m, far below a cell)
 const KEY_DECIMALS = 6;
 /** Layers without opening hours: `open_now` leaves them out. */
@@ -102,6 +102,7 @@ export class MapFeaturesService {
       CACHE_VERSION,
       layers.join('+'),
       query.category ?? '-',
+      query.kinds ? [...query.kinds].sort().join('+') : '*',
       query.open_now ? 'open' : 'any',
       // clipped is per viewport, so it is part of the cached text's key.
       clipped ? 'clip' : 'fit',
@@ -123,6 +124,7 @@ export class MapFeaturesService {
           openNow: query.open_now,
           center: radiusCenter,
           limit: cap + 1,
+          kinds: query.kinds ?? null,
         }),
       { accessMode: 'read only' },
     );
@@ -171,6 +173,7 @@ function feature(row: FeatureRow, expansionZoom: number): MapFeature {
       properties: {
         cluster: true,
         layer: row.layer,
+        kind: row.kind,
         count: row.point_count,
         expansion_zoom: expansionZoom,
       },
@@ -183,6 +186,7 @@ function feature(row: FeatureRow, expansionZoom: number): MapFeature {
     properties: {
       cluster: false,
       layer: row.layer,
+      kind: row.kind,
       id: row.id,
       tenant_id: row.tenant_id,
       name_bn: row.name_bn,

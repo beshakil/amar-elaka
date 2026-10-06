@@ -36,10 +36,28 @@ export class MapConfigService {
   }
 
   async config(): Promise<MapConfig> {
-    const [manifest, labelLanguage, fallback] = await Promise.all([
+    const [
+      manifest,
+      labelLanguage,
+      fallback,
+      kinds,
+      idleDebounce,
+      autocompleteDebounce,
+      minChars,
+      moveRatio,
+      labelZoom,
+      labelMax,
+    ] = await Promise.all([
       this.manifest(),
       this.settings.get('map_label_language'),
       this.settings.get('map_style_fallback'),
+      this.settings.get('map_kinds'),
+      this.settings.get('geo_picker_idle_debounce_ms'),
+      this.settings.get('geo_autocomplete_debounce_ms'),
+      this.settings.get('geocode_autocomplete_min_chars'),
+      this.settings.get('map_search_area_move_ratio'),
+      this.settings.get('map_pin_label_min_zoom'),
+      this.settings.get('map_pin_label_max'),
     ]);
     const base = this.publicBase ?? MAP_TILES_ROUTE;
     return {
@@ -55,6 +73,19 @@ export class MapConfigService {
       assetsBaseUrl: base,
       labelLanguage,
       fallbackStyleUrl: fallback === '' ? null : fallback,
+      kinds: kinds.map((k) => ({
+        code: k.code,
+        icon: k.icon,
+        label: { bn: k.label_bn, en: k.label_en },
+      })),
+      client: {
+        pickerIdleDebounceMs: idleDebounce,
+        autocompleteDebounceMs: autocompleteDebounce,
+        autocompleteMinChars: minChars,
+        searchAreaMoveRatio: moveRatio,
+        pinLabelMinZoom: labelZoom,
+        pinLabelMax: labelMax,
+      },
     };
   }
 

@@ -10,15 +10,33 @@ import '../network/dio_client.dart';
 ///             the label language and fallback style settings;
 ///   features  a viewport's posts, stores, places, landmarks and info as
 ///             GeoJSON from our own database, clustered by the API;
+///   preview   one tapped feature's photo, public phones and address;
+///   distance  straight-line metres (PostGIS, free);
 ///   route   the road route to a point — only ever on an explicit tap.
 abstract interface class MapApi {
   Future<MapConfig> config();
 
+  /// [kinds]: `map_kinds` codes to keep (null = every kind);
+  /// [layers]: null = the server's default layers.
   Future<MapFeatures> features({
     required LatLngBox bbox,
     required double zoom,
-    required Set<String> layers,
+    Set<String>? layers,
+    Set<String>? kinds,
     bool openNow = false,
+  });
+
+  Future<MapPreview> preview({
+    required String layer,
+    required String id,
+    required String tenantId,
+  });
+
+  Future<MapDistance> distance({
+    required double fromLat,
+    required double fromLng,
+    required double toLat,
+    required double toLng,
   });
 
   Future<RouteAnswer> route({
@@ -61,7 +79,8 @@ class DioMapApi implements MapApi {
   Future<MapFeatures> features({
     required LatLngBox bbox,
     required double zoom,
-    required Set<String> layers,
+    Set<String>? layers,
+    Set<String>? kinds,
     bool openNow = false,
   }) => _call(() async {
     final response = await _dio.get<Map<String, dynamic>>(
@@ -74,11 +93,39 @@ class DioMapApi implements MapApi {
           bbox.maxLat,
         ].map((n) => n.toStringAsFixed(5)).join(','),
         'zoom': zoom,
-        'layers': layers.join(','),
+        if (layers != null) 'layers': layers.join(','),
+        if (kinds != null) 'kinds': kinds.join(','),
         if (openNow) 'open_now': 'true',
       },
     );
     return MapFeatures.fromJson(response.data!);
+  });
+
+  @override
+  Future<MapPreview> preview({
+    required String layer,
+    required String id,
+    required String tenantId,
+  }) => _call(() async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/map/features/$layer/$id',
+      queryParameters: {'tenant': tenantId},
+    );
+    return MapPreview.fromJson(response.data!);
+  });
+
+  @override
+  Future<MapDistance> distance({
+    required double fromLat,
+    required double fromLng,
+    required double toLat,
+    required double toLng,
+  }) => _call(() async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/map/distance',
+      queryParameters: {'from': '$fromLat,$fromLng', 'to': '$toLat,$toLng'},
+    );
+    return MapDistance.fromJson(response.data!);
   });
 
   @override

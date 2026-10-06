@@ -882,6 +882,7 @@ function mapPoint(
     properties: {
       cluster: false,
       layer,
+      kind: null,
       id,
       tenant_id: TENANT_MIRPUR,
       name_bn: null,
@@ -903,7 +904,13 @@ function mapFeatures(layersParam: string | null, openNow: boolean): MapFeatures 
     {
       type: 'Feature',
       geometry: { type: 'Point', coordinates: [90.37, 23.81] },
-      properties: { cluster: true, layer: 'posts', count: 12, expansion_zoom: 14 },
+      properties: {
+        cluster: true,
+        layer: 'posts',
+        kind: 'listings',
+        count: 12,
+        expansion_zoom: 14,
+      },
     },
     mapPoint('posts', MAP_POST_ID, [90.3687, 23.8069], {
       name_bn: 'আইফোন ১৩, ১২৮ জিবি',
@@ -954,6 +961,18 @@ function mapConfig(): Schemas['MapConfigDto'] {
     assetsBaseUrl: `${STUB_URL}/tiles`,
     labelLanguage: 'en',
     fallbackStyleUrl: null,
+    kinds: [
+      { code: 'hospital', icon: 'hospital', label: { bn: 'হাসপাতাল', en: 'Hospitals' } },
+      { code: 'listings', icon: 'listing', label: { bn: 'বিজ্ঞাপন', en: 'Listings' } },
+    ],
+    client: {
+      pickerIdleDebounceMs: 600,
+      autocompleteDebounceMs: 400,
+      autocompleteMinChars: 3,
+      searchAreaMoveRatio: 0.3,
+      pinLabelMinZoom: 17,
+      pinLabelMax: 40,
+    },
   };
 }
 

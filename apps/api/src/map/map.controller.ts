@@ -1,4 +1,4 @@
-import { Controller, Get, Query, Res } from '@nestjs/common';
+import { Controller, Get, Param, Query, Res } from '@nestjs/common';
 import { ApiOkResponse } from '@nestjs/swagger';
 import type { FastifyReply } from 'fastify';
 import { AllowAnyTenant } from '../database/allow-any-tenant.decorator';
@@ -12,6 +12,13 @@ import {
   type MapDistanceResponse,
 } from './map-features.dto';
 import { MapFeaturesService } from './map-features.service';
+import {
+  MapPreviewParamsDto,
+  MapPreviewQueryDto,
+  MapPreviewResponseDto,
+  type MapPreview,
+} from './map-preview.dto';
+import { MapPreviewService } from './map-preview.service';
 
 /** The map (ADR 043, ADR 045): global, no login, no tenant. Never a geo provider call. */
 @Controller({ path: 'map', version: '1' })
@@ -20,6 +27,7 @@ export class MapController {
   constructor(
     private readonly mapConfig: MapConfigService,
     private readonly mapFeatures: MapFeaturesService,
+    private readonly mapPreview: MapPreviewService,
   ) {}
 
   /** The live tiles archive, asset base, label language and fallback style. */
@@ -44,6 +52,20 @@ export class MapController {
     const json = await this.mapFeatures.features(query);
     void reply.type('application/json; charset=utf-8');
     return json;
+  }
+
+  /**
+   * One tapped feature's photo, public phones and address, read in its own
+   * tenant (`tenant` = the feature's `tenant_id`). Posts never carry a phone
+   * here: calling goes through the post's contact action.
+   */
+  @Get('features/:layer/:id')
+  @ApiOkResponse({ type: MapPreviewResponseDto })
+  preview(
+    @Param() params: MapPreviewParamsDto,
+    @Query() query: MapPreviewQueryDto,
+  ): Promise<MapPreview> {
+    return this.mapPreview.preview(params, query);
   }
 
   /** Straight-line distance, instantly (PostGIS). Road distance/ETA: POST /geo/route, on a tap only. */

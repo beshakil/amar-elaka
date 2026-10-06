@@ -42,6 +42,29 @@ export const mapConfigSchema = z.object({
    * if it is a Barikoi style, every map load costs 4 Barikoi API calls.
    */
   fallbackStyleUrl: z.string().nullable(),
+  /** `map_kinds`: the Map tab's toggles, in order (ADR 046). */
+  kinds: z.array(
+    z.object({
+      code: z.string(),
+      /** An icon key the app maps to its own icon (hospital, pharmacy, food, gas, bank, bus, shop, listing). */
+      icon: z.string(),
+      label: z.object({ bn: z.string(), en: z.string() }),
+    }),
+  ),
+  /** The clients' timings and limits, from settings (nothing hardcoded in an app). */
+  client: z.object({
+    /** geo_picker_idle_debounce_ms: LocationPicker waits this long after the map stops. */
+    pickerIdleDebounceMs: z.number(),
+    /** geo_autocomplete_debounce_ms */
+    autocompleteDebounceMs: z.number(),
+    /** geocode_autocomplete_min_chars: shorter queries are not sent. */
+    autocompleteMinChars: z.number(),
+    /** map_search_area_move_ratio: share of the viewport moved before "Search this area" shows. */
+    searchAreaMoveRatio: z.number(),
+    /** map_pin_label_min_zoom / map_pin_label_max: Bengali name images on the nearest pins. */
+    pinLabelMinZoom: z.number(),
+    pinLabelMax: z.number(),
+  }),
 });
 export type MapConfig = z.infer<typeof mapConfigSchema>;
 export class MapConfigDto extends createZodDto(mapConfigSchema) {}
