@@ -18,8 +18,12 @@ const nextConfig: NextConfig = {
     optimizePackageImports: ['radix-ui'],
   },
   // Workspace packages shipped as TypeScript source (packages/dynamic-form,
-  // and packages/shared-types' runtime constants such as ./map).
-  transpilePackages: ['@amar-elaka/dynamic-form', '@amar-elaka/shared-types'],
+  // packages/shared-types, and packages/map-style's base map styles).
+  transpilePackages: [
+    '@amar-elaka/dynamic-form',
+    '@amar-elaka/shared-types',
+    '@amar-elaka/map-style',
+  ],
 };
 
 export default withNextIntl(nextConfig);

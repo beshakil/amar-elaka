@@ -1,0 +1,15 @@
+{
+  "version": "20261005",
+  "file": "bd-fixture-20261005.pmtiles",
+  "maxZoom": 6,
+  "bbox": [
+    87.95,
+    20.55,
+    92.75,
+    26.75
+  ],
+  "bytes": 1176862,
+  "sha256": "4afe5c664331fe73ca33636465dff80d28be4a32cb6812ec0b2eb4c8046cc714",
+  "source": "https://build.protomaps.com/20261005.pmtiles",
+  "builtAt": "2026-10-05T17:37:21.305Z"
+}

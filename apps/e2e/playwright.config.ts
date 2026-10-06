@@ -15,6 +15,8 @@ const appEnv = {
   SITE_ORIGIN: `http://localhost:${WEB_PORT}`,
   STORAGE_PUBLIC_URL: `${STUB_URL}/media`,
   NODE_ENV: 'production',
+  // The base map's Bengali shaping page (/dev/map) doubles as the headless style test.
+  ENABLE_DEV_PAGES: 'true',
 };
 
 /**

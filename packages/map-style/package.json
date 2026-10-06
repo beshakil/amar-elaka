@@ -1,0 +1,30 @@
+{
+  "name": "@amar-elaka/map-style",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./styles/light.json": "./styles/light.json",
+    "./styles/dark.json": "./styles/dark.json"
+  },
+  "scripts": {
+    "generate": "tsx scripts/generate.ts",
+    "lint": "eslint \"src/**/*.ts\" \"scripts/**/*.ts\"",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@amar-elaka/config": "workspace:*",
+    "@protomaps/basemaps": "^5.7.2",
+    "@types/node": "^22.10.2",
+    "eslint": "^9.17.0",
+    "tsx": "^4.23.13",
+    "typescript": "^5.7.2",
+    "vitest": "^4.1.11"
+  },
+  "dependencies": {
+    "@maplibre/maplibre-gl-style-spec": "^26.4.4"
+  }
+}

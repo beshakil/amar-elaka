@@ -1,6 +1,7 @@
 # ADR 033 — Maps are OpenStreetMap everywhere; addresses stay with Barikoi
 
-**Status:** Accepted (2026-09-27). Code: `packages/shared-types/src/map.ts` (web, admin),
+**Status:** Superseded by [ADR 043](043-self-hosted-pmtiles-basemap.md) (2026-10-06): the base map is now our
+own Protomaps PMTiles file; nothing loads tile.openstreetmap.org. Was: Accepted (2026-09-27). Code: `packages/shared-types/src/map.ts` (web, admin),
 `apps/mobile/lib/core/map/map_config.dart` (app). Refines ADR 032 §6.
 
 ## Decisions
