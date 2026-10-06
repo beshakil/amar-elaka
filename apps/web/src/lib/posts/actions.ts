@@ -6,10 +6,12 @@ import { ApiError, ApiShapeError, ApiUnreachableError } from '../api/errors';
 import {
   geocodeResponseSchema,
   ownershipSchema,
+  pointAreasSchema,
   postSchema,
   reverseGeocodeSchema,
   type GeocodeResult,
   type Ownership,
+  type PointAreas,
   type Post,
   type ReverseGeocode,
 } from '../api/schemas';
@@ -148,18 +150,37 @@ export async function ownershipAt(lat: number, lng: number): Promise<ActionResul
   );
 }
 
+const purposes = z.enum(['post_location', 'store_setup', 'place_marking']);
+export type GeoPurpose = z.infer<typeof purposes>;
+
+/** GET /geo/reverse for a picker: settings map each purpose to the fewest Barikoi fields (ADR 044). */
 export async function reverseGeocode(
   lat: number,
   lng: number,
+  purpose: GeoPurpose,
 ): Promise<ActionResult<ReverseGeocode>> {
-  if (!point.safeParse({ lat, lng }).success) return invalid;
+  if (!point.safeParse({ lat, lng }).success || !purposes.safeParse(purpose).success) {
+    return invalid;
+  }
   return asSeller((auth) =>
     apiFetch({
       path: '/geo/reverse',
       schema: reverseGeocodeSchema,
       ...auth,
-      // A post's pin: the fields settings map to post_location, nothing more (ADR 044).
-      query: { lat: String(lat), lng: String(lng), purpose: 'post_location' },
+      query: { lat: String(lat), lng: String(lng), purpose },
+    }),
+  );
+}
+
+/** GET /locations/lookup: our own areas at the point — free, the picker's instant area name. */
+export async function areasAt(lat: number, lng: number): Promise<ActionResult<PointAreas>> {
+  if (!point.safeParse({ lat, lng }).success) return invalid;
+  return asSeller((auth) =>
+    apiFetch({
+      path: '/locations/lookup',
+      schema: pointAreasSchema,
+      ...auth,
+      query: { lat: String(lat), lng: String(lng) },
     }),
   );
 }

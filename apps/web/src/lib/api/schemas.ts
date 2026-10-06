@@ -155,10 +155,16 @@ export const reverseGeocodeSchema = z.object({
   degraded: z.boolean(),
 });
 export type ReverseGeocode = z.infer<typeof reverseGeocodeSchema>;
+export type GeoAreaName = ReverseGeocode['areas'][number];
+
+/** GET /locations/lookup: our own areas at a point (free) — LocationPicker's instant area name. */
+export const pointAreasSchema = z.object({ areas: reverseGeocodeSchema.shape.areas });
+export type PointAreas = z.infer<typeof pointAreasSchema>;
 
 export type _GeoContract = [
   Assert<Accepts<z.infer<typeof geocodeResponseSchema>, Api['GeoAutocompleteResponseDto']>>,
   Assert<Accepts<ReverseGeocode, Api['GeoReverseResponseDto']>>,
+  Assert<Accepts<PointAreas, Api['PointLookupDto']>>,
 ];
 
 // ---- media --------------------------------------------------------------------
@@ -553,7 +559,25 @@ export const mapConfigSchema = z.object({
   assetsBaseUrl: z.string(),
   labelLanguage: z.enum(['bn', 'en']),
   fallbackStyleUrl: z.string().nullable(),
+  /** map_kinds: the map's toggles, in order (ADR 046). */
+  kinds: z.array(
+    z.object({
+      code: z.string(),
+      icon: z.string(),
+      label: z.object({ bn: z.string(), en: z.string() }),
+    }),
+  ),
+  /** Timings and limits the clients obey (settings, ADR 046). */
+  client: z.object({
+    pickerIdleDebounceMs: z.number(),
+    autocompleteDebounceMs: z.number(),
+    autocompleteMinChars: z.number(),
+    searchAreaMoveRatio: z.number(),
+    pinLabelMinZoom: z.number(),
+    pinLabelMax: z.number(),
+  }),
 });
+export type MapKind = MapConfig['kinds'][number];
 export type MapConfig = z.infer<typeof mapConfigSchema>;
 
 export type _MapContract = [Assert<Accepts<MapConfig, Api['MapConfigDto']>>];
@@ -573,6 +597,7 @@ const mapClusterFeature = z.object({
   properties: z.object({
     cluster: z.literal(true),
     layer: mapLayer,
+    kind: z.string().nullable(),
     count: z.number(),
     expansion_zoom: z.number(),
   }),
@@ -584,6 +609,7 @@ const mapPointFeature = z.object({
   properties: z.object({
     cluster: z.literal(false),
     layer: mapLayer,
+    kind: z.string().nullable(),
     id: z.string(),
     tenant_id: z.string(),
     name_bn: z.string().nullable(),
@@ -611,6 +637,21 @@ export type MapFeature = MapFeatures['features'][number];
 export type MapPointFeature = z.infer<typeof mapPointFeature>;
 export type MapClusterFeature = z.infer<typeof mapClusterFeature>;
 
+/** GET /map/features/:layer/:id?tenant= (ADR 046): the preview panel's photo, phones, address. */
+export const mapPreviewSchema = z.object({
+  layer: mapLayer,
+  id: z.string(),
+  tenantId: z.string(),
+  name: z.object({ bn: z.string().nullable(), en: z.string().nullable() }),
+  photo: z.object({ url: z.string(), thumbhash: z.string().nullable() }).nullable(),
+  phones: z.array(z.string()),
+  address: z.string().nullable(),
+});
+export type MapPreview = z.infer<typeof mapPreviewSchema>;
+
+/** GET /map/distance: straight-line metres (PostGIS, free). */
+export const mapDistanceSchema = z.object({ straight_line_meters: z.number() });
+
 export const routeResponseSchema = z.object({
   mode: z.enum(['car', 'foot']),
   distanceMeters: z.number(),
@@ -624,5 +665,7 @@ export type RouteAnswer = z.infer<typeof routeResponseSchema>;
 
 export type _MapFeaturesContract = [
   Assert<Accepts<MapFeatures, Api['MapFeaturesResponseDto']>>,
+  Assert<Accepts<MapPreview, Api['MapPreviewResponseDto']>>,
+  Assert<Accepts<z.infer<typeof mapDistanceSchema>, Api['MapDistanceResponseDto']>>,
   Assert<Accepts<RouteAnswer, Api['GeoRouteResponseDto']>>,
 ];

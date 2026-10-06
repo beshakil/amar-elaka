@@ -129,6 +129,55 @@ address.
   offline, is enough.
 - **Purpose-agnostic.** The geo calls moved from `PostsApi` to `GeoApi`, so the picker doesn't depend on posts.
 
+## Decision 5: the web map (`/map`) and the React LocationPicker, at parity
+
+Code: `apps/web/src/components/map/` — `map-explorer.tsx`, `map-preview-panel.tsx`, `location-picker.tsx` and their
+`*-lazy.tsx` wrappers; `apps/web/src/lib/map/` — `view.ts`, `pin-images.ts`, `route-cache.ts`, `directions.ts`. Proxies:
+`/api/map/features`, `/api/map/preview`, `/api/map/distance`; `/api/geo/route` (ADR 044).
+
+- **The stack.** MapLibre GL with the PMTiles protocol, registered once in the lazily loaded map module
+  (`maplibre.ts`). Styles come from `@amar-elaka/map-style` with the tile URL and label language from `/map/config`.
+  Light/dark follows the page theme.
+- **Lazy, not bloating other pages.** The explorer and the picker are `next/dynamic` chunks (`ssr: false`).
+  - **Build numbers:** `/map` first load went from 158 kB to 120 kB. `/post/new` is 191 kB (+2 kB for the lazy wrapper
+    and the geo actions). `/` is unchanged at about 108 kB.
+  - MapLibre, PMTiles and the styles download only when a map is shown.
+- **The same Map tab as the app.**
+  - **Features:** `map_kinds` toggles with the same pin icons (inline SVG, added with `addImage`) and "open now".
+  - **When it asks:** server clusters; one request on open; requests on a toggle change, a cluster click and
+    "এই এলাকায় খুঁজুন"; never one per pan.
+  - **Names in HTML:** at `map_pin_label_min_zoom` and above, the nearest `map_pin_label_max` pins get their name as
+    HTML markers. Bengali is shaped by the browser, never map text.
+  - **Map / list:** the same results; the list is nearest first.
+  - **Preview panel:** photo, name, kind, open/closed, straight-line distance, address, and these actions:
+    - a `tel:` link for public numbers;
+    - the post or store page for contact (lead tracking stays there);
+    - the Google Maps link (coordinates only);
+    - "রাস্তায় কত দূর?": one `/geo/route` per place per browser session, and a failure is not cached.
+  - **Attribution:** OSM and Protomaps in the map's attribution control; Barikoi's credit under its answers.
+- **Location on the web.** The page uses the visitor's location without a prompt only if permission was already
+  granted. Otherwise it opens at the shared view or the area's centre, and "আমার লোকেশন" asks. A browser prompt on
+  page load would be intrusive; the app asks on open as phone apps do.
+- **Shareable URL.** `?lat=&lng=&z=&kinds=&open=1&view=list`, kept current with `history.replaceState` (no navigation,
+  no history entries). The server parses and validates it (`parseMapView`), and a shared link opens exactly that
+  view.
+- **React `LocationPicker`.** The same behaviour as the app's: a fixed centre pin; one `/geo/reverse?purpose=` per
+  camera stop after `geo_picker_idle_debounce_ms`; the area at once from `/locations/lookup`; debounced
+  `/geo/autocomplete` with our own results first and no reverse call for a picked result; an editable address;
+  failures that don't block. The geo calls are injected (`PickerGeo`); the post editor passes its server actions with
+  `purpose=post_location`.
+- **What "saved" means for a post.** A post stores its point, not an address text (no such column). The confirmed text
+  is kept in the draft and shown on the preview card. Stores and places do have `address_text`, which their screens
+  will save when they exist.
+- **Tests (Playwright, against the stub API):**
+  - one features request on open for every kind; list, preview, one road per session, and the directions and call
+    links;
+  - panning shows "এই এলাকায় খুঁজুন" without refetching;
+  - layers and open now go into the URL, and a shared link opens its view;
+  - the post picker: area and address on open; a drag is exactly one more reverse; search puts our results first and
+    costs no reverse.
+  - The geo-secrets CI check is clean on the web build.
+
 ## Tests
 
 - **LocationPicker.**

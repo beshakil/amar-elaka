@@ -60,15 +60,34 @@ test.describe('create a post', () => {
       .locator('input[type="file"]')
       .setInputFiles({ name: 'phone.png', mimeType: 'image/png', buffer: PNG });
 
-    // The self-hosted base map (ADR 043) takes clicks once it has loaded.
-    await expect(page.getByTestId('location-map')).toHaveAttribute('data-map-state', 'ready');
-    await page.getByTestId('location-map').click({ position: { x: 200, y: 150 } });
-    await expect(page.getByTestId('address-label')).toHaveText('মিরপুর ১০, ঢাকা');
+    // The picker (ADR 046) settles at the area's centre (no location
+    // permission here): our area name, and one reverse for the street.
+    await expect(page.getByTestId('location-map')).toHaveAttribute('data-map-state', 'ready', {
+      timeout: 30_000,
+    });
+    await expect(page.getByTestId('location-area')).toHaveText('এলাকা: মিরপুর, ঢাকা');
+    await expect(page.getByTestId('location-address')).toHaveValue('মিরপুর ১০, ঢাকা');
     // A post's pin: the purpose decides which Barikoi fields are asked for (ADR 044).
     const stats = (await (await page.request.get(`${STUB_URL}/__stats`)).json()) as {
       lastReversePurpose: string | null;
     };
     expect(stats.lastReversePurpose).toBe('post_location');
+    expect(await stub.hits('GET /api/v1/geo/reverse')).toBe(1);
+
+    // Dragging the map under the pin: one more reverse when it comes to rest
+    // (after geo_picker_idle_debounce_ms), however many frames the drag took.
+    await page.getByTestId('location-map').scrollIntoViewIfNeeded();
+    const map = (await page.getByTestId('location-map').boundingBox())!;
+    await page.mouse.move(map.x + map.width / 2, map.y + map.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(map.x + map.width / 2 - 120, map.y + map.height / 2 - 60, { steps: 30 });
+    await page.mouse.up();
+    await expect.poll(() => stub.hits('GET /api/v1/geo/reverse')).toBe(2);
+    await page.waitForTimeout(1500);
+    expect(await stub.hits('GET /api/v1/geo/reverse')).toBe(2);
+
+    // The address is editable; what the seller keeps is what is saved.
+    await page.getByTestId('location-address').fill('বাড়ি ১২, রোড ৩, মিরপুর ১০');
 
     // The preview is the card buyers will see.
     const preview = page.getByRole('complementary');
@@ -91,13 +110,24 @@ test.describe('create a post', () => {
 
   test('address search puts the pin, and a point outside the area is a warning, not a block', async ({
     page,
+    stub,
   }) => {
     await signInSeller(page);
     await page.goto(tenantUrl('mirpur', '/post/new'));
-    await page.getByLabel('ঠিকানা খুঁজুন (যেমন: মিরপুর ১০)').fill('মিরপুর ১০');
-    await page.getByRole('button', { name: 'খুঁজুন' }).click();
+    await expect(page.getByTestId('location-address')).toHaveValue('মিরপুর ১০, ঢাকা', {
+      timeout: 30_000,
+    });
+    const reverses = await stub.hits('GET /api/v1/geo/reverse');
+    // Debounced, minimum length from settings; our own places first.
+    await page.getByTestId('location-search').fill('মিরপুর ১০');
+    const results = page.getByTestId('location-results').getByRole('button');
+    await expect(results).toHaveText(['মিরপুর স্টেডিয়াম', 'সেকশন ১০, মিরপুর, ঢাকা']);
+    expect(await stub.hits('GET /api/v1/geo/autocomplete')).toBe(1);
     await page.getByRole('button', { name: 'সেকশন ১০, মিরপুর, ঢাকা' }).click();
-    await expect(page.getByTestId('address-label')).toHaveText('মিরপুর ১০, ঢাকা');
+    // A result already names the place: no reverse call for it.
+    await expect(page.getByTestId('location-address')).toHaveValue('সেকশন ১০, মিরপুর, ঢাকা');
+    await page.waitForTimeout(1500);
+    expect(await stub.hits('GET /api/v1/geo/reverse')).toBe(reverses);
     await expect(page.getByText(/সীমানার বাইরে/)).toHaveCount(0);
   });
 

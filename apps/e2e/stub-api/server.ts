@@ -896,7 +896,12 @@ function mapPoint(
     },
   };
 }
-function mapFeatures(layersParam: string | null, openNow: boolean): MapFeatures {
+export const MAP_HOSPITAL_ID = '0191e3a0-0000-7000-8000-00000000e004';
+function mapFeatures(
+  layersParam: string | null,
+  openNow: boolean,
+  kindsParam: string | null,
+): MapFeatures {
   const layers = layersParam
     ? ALL_LAYERS.filter((l) => layersParam.split(',').includes(l))
     : ALL_LAYERS;
@@ -913,9 +918,17 @@ function mapFeatures(layersParam: string | null, openNow: boolean): MapFeatures 
       },
     },
     mapPoint('posts', MAP_POST_ID, [90.3687, 23.8069], {
+      kind: 'listings',
       name_bn: 'আইফোন ১৩, ১২৮ জিবি',
       price: '65000.00',
       category_slug: 'mobile-phones',
+    }),
+    mapPoint('places', MAP_HOSPITAL_ID, [90.369, 23.807], {
+      kind: 'hospital',
+      name_bn: 'মিরপুর জেনারেল হাসপাতাল',
+      name_en: 'Mirpur General Hospital',
+      slug: 'mirpur-general',
+      open_now: true,
     }),
     mapPoint('landmarks', '0191e3a0-0000-7000-8000-00000000e002', [90.366, 23.805], {
       name_bn: 'মিরপুর স্টেডিয়াম',
@@ -924,6 +937,7 @@ function mapFeatures(layersParam: string | null, openNow: boolean): MapFeatures 
       open_now: false,
     }),
     mapPoint('info', '0191e3a0-0000-7000-8000-00000000e003', [90.365, 23.808], {
+      kind: 'pharmacy',
       name_bn: 'মিরপুর ২৪ ঘণ্টা ফার্মেসি',
       name_en: 'Mirpur 24h Pharmacy',
       info_kind: 'pharmacy_24h',
@@ -941,6 +955,7 @@ function mapFeatures(layersParam: string | null, openNow: boolean): MapFeatures 
     features: features.filter(
       (f) =>
         layers.includes(f.properties.layer) &&
+        (kindsParam === null || kindsParam.split(',').includes(f.properties.kind ?? '')) &&
         !(
           openNow &&
           (NO_HOURS.has(f.properties.layer) ||
@@ -963,6 +978,7 @@ function mapConfig(): Schemas['MapConfigDto'] {
     fallbackStyleUrl: null,
     kinds: [
       { code: 'hospital', icon: 'hospital', label: { bn: 'হাসপাতাল', en: 'Hospitals' } },
+      { code: 'pharmacy', icon: 'pharmacy', label: { bn: 'ফার্মেসি', en: 'Pharmacies' } },
       { code: 'listings', icon: 'listing', label: { bn: 'বিজ্ঞাপন', en: 'Listings' } },
     ],
     client: {
@@ -1144,8 +1160,40 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
     return send(
       res,
       200,
-      mapFeatures(url.searchParams.get('layers'), url.searchParams.get('open_now') === 'true'),
+      mapFeatures(
+        url.searchParams.get('layers'),
+        url.searchParams.get('open_now') === 'true',
+        url.searchParams.get('kinds'),
+      ),
     );
+  }
+  const previewMatch = /^\/map\/features\/([a-z]+)\/([0-9a-f-]{36})$/.exec(path);
+  if (req.method === 'GET' && previewMatch) {
+    const [, layer, id] = previewMatch;
+    const feature = mapFeatures(null, false, null).features.find(
+      (f) => !f.properties.cluster && f.properties.id === id,
+    );
+    if (!feature || feature.properties.cluster || feature.properties.layer !== layer) {
+      return fail(res, 404, 'MAP_FEATURE_NOT_FOUND');
+    }
+    const preview: Schemas['MapPreviewResponseDto'] = {
+      layer: feature.properties.layer,
+      id: feature.properties.id,
+      tenantId: url.searchParams.get('tenant') ?? '',
+      name: { bn: feature.properties.name_bn, en: feature.properties.name_en },
+      photo: null,
+      phones: layer === 'posts' ? [] : ['+8801799300555'],
+      address: layer === 'posts' ? 'মিরপুর ১০' : 'রোড ৫, মিরপুর ১০',
+    };
+    return send(res, 200, preview);
+  }
+  if (req.method === 'GET' && path === '/map/distance') {
+    return send(res, 200, {
+      from: { lat: 0, lng: 0 },
+      to: { lat: 0, lng: 0 },
+      straight_line_meters: 871.4,
+      route: { method: 'POST', path: '/api/v1/geo/route' },
+    });
   }
   if (req.method === 'POST' && path === '/geo/route') {
     const asked = await readJson(req);
@@ -1282,6 +1330,30 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
     };
     return send(res, 200, reverse);
   }
+  if (req.method === 'GET' && path === '/locations/lookup') {
+    const area = (id: string, level: string, bn: string, en: string) => ({
+      id,
+      parentId: null,
+      level,
+      pcode: null,
+      name: { bn, en },
+      center: null,
+      hasChildren: false,
+    });
+    return send(res, 200, {
+      location: {
+        lat: Number(url.searchParams.get('lat')),
+        lng: Number(url.searchParams.get('lng')),
+      },
+      areas: [
+        area('bd', 'country', 'বাংলাদেশ', 'Bangladesh'),
+        area('dhaka-div', 'division', 'ঢাকা বিভাগ', 'Dhaka Division'),
+        area('dhaka', 'district', 'ঢাকা', 'Dhaka'),
+        area('mirpur', 'upazila', 'মিরপুর', 'Mirpur'),
+      ],
+      tenant: null,
+    });
+  }
   if (req.method === 'GET' && path === '/geo/autocomplete') {
     const found: Schemas['GeoAutocompleteResponseDto'] = {
       query: url.searchParams.get('q') ?? '',
@@ -1295,6 +1367,19 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
           postCode: '1216',
           source: 'barikoi',
           kind: 'address',
+          refId: null,
+          distanceMeters: null,
+        },
+        // Our own place, listed after Barikoi's here: the picker puts ours first.
+        {
+          label: 'Mirpur Stadium',
+          labelBn: 'মিরপুর স্টেডিয়াম',
+          location: { lat: 23.8066, lng: 90.3634 },
+          area: 'Mirpur',
+          city: 'Dhaka',
+          postCode: null,
+          source: 'own',
+          kind: 'place',
           refId: null,
           distanceMeters: null,
         },

@@ -13,16 +13,18 @@ import {
 import { DynamicForm } from '@amar-elaka/dynamic-form/react';
 import { MediaUploader } from '@/components/media-uploader/media-uploader';
 import { CategoryIcon } from '@/components/posts/category-icon';
-import { BarikoiAttribution } from '@/components/map/barikoi-attribution';
-import { LocationPicker } from '@/components/posts/location-picker';
+import type { GeoAnswer, PickerGeo } from '@/components/map/location-picker';
+import { pickedLabel } from '@/components/map/location-picker';
+import { LocationPickerLazy } from '@/components/map/location-picker-lazy';
 import { PostCard } from '@/components/posts/post-card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import type { CatalogCategory, GeocodeResult, MapConfig, Ownership, Post } from '@/lib/api/schemas';
+import type { CatalogCategory, MapConfig, Ownership, Post } from '@/lib/api/schemas';
 import { compressImage } from '@/lib/media/compress-image';
 import { UploadQueue } from '@/lib/media/upload-queue';
 import { createWebUploadTransport } from '@/lib/media/web-upload-transport';
 import {
+  areasAt,
   createPost,
   ownershipAt,
   reverseGeocode,
@@ -52,6 +54,17 @@ export interface EditorTenant {
 type Mode = { kind: 'create' } | { kind: 'edit'; post: Post };
 
 type Result = { post: Post; wasEdit: boolean };
+
+/** A server action's answer as the picker reads it. */
+const geoAnswer = <T,>(result: ActionResult<T>): GeoAnswer<T> =>
+  result.ok ? result : { ok: false, offline: result.error.code === 'NETWORK' };
+
+/** The post's pin: `purpose=post_location` (settings decide which Barikoi fields that costs). */
+const pickerGeo: PickerGeo = {
+  areasAt: async (lat, lng) => geoAnswer(await areasAt(lat, lng)),
+  reverse: async (lat, lng) => geoAnswer(await reverseGeocode(lat, lng, 'post_location')),
+  autocomplete: async (query, near) => geoAnswer(await searchAddress(query, near)),
+};
 
 const schemaOf = (category: CatalogCategory | undefined): CategoryFieldSchema | null =>
   (category?.fieldSchema as CategoryFieldSchema | null | undefined) ?? null;
@@ -117,13 +130,8 @@ export function PostEditor({
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<Result | null>(null);
   const [ownership, setOwnership] = useState<Ownership | null>(null);
-  const [lookingUp, setLookingUp] = useState(false);
-  const [addressQuery, setAddressQuery] = useState('');
-  const [addressResults, setAddressResults] = useState<GeocodeResult[] | null>(null);
   /** The address line came from the geocoding provider (Barikoi), not our own area names. */
-  const [addressFromProvider, setAddressFromProvider] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
-  const lookup = useRef(0);
+  const ownershipCheck = useRef(0);
 
   const [queue] = useState(
     () => new UploadQueue({ transport: createWebUploadTransport(), compress: compressImage }),
@@ -170,50 +178,11 @@ export function PostEditor({
     setFormKey((k) => k + 1);
   }
 
-  async function setPoint(point: { lat: number; lng: number }) {
-    update({ location: point });
-    const id = ++lookup.current;
-    setLookingUp(true);
-    const [address, owner] = await Promise.all([
-      reverseGeocode(point.lat, point.lng),
-      ownershipAt(point.lat, point.lng),
-    ]);
-    if (id !== lookup.current) return;
-    setLookingUp(false);
-    if (address.ok) {
-      const found = address.data.address;
-      const label =
-        found?.labelBn ??
-        found?.label ??
-        (address.data.areas
-          .filter((a) => a.level !== 'country' && a.level !== 'division')
-          .slice(-3)
-          .reverse()
-          .map((a) => a.name.bn ?? a.name.en)
-          .join(', ') ||
-          null);
-      update({ addressLabel: label });
-      setAddressFromProvider(found !== null && found.source === 'barikoi');
-    }
-    setOwnership(owner.ok ? owner.data : null);
-  }
-
-  function useMyLocation() {
-    if (!('geolocation' in navigator)) {
-      setNotice(t('geolocationDenied'));
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      (position) =>
-        void setPoint({ lat: position.coords.latitude, lng: position.coords.longitude }),
-      () => setNotice(t('geolocationDenied')),
-    );
-  }
-
-  async function findAddress() {
-    const found = await searchAddress(addressQuery, draft.location);
-    setAddressResults(found.ok ? found.data : []);
-    if (!found.ok) setError(describe(found.error));
+  /** The post's point is checked against the area's boundary: outside is a warning, never a block. */
+  async function checkOwnership(point: { lat: number; lng: number }) {
+    const id = ++ownershipCheck.current;
+    const owner = await ownershipAt(point.lat, point.lng);
+    if (id === ownershipCheck.current) setOwnership(owner.ok ? owner.data : null);
   }
 
   async function submit(fields: FieldValues) {
@@ -467,66 +436,16 @@ export function PostEditor({
           <h2 id="h-location" className="text-lg font-semibold">
             {t('sectionLocation')}
           </h2>
-          <p className="text-sm text-muted-foreground">{t('locationHint')}</p>
-          <div className="flex flex-wrap gap-2">
-            <form
-              className="flex min-w-0 flex-1 gap-2"
-              onSubmit={(event) => {
-                event.preventDefault();
-                void findAddress();
-              }}
-            >
-              <Input
-                placeholder={t('locationSearch')}
-                aria-label={t('locationSearch')}
-                value={addressQuery}
-                onChange={(event) => setAddressQuery(event.target.value)}
-              />
-              <Button type="submit" variant="outline">
-                {t('search')}
-              </Button>
-            </form>
-            <Button type="button" variant="outline" onClick={useMyLocation}>
-              {t('myLocation')}
-            </Button>
-          </div>
-          {addressResults && (
-            <ul className="divide-y divide-border rounded-md border border-border">
-              {addressResults.length === 0 ? (
-                <li className="p-3 text-sm">{t('locationSearchEmpty')}</li>
-              ) : (
-                addressResults.map((r) => (
-                  <li key={`${r.location.lat},${r.location.lng},${r.label}`}>
-                    <button
-                      type="button"
-                      className="w-full p-3 text-left text-sm hover:bg-muted"
-                      onClick={() => {
-                        setAddressResults(null);
-                        setAddressQuery('');
-                        void setPoint(r.location);
-                      }}
-                    >
-                      {r.labelBn ?? r.label}
-                    </button>
-                  </li>
-                ))
-              )}
-            </ul>
-          )}
-          {addressResults?.some((r) => r.source === 'barikoi') && <BarikoiAttribution />}
-          <LocationPicker
+          <LocationPickerLazy
             config={mapConfig}
-            value={draft.location}
-            center={draft.location ?? tenant.mapCenter}
-            onChange={(point) => void setPoint(point)}
-            label={t('locationHint')}
+            initial={draft.location}
+            center={tenant.mapCenter}
+            geo={pickerGeo}
+            onChange={(picked) =>
+              update({ location: picked.point, addressLabel: pickedLabel(picked) })
+            }
+            onPointSettled={(point) => void checkOwnership(point)}
           />
-          <p className="text-sm" data-testid="address-label" aria-live="polite">
-            {lookingUp
-              ? t('lookingUp')
-              : (draft.addressLabel ?? (draft.location ? t('unknownAddress') : ''))}
-          </p>
-          {!lookingUp && draft.addressLabel && addressFromProvider && <BarikoiAttribution />}
           {ownership?.outsideBoundary && (
             <p
               role="status"
@@ -536,7 +455,6 @@ export function PostEditor({
               {ownership.needsReview ? t('needsReview') : ''}
             </p>
           )}
-          {notice && <p className="text-sm text-muted-foreground">{notice}</p>}
           {fieldError(issues.has('location'), t('locationRequired'))}
         </section>
 
