@@ -8,6 +8,7 @@ import { TenantDb } from '../../database/tenant-db';
 import type { ViewerSignals } from '../../engagement/viewer-key';
 import { SettingsService } from '../../settings/settings.service';
 import { STORAGE_SERVICE, type StorageService } from '../../storage/storage.ports';
+import type { OpenState } from '../../hours/open-state';
 import type {
   PriceFacet,
   SearchHit,
@@ -92,6 +93,8 @@ interface Plan {
   queryKey: string;
   /** Digest of what narrows the list apart from the text (search_queries.filters_hash). */
   filtersHash: string;
+  /** open_now: stores/places open now only (is_open_at, ADR 049). */
+  openOnly: boolean;
 }
 
 /**
@@ -136,7 +139,7 @@ export class SearchService {
     if (plan.limit === 0) return this.emptyResponse(plan);
 
     const fromEngine = await this.tryEngine(() => this.searchEngine(plan));
-    let response = fromEngine ?? (await this.searchDatabase(plan));
+    let response = await this.withOpenStates(fromEngine ?? (await this.searchDatabase(plan)));
     if (!plan.viewerLocated) {
       const hideDistance = (hit: SearchHit) => ({ ...hit, distanceMeters: null });
       response = {
@@ -309,6 +312,7 @@ export class SearchService {
     const limit = Math.min(query.limit ?? pageDefault, pageMax);
 
     const narrowing = {
+      open: query.open_now ?? false,
       type: query.type,
       scope: query.scope,
       category: category?.id ?? null,
@@ -352,6 +356,7 @@ export class SearchService {
       maxTotalHits,
       queryKey,
       filtersHash: searchDigest(narrowing),
+      openOnly: query.open_now ?? false,
     };
   }
 
@@ -380,6 +385,47 @@ export class SearchService {
     return { q: '', matched: [idsIn(ids)] };
   }
 
+  /** Stores' and places' open state (is_open_at, now), on hits and landmarks. */
+  private async withOpenStates(response: SearchResponse): Promise<SearchResponse> {
+    const ofType = (type: 'stores' | 'places') =>
+      [...response.hits, ...response.landmarks].filter((h) => h.type === type).map((h) => h.id);
+    const [stores, places] = await Promise.all(
+      (['stores', 'places'] as const).map((type) => {
+        const ids = ofType(type);
+        return ids.length === 0
+          ? Promise.resolve(new Map<string, OpenState | null>())
+          : this.readOnly((tx) =>
+              this.repo.openStates(tx, type === 'stores' ? 'store' : 'place', ids),
+            );
+      }),
+    );
+    const fill = (hit: SearchHit): SearchHit =>
+      hit.type === 'posts'
+        ? hit
+        : { ...hit, openState: (hit.type === 'stores' ? stores : places)!.get(hit.id) ?? null };
+    return { ...response, hits: response.hits.map(fill), landmarks: response.landmarks.map(fill) };
+  }
+
+  /**
+   * open_now: the open stores/places within the radius (open_ids_near — the
+   * database's is_open_at, the one implementation) become an id filter, so
+   * relevance, sorting and paging stay Meilisearch's. Undefined: none open.
+   */
+  private async openScope(plan: Plan): Promise<string[] | undefined> {
+    if (!plan.openOnly || plan.type === 'posts') return [];
+    const radiusKm = plan.radiusKm ?? (await this.settings.get('search_max_radius_km'));
+    const ids = await this.readOnly((tx) =>
+      this.repo.openIdsNear(
+        tx,
+        plan.type === 'stores' ? 'store' : 'place',
+        plan.origin,
+        radiusKm,
+        plan.maxTotalHits,
+      ),
+    );
+    return ids.length === 0 ? undefined : [idsIn(ids)];
+  }
+
   private async searchEngine(plan: Plan): Promise<SearchResponse> {
     const [facetFieldsMax, bucketCount, landmarksMax] = await Promise.all([
       this.settings.get('search_facet_fields_max'),
@@ -398,7 +444,10 @@ export class SearchService {
       plan.radiusKm !== null;
     const text = await this.textScope(plan);
     if (text === undefined) return this.emptyResponse(plan);
-    const { q, matched } = text;
+    const open = await this.openScope(plan);
+    if (open === undefined) return this.emptyResponse(plan);
+    const q = text.q;
+    const matched = [...text.matched, ...open];
     const sort = buildSort(plan.sort, plan.origin);
 
     // Round 1, in parallel: the page itself; the price bounds without the
@@ -524,6 +573,7 @@ export class SearchService {
         price: plan.criteria.price,
         localityId: plan.type === 'posts' ? plan.criteria.localityId : null,
         nearestFirst: plan.sort === 'distance' || plan.sort === 'relevance',
+        openOnly: plan.openOnly && plan.type !== 'posts',
         limit: plan.limit,
         offset: plan.offset,
       }),
@@ -593,6 +643,7 @@ export class SearchService {
             },
       isVerified: doc.is_verified,
       isLandmark: doc.is_landmark,
+      openState: null,
     };
   }
 
@@ -740,5 +791,6 @@ function fallbackHit(type: SearchType, row: FallbackRow): SearchHit {
     cover: null,
     isVerified: false,
     isLandmark: false,
+    openState: null,
   };
 }

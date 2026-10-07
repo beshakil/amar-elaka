@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { OPEN_STATES } from '../hours/open-state';
 import { createZodDto } from '../common/pipes/zod-dto';
 import { bboxParam } from '../locations/dto/locations.dto';
 import { MAP_LAYERS } from '../settings/settings.registry';
@@ -133,8 +134,12 @@ const pointFeature = z.object({
     slug: z.string().nullable(),
     /** info: the emergency service type (hospital, pharmacy_24h, police…), bus_stop, or the place category slug of a map_info_place_categories place (bank-atm). */
     info_kind: z.string().nullable(),
-    /** Places/landmarks by their hours, 24h info as true; null when unknown. */
+    /** Stores/places/landmarks by their hours (is_open_at, ADR 049), 24h info as true; null when unknown. */
     open_now: z.boolean().nullable(),
+    /** open | closes_soon | opens_soon | closed | unknown; null for posts. */
+    open_state: z.enum(OPEN_STATES).nullable(),
+    /** When open_state next changes ("৯:৩০-এ খুলবে"), ISO; null when unknown or nothing scheduled. */
+    open_changes_at: z.string().nullable(),
   }),
 });
 

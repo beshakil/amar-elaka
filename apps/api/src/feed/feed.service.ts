@@ -5,6 +5,7 @@ import type { DatabaseTransaction } from '../database/database.client';
 import { TenantContext } from '../database/tenant-context';
 import { TenantNotFoundException, TenantRequiredException } from '../database/tenant.exceptions';
 import { TenantDb } from '../database/tenant-db';
+import { toOpenState } from '../hours/open-state';
 import { parseVariants } from '../media/media.types';
 import { SettingsService } from '../settings/settings.service';
 import { STORAGE_SERVICE, type StorageService } from '../storage/storage.ports';
@@ -36,8 +37,9 @@ import {
 } from './feed.repository';
 import { geohashCenter, geohashEncode } from './geohash';
 
-// v2: post cards carry isSaved (always false in the cache).
-const CACHE_KEY_VERSION = 'v2';
+// v2: post cards carry isSaved (always false in the cache). v3: store and
+// landmark cards carry openState.
+const CACHE_KEY_VERSION = 'v3';
 
 interface Plan {
   tenantId: string;
@@ -52,6 +54,8 @@ interface Plan {
   limit: number;
   queryKey: string;
   cursor: FeedCursor | null;
+  /** open_now: store and landmark cards only where open now. */
+  openOnly: boolean;
 }
 
 /**
@@ -188,6 +192,7 @@ export class FeedService {
       category: category?.id ?? null,
       filters: fieldFilters,
       radius: radiusKm,
+      open: query.open_now ?? false,
     });
     const cursor = query.cursor ? decodeFeedCursor(query.cursor, queryKey) : null;
 
@@ -208,6 +213,7 @@ export class FeedService {
       limit,
       queryKey,
       cursor,
+      openOnly: query.open_now ?? false,
     };
   }
 
@@ -245,7 +251,13 @@ export class FeedService {
     const [posts, stores, infoSlots] = await Promise.all([
       this.postCards(ranked),
       storeSlots > 0 && plan.radiusKm !== null
-        ? this.storeCards(plan.origin, plan.radiusKm, plan.cursor?.s ?? null, storeSlots)
+        ? this.storeCards(
+            plan.origin,
+            plan.radiusKm,
+            plan.cursor?.s ?? null,
+            storeSlots,
+            plan.openOnly,
+          )
         : Promise.resolve({ cards: [], keyAfter: () => plan.cursor?.s ?? null }),
       info,
     ]);
@@ -369,6 +381,7 @@ export class FeedService {
     radiusKm: number,
     after: FeedCursor['s'],
     limit: number,
+    openOnly: boolean,
   ): Promise<{ cards: StoreCard[]; keyAfter: (used: number) => FeedCursor['s'] }> {
     const nearest = await this.readOnly((tx) =>
       this.repo.nearestStores(tx, {
@@ -376,6 +389,7 @@ export class FeedService {
         radiusKm,
         after: after ? { distance: after.d, id: after.id } : null,
         limit,
+        openOnly,
       }),
     );
     const rows = await this.inOwners(nearest, (tx, ids) => this.repo.storeCards(tx, ids));
@@ -395,6 +409,7 @@ export class FeedService {
         distanceMeters: Math.round(n.distance_m),
         isVerified: row.is_verified,
         rating: row.rating_avg,
+        openState: toOpenState(row.open_state, row.open_changes_at),
       });
       keys.push({ d: n.distance_m, id: n.id });
     }
@@ -416,7 +431,7 @@ export class FeedService {
     const [hotlines, bazar, landmarks] = await Promise.all([
       emergencyAt > 0 ? this.readOnly((tx) => this.repo.hotlines(tx, emergencyItems)) : [],
       bazarAt > 0 ? this.readOnly((tx) => this.repo.bazarToday(tx, bazarItems)) : [],
-      landmarkAt > 0 && nearby ? this.landmarkCards(plan.origin, landmarkMax) : [],
+      landmarkAt > 0 && nearby ? this.landmarkCards(plan.origin, landmarkMax, plan.openOnly) : [],
     ]);
 
     const emergency: EmergencyCard | null =
@@ -451,8 +466,12 @@ export class FeedService {
     ];
   }
 
-  private async landmarkCards(origin: Origin, limit: number): Promise<LandmarkCard[]> {
-    const nearest = await this.readOnly((tx) => this.repo.landmarks(tx, origin, limit));
+  private async landmarkCards(
+    origin: Origin,
+    limit: number,
+    openOnly: boolean,
+  ): Promise<LandmarkCard[]> {
+    const nearest = await this.readOnly((tx) => this.repo.landmarks(tx, origin, limit, openOnly));
     const rows = await this.inOwners(nearest, (tx, ids) => this.repo.landmarkCards(tx, ids));
     const byId = new Map(rows.map((row) => [row.id, row]));
     return nearest.flatMap((n) => {
@@ -470,6 +489,7 @@ export class FeedService {
             name: { bn: row.category_name_bn, en: row.category_name_en },
           },
           distanceMeters: Math.round(n.distance_m),
+          openState: toOpenState(row.open_state, row.open_changes_at),
         },
       ];
     });

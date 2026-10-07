@@ -96,6 +96,8 @@ export const storeCardRow = z.object({
   rating_avg: z.coerce.number().nullable(),
   cover_thumbhash: nullableText,
   cover_variants: z.unknown(),
+  open_state: nullableText,
+  open_changes_at: z.coerce.date().nullable(),
 });
 export type StoreCardRow = z.infer<typeof storeCardRow>;
 
@@ -108,6 +110,8 @@ export const landmarkCardRow = z.object({
   category_slug: z.string(),
   category_name_bn: z.string(),
   category_name_en: z.string(),
+  open_state: nullableText,
+  open_changes_at: z.coerce.date().nullable(),
 });
 export type LandmarkCardRow = z.infer<typeof landmarkCardRow>;
 
@@ -238,19 +242,27 @@ export class FeedRepository {
       radiusKm: number;
       after: { distance: number; id: string } | null;
       limit: number;
+      /** Only stores open now (is_open_at, ADR 049). */
+      openOnly: boolean;
     },
   ): Promise<NearbyRow[]> {
     const rows = await tx.execute(sql`
       select id, tenant_id, distance_m
       from public.feed_stores(
         ${point(q.origin)}, ${q.radiusKm}::double precision,
-        ${q.after?.distance ?? null}::double precision, ${q.after?.id ?? null}::uuid, ${q.limit})`);
+        ${q.after?.distance ?? null}::double precision, ${q.after?.id ?? null}::uuid, ${q.limit},
+        ${q.openOnly})`);
     return z.array(nearbyRow).parse([...rows]);
   }
 
-  async landmarks(tx: DatabaseTransaction, origin: Origin, limit: number): Promise<NearbyRow[]> {
+  async landmarks(
+    tx: DatabaseTransaction,
+    origin: Origin,
+    limit: number,
+    openOnly: boolean,
+  ): Promise<NearbyRow[]> {
     const rows = await tx.execute(sql`
-      select id, tenant_id, distance_m from public.feed_landmarks(${point(origin)}, ${limit})`);
+      select id, tenant_id, distance_m from public.feed_landmarks(${point(origin)}, ${limit}, ${openOnly})`);
     return z.array(nearbyRow).parse([...rows]);
   }
 
@@ -299,8 +311,10 @@ export class FeedRepository {
     if (ids.length === 0) return [];
     const rows = await tx.execute(sql`
       select s.id, s.tenant_id, s.slug, s.name_bn, s.name_en, s.is_verified, s.rating_avg,
-             m.thumbhash as cover_thumbhash, m.variants as cover_variants
+             m.thumbhash as cover_thumbhash, m.variants as cover_variants,
+             (o.x).state as open_state, (o.x).changes_at as open_changes_at
       from public.stores s
+      cross join lateral (select public.is_open_at('store', s.id, now()) as x) o
       left join public.media_assets m
         on m.tenant_id = s.tenant_id and m.id = coalesce(s.cover_media_id, s.logo_media_id)
        and m.status_code = 'ready' and m.visibility_code = 'public'
@@ -312,8 +326,10 @@ export class FeedRepository {
     if (ids.length === 0) return [];
     const rows = await tx.execute(sql`
       select pl.id, pl.tenant_id, pl.slug, pl.name_bn, pl.name_en,
-             c.slug as category_slug, c.name_bn as category_name_bn, c.name_en as category_name_en
+             c.slug as category_slug, c.name_bn as category_name_bn, c.name_en as category_name_en,
+             (o.x).state as open_state, (o.x).changes_at as open_changes_at
       from public.places pl
+      cross join lateral (select public.is_open_at('place', pl.id, now()) as x) o
       join public.categories c on c.id = pl.category_id
       where pl.id = any (${uuidArray(ids)})`);
     return z.array(landmarkCardRow).parse([...rows]);
@@ -321,7 +337,7 @@ export class FeedRepository {
 
   // ---- info cards: the request tenant's own local information -------------
 
-  /** Today's published prices (Asia/Dhaka), one row per commodity and unit across markets. */
+  /** Today's published prices (the tenant's zone), one row per commodity and unit across markets. */
   async bazarToday(tx: DatabaseTransaction, limit: number): Promise<BazarRow[]> {
     const rows = await tx.execute(sql`
       select bp.price_date::text as price_date, c.code as commodity_code, c.name_bn, c.name_en,
@@ -329,7 +345,9 @@ export class FeedRepository {
       from public.bazar_prices bp
       join public.bazar_commodities c on c.id = bp.commodity_id
       where bp.status_code = 'published'
-        and bp.price_date = (now() at time zone 'Asia/Dhaka')::date
+        -- Today in the tenant's own zone (tenants.timezone), never an assumed one.
+        and bp.price_date = (select (now() at time zone t.timezone)::date
+                             from public.tenants t where t.id = bp.tenant_id)
       group by bp.price_date, c.id, c.code, c.name_bn, c.name_en, c.sort_order, bp.unit_code
       order by c.sort_order, c.code, bp.unit_code
       limit ${limit}`);

@@ -4,6 +4,7 @@ import type { TextCache } from '../cache/cache.service';
 import { TenantDb } from '../database/tenant-db';
 import { distanceMeters, type BoundingBox } from '../locations/geo/geodesic';
 import { LocationsService } from '../locations/locations.service';
+import { toOpenState } from '../hours/open-state';
 import { SettingsService } from '../settings/settings.service';
 import type {
   MapDistanceQuery,
@@ -22,11 +23,11 @@ const METERS_PER_KM = 1000; // settings-exempt: unit conversion
 const METERS_PER_DEGREE_LAT = 111_320; // settings-exempt: metres per degree of latitude (WGS84 mean)
 const DEGREES_TO_RADIANS = Math.PI / 180; // settings-exempt: unit conversion
 // settings-exempt: cache-key format version; bump when a cached value's shape changes
-const CACHE_VERSION = 'v3';
+const CACHE_VERSION = 'v4';
 // settings-exempt: a snapped centre's digits in a cache key (~0.1 m, far below a cell)
 const KEY_DECIMALS = 6;
 /** Layers without opening hours: `open_now` leaves them out. */
-const NO_HOURS: readonly MapLayer[] = ['posts', 'stores'];
+const NO_HOURS: readonly MapLayer[] = ['posts'];
 
 /** The viewport clamped to the square of side 2·radius around its centre (CLAUDE.md rule 10). */
 function clampToRadius(
@@ -196,6 +197,8 @@ function feature(row: FeatureRow, expansionZoom: number): MapFeature {
       slug: row.slug,
       info_kind: row.info_kind,
       open_now: row.open_now,
+      open_state: toOpenState(row.open_state, row.open_changes_at)?.state ?? null,
+      open_changes_at: row.open_changes_at?.toISOString() ?? null,
     },
   };
 }

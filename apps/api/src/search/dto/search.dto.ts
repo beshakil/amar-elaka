@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { openStateSchema } from '../../hours/open-state';
 import { createZodDto } from '../../common/pipes/zod-dto';
 import { RANGE_OPERATORS, toPoisha, type RawFieldFilter } from '../../categories/field-schema';
 import { LEGACY_SORTS, SEARCH_SORTS } from '../query/filter-builder';
@@ -145,8 +146,17 @@ export const searchQuerySchema = z
     page: z.coerce.number().int().min(1).optional(),
     /** Defaults to search_page_size_default, capped at search_page_size_max. */
     limit: z.coerce.number().int().min(1).optional(),
+    /** Stores/places open now (is_open_at, ADR 049). Posts have no opening hours. */
+    open_now: z
+      .enum(['true', 'false'])
+      .transform((v) => v === 'true')
+      .optional(),
   })
   .refine(bothOrNeither, { message: 'lat and lng go together', path: ['lat'] })
+  .refine((v) => !v.open_now || v.type !== 'posts', {
+    message: 'open_now applies to stores and places, which have opening hours',
+    path: ['open_now'],
+  })
   .refine((v) => v.sort !== 'distance' || v.lat !== undefined, {
     message: 'sort=distance needs lat and lng',
     path: ['sort'],
@@ -216,6 +226,8 @@ export const searchHitSchema = z.object({
   cover: z.object({ thumbUrl: z.string(), thumbhash: z.string().nullable() }).nullable(),
   isVerified: z.boolean(),
   isLandmark: z.boolean(),
+  /** Stores/places: is_open_at() now (ADR 049); null for posts. */
+  openState: openStateSchema.nullable(),
 });
 export type SearchHit = z.infer<typeof searchHitSchema>;
 

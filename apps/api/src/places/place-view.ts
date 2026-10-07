@@ -34,7 +34,7 @@ export function toPlaceView(
   media: readonly PlaceMediaRow[],
   hours: readonly HoursRow[],
   viewer: { isMine: boolean; canEdit: boolean; redirectedFrom: string | null },
-): PlaceView {
+): Omit<PlaceView, 'openState' | 'specialDays' | 'closedUntil'> {
   const street = media.find((m) => m.media_asset_id === row.street_photo_media_id);
   return {
     id: row.id,

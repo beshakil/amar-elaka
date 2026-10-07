@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { createZodDto } from '../../common/pipes/zod-dto';
+import { openStateSchema } from '../../hours/open-state';
 import { filtersParam } from '../../search/dto/search.dto';
 
 // settings-exempt: latitude/longitude ranges, facts of the coordinate system.
@@ -38,6 +39,14 @@ export const feedQuerySchema = z
       .optional(),
     /** Post cards per page; defaults to feed_page_size_default, capped at feed_page_size_max. */
     limit: z.coerce.number().int().min(1).optional(),
+    /**
+     * Store and landmark cards only where open now (is_open_at, ADR 049).
+     * Post cards are listings, not venues with hours: they stay.
+     */
+    open_now: z
+      .enum(['true', 'false'])
+      .transform((v) => v === 'true')
+      .optional(),
   })
   .refine((v) => (v.lat === undefined) === (v.lng === undefined), {
     message: 'lat and lng go together',
@@ -92,6 +101,8 @@ export const storeCardSchema = z.object({
   distanceMeters: z.number(),
   isVerified: z.boolean(),
   rating: z.number().nullable(),
+  /** is_open_at() now; `unknown` when the store has no hours. */
+  openState: openStateSchema.nullable(),
 });
 
 export const landmarkCardSchema = z.object({
@@ -102,6 +113,7 @@ export const landmarkCardSchema = z.object({
   name: localized,
   category: z.object({ slug: z.string(), name: localized }),
   distanceMeters: z.number(),
+  openState: openStateSchema.nullable(),
 });
 
 export const bazarCardSchema = z.object({

@@ -157,6 +157,23 @@ const CENTER = { lat: 23.81, lng: 90.41 };
 class FakeRepo implements Partial<SearchQueryRepository> {
   fallbackQueries: FallbackQuery[] = [];
   tenantCenter = () => Promise.resolve(CENTER);
+  openIdsQueries: { entity: string; radiusKm: number }[] = [];
+  openIds: string[] = [];
+  openStates = (_tx: DatabaseTransaction, _entity: string, ids: readonly string[]) =>
+    Promise.resolve(
+      new Map(
+        ids.map((id) => [id, { state: 'open' as const, changesAt: '2026-10-09T15:00:00.000Z' }]),
+      ),
+    );
+  openIdsNear = (
+    _tx: DatabaseTransaction,
+    entity: 'store' | 'place',
+    _origin: { lat: number; lng: number },
+    radiusKm: number,
+  ) => {
+    this.openIdsQueries.push({ entity, radiusKm });
+    return Promise.resolve(this.openIds);
+  };
   resolveCategory = (_tx: DatabaseTransaction, slug: string) =>
     Promise.resolve(
       slug === 'to-let'
@@ -670,5 +687,34 @@ describe('poishaToMoney', () => {
     expect(poishaToMoney(5)).toBe('0.05');
     expect(poishaToMoney(1_500_000)).toBe('15000.00');
     expect(poishaToMoney(999_999_999_999)).toBe('9999999999.99');
+  });
+});
+
+describe('SearchService.search — open_now (ADR 049)', () => {
+  it('limits stores to the open ids near the origin and gives each hit its open state', async () => {
+    const { service, engine, repo } = setup();
+    repo.openIds = ['s-open-1', 's-open-2'];
+    const response = await service.search(query({ type: 'stores', open_now: 'true' }));
+    expect(repo.openIdsQueries).toEqual([{ entity: 'store', radiusKm: 10 }]);
+    expect(engine.requests[0]!.filter).toContain('id IN ["s-open-1", "s-open-2"]');
+    expect(response.hits[0]!.openState).toEqual({
+      state: 'open',
+      changesAt: '2026-10-09T15:00:00.000Z',
+    });
+  });
+
+  it('answers empty without asking the engine when nothing is open', async () => {
+    const { service, engine, repo } = setup();
+    repo.openIds = [];
+    const response = await service.search(query({ type: 'places', open_now: 'true' }));
+    expect(response.hits).toEqual([]);
+    expect(engine.requests).toHaveLength(0);
+  });
+
+  it('posts have no opening hours: open_now is refused for them, and their hits carry no state', async () => {
+    expect(() => query({ type: 'posts', open_now: 'true' })).toThrow(/open_now applies/);
+    const { service } = setup();
+    const response = await service.search(query({ q: 'ডাক্তার' }));
+    expect(response.hits[0]!.openState).toBeNull();
   });
 });

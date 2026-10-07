@@ -1,5 +1,7 @@
 import { z } from 'zod';
 import { createZodDto } from '../../common/pipes/zod-dto';
+import { specialDayViewSchema } from '../../hours/dto/hours.dto';
+import { openStateSchema } from '../../hours/open-state';
 import { TAKEDOWN_REASONS } from '../../moderation/dto/moderation.dto';
 
 // settings-exempt: latitude/longitude ranges, facts of the coordinate system.
@@ -237,6 +239,12 @@ export const placeSchema = z.object({
   canEdit: z.boolean(),
   /** Set when the requested place was merged into this one (a redirect). */
   redirectedFrom: z.string().nullable(),
+  /** is_open_at() now (ADR 049): open | closes_soon | opens_soon | closed | unknown, and the next change. */
+  openState: openStateSchema.nullable(),
+  /** Holidays and days with their own hours, from today (local) on. */
+  specialDays: z.array(specialDayViewSchema),
+  /** The owner's "closed today", until this instant; null when not set. */
+  closedUntil: z.string().nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });

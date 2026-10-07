@@ -31,6 +31,8 @@ const cluster = (n: number): FeatureRow => ({
   info_kind: null,
   open_now: null,
   kind: 'listings',
+  open_state: null,
+  open_changes_at: null,
 });
 const point: FeatureRow = {
   ...cluster(1),
@@ -42,6 +44,8 @@ const point: FeatureRow = {
   slug: 'crescent-lake',
   open_now: true,
   kind: null,
+  open_state: 'open',
+  open_changes_at: new Date('2026-10-09T15:00:00Z'),
 };
 
 class MemoryCache implements TextCache {
@@ -125,6 +129,8 @@ describe('MapFeaturesService', () => {
         name_bn: 'ক্রিসেন্ট লেক',
         name_en: 'Crescent Lake',
         open_now: true,
+        open_state: 'open',
+        open_changes_at: '2026-10-09T15:00:00.000Z',
       },
     });
   });
@@ -150,7 +156,7 @@ describe('MapFeaturesService', () => {
     expect(repo.features).toHaveBeenCalledTimes(1);
     const [key, entry] = [...cache.store][0]!;
     expect(key).toMatch(
-      /^map:features:v3:info\+landmarks\+places\+posts\+stores:-:\*:any:fit:14\/\d+-\d+\/\d+-\d+:tiles$/,
+      /^map:features:v4:info\+landmarks\+places\+posts\+stores:-:\*:any:fit:14\/\d+-\d+\/\d+-\d+:tiles$/,
     );
     expect(entry.ttl).toBe(60);
     // The hit is the cached text itself: never parsed or re-serialized.

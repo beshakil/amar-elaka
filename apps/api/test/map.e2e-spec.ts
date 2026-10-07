@@ -110,7 +110,8 @@ describe('Base map (e2e)', () => {
       expect(close.json()).toMatchObject({
         clustered: false,
         clipped: false,
-        open_now_skipped: ['posts', 'stores'],
+        // Stores have opening hours now (ADR 049); posts don't.
+        open_now_skipped: ['posts'],
       });
     });
 

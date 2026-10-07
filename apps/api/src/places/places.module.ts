@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
+import { HoursModule } from '../hours/hours.module';
 import { LocationsModule } from '../locations/locations.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { PostsModule } from '../posts/posts.module';
@@ -28,6 +29,7 @@ import { PlacesService } from './places.service';
     SettingsModule,
     StorageModule,
     LocationsModule,
+    HoursModule,
     NotificationsModule,
     PostsModule,
     TrustModule,

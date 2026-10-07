@@ -456,7 +456,7 @@ describe('Feed ranking functions (0030)', () => {
         app,
         AS_VISITOR_OF_A,
         (tx) => tx<Near[]>`
-        select id, tenant_id, distance_m from public.feed_landmarks(${ORIGIN}::geography, 10)`,
+        select id, tenant_id, distance_m from public.feed_landmarks(${ORIGIN}::geography, 10, false)`,
       );
       const ids = rows.map((r) => r.id);
       expect(ids).toEqual([defaultReach, hospital]);
@@ -500,7 +500,7 @@ describe('Feed ranking functions (0030)', () => {
           (tx) => tx<Near[]>`
           select id, tenant_id, distance_m
           from public.feed_stores(${ORIGIN}::geography, 5, ${after?.d ?? null}::double precision,
-                                  ${after?.id ?? null}::uuid, 1)`,
+                                  ${after?.id ?? null}::uuid, 1, false)`,
         );
       const [first] = await page(null);
       expect(first!.id).toBe(near!.id);

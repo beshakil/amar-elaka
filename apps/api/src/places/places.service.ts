@@ -24,6 +24,8 @@ import type {
   RevisionPage,
   UpdatePlaceInput,
 } from './dto/places.dto';
+import { HoursRepository } from '../hours/hours.repository';
+import { assertRangesPerDay, toSpecialDayViews } from '../hours/hours.service';
 import { DuplicatesRepository } from './duplicates.repository';
 import { DuplicatesService } from './duplicates.service';
 import { OPEN_STATES, placeSlug, toHoursEntries, toPlaceView } from './place-view';
@@ -78,6 +80,7 @@ export class PlacesService {
     @Inject(STORAGE_SERVICE) private readonly storage: StorageService,
     private readonly duplicates: DuplicatesService,
     private readonly duplicatesRepo: DuplicatesRepository,
+    private readonly hoursRepo: HoursRepository,
   ) {}
 
   // ---- contribute ----------------------------------------------------------
@@ -174,6 +177,10 @@ export class PlacesService {
           // The street photo is attached too (last): an unattached upload is an orphan.
           await this.repo.attachMedia(tx, { placeId: id }, media);
           if (input.businessHours && input.businessHours.length > 0) {
+            assertRangesPerDay(
+              input.businessHours.map((h) => h.day),
+              await this.settings.get('hours_ranges_per_day_max'),
+            );
             await this.repo.replaceHours(tx, id, toHoursEntries(input.businessHours));
             await this.repo.recordHoursRevision(tx, id, [], await this.repo.hoursJson(tx, id));
           }
@@ -204,15 +211,23 @@ export class PlacesService {
         async (tx) => {
           const row = await this.repo.find(tx, id);
           if (!row || row.deleted_at !== null) throw new PlaceNotFoundException();
-          const [media, hours] = await Promise.all([
+          const today = await this.hoursRepo.localToday(tx, tenantId);
+          const [media, hours, special, states] = await Promise.all([
             this.repo.photosOf(tx, id),
             this.repo.hoursOf(tx, id),
+            this.hoursRepo.upcomingSpecialDays(tx, { placeId: id }, today),
+            this.hoursRepo.openStates(tx, 'place', [id]),
           ]);
-          return toPlaceView(this.storage, row, media, hours, {
-            isMine: userId !== undefined && row.created_by_user_id === userId,
-            canEdit: isEditor(row, memberId, role),
-            redirectedFrom: id === requestedId ? null : requestedId,
-          });
+          return {
+            ...toPlaceView(this.storage, row, media, hours, {
+              isMine: userId !== undefined && row.created_by_user_id === userId,
+              canEdit: isEditor(row, memberId, role),
+              redirectedFrom: id === requestedId ? null : requestedId,
+            }),
+            openState: states.get(id) ?? null,
+            specialDays: toSpecialDayViews(special),
+            closedUntil: row.closed_until?.toISOString() ?? null,
+          };
         },
         { accessMode: 'read only' },
       ),
@@ -280,6 +295,10 @@ export class PlacesService {
             : {}),
         });
         if (input.businessHours !== undefined) {
+          assertRangesPerDay(
+            input.businessHours.map((h) => h.day),
+            await this.settings.get('hours_ranges_per_day_max'),
+          );
           const before = await this.repo.hoursJson(tx, id);
           await this.repo.replaceHours(tx, id, toHoursEntries(input.businessHours));
           await this.repo.recordHoursRevision(tx, id, before, await this.repo.hoursJson(tx, id));

@@ -23,6 +23,7 @@ import { MediaModule } from './media/media.module';
 import { ModerationModule } from './moderation/moderation.module';
 import { PostsModule } from './posts/posts.module';
 import { PlacesModule } from './places/places.module';
+import { HoursModule } from './hours/hours.module';
 import { PlatformJobsModule } from './jobs/platform-jobs.module';
 import { LocationsModule } from './locations/locations.module';
 import { MapModule } from './map/map.module';
@@ -51,6 +52,7 @@ import { TenantsModule } from './tenants/tenants.module';
     MediaModule,
     PostsModule,
     PlacesModule,
+    HoursModule,
     ModerationModule,
     SearchModule,
     FeedModule,

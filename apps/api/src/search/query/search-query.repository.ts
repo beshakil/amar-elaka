@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { sql, type SQL } from 'drizzle-orm';
 import { z } from 'zod';
+import { toOpenState, type OpenState } from '../../hours/open-state';
 import {
   parseFieldSchema,
   parseUiSchema,
@@ -113,6 +114,8 @@ export interface FallbackQuery {
   /** Posts: one area. */
   localityId: string | null;
   nearestFirst: boolean;
+  /** Stores/places: only those open now (is_open_at, ADR 049). */
+  openOnly: boolean;
   limit: number;
   offset: number;
 }
@@ -363,6 +366,46 @@ export class SearchQueryRepository {
       .parse([...rows]);
   }
 
+  /** is_open_at() for each id, now (open_states, 0044). */
+  async openStates(
+    tx: DatabaseTransaction,
+    entity: 'store' | 'place',
+    ids: readonly string[],
+  ): Promise<Map<string, OpenState | null>> {
+    const rows = await tx.execute(sql`
+      select id, state, changes_at from public.open_states(${entity}, array[${sql.join(
+        ids.map((id) => sql`${id}::uuid`),
+        sql`, `,
+      )}]::uuid[], now())`);
+    const parsed = z
+      .array(
+        z.object({
+          id: z.string(),
+          state: z.string().nullable(),
+          changes_at: z.coerce.date().nullable(),
+        }),
+      )
+      .parse([...rows]);
+    return new Map(parsed.map((r) => [r.id, toOpenState(r.state, r.changes_at)]));
+  }
+
+  /** Open stores/places near a point (open_ids_near, 0044): the engine's open_now filter. */
+  async openIdsNear(
+    tx: DatabaseTransaction,
+    entity: 'store' | 'place',
+    origin: { lat: number; lng: number },
+    radiusKm: number,
+    limit: number,
+  ): Promise<string[]> {
+    const rows = await tx.execute(sql`
+      select id from public.open_ids_near(${entity}, ${origin.lat}::double precision,
+        ${origin.lng}::double precision, ${radiusKm * METRES_PER_KM}::double precision, now(), ${limit}::integer)`);
+    return z
+      .array(z.object({ id: z.string() }))
+      .parse([...rows])
+      .map((r) => r.id);
+  }
+
   async fallback(
     tx: DatabaseTransaction,
     type: SearchType,
@@ -445,6 +488,7 @@ export class SearchQueryRepository {
             and ${anyTermMatches([sql`st.name_bn`, sql`st.name_en`, sql`st.description`], q.terms)}
             and ${categoryFilter(sql`pl.category_id`)}
             and ${geoFilter(location)}
+            and ${openFilter(q.openOnly, sql`'store'`, sql`st.id`)}
           ${order(location, sql`st.created_at`)}
           limit ${q.limit} offset ${q.offset}`;
       }
@@ -462,9 +506,17 @@ export class SearchQueryRepository {
             and ${anyTermMatches([sql`pl.name_bn`, sql`pl.name_en`, sql`pl.description`], q.terms)}
             and ${categoryFilter(sql`pl.category_id`)}
             and ${geoFilter(location)}
+            and ${openFilter(q.openOnly, sql`'place'`, sql`pl.id`)}
           ${order(location, sql`pl.created_at`)}
           limit ${q.limit} offset ${q.offset}`;
       }
     }
   }
+}
+
+/** is_open_at() as a filter (the one implementation, ADR 049); `true` when not filtering. */
+function openFilter(openOnly: boolean, entity: SQL, id: SQL): SQL {
+  return openOnly
+    ? sql`(public.is_open_at(${entity}, ${id}, now())).state in ('open', 'closes_soon')`
+    : sql`true`;
 }

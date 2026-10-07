@@ -2971,6 +2971,220 @@
         ]
       }
     },
+    "/stores/{id}/hours": {
+      "get": {
+        "operationId": "HoursController_storeHours",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HoursViewDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Hours"
+        ]
+      },
+      "put": {
+        "operationId": "HoursController_setStoreWeekly",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StoreWeeklyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HoursViewDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Hours"
+        ]
+      }
+    },
+    "/stores/{id}/special-days": {
+      "put": {
+        "operationId": "HoursController_setStoreSpecialDays",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SpecialDaysDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Hours"
+        ]
+      }
+    },
+    "/places/{id}/special-days": {
+      "put": {
+        "operationId": "HoursController_setPlaceSpecialDays",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SpecialDaysDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Hours"
+        ]
+      }
+    },
+    "/stores/{id}/closed-today": {
+      "post": {
+        "operationId": "HoursController_storeClosedToday",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClosedTodayDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClosedTodayResultDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Hours"
+        ]
+      }
+    },
+    "/places/{id}/closed-today": {
+      "post": {
+        "operationId": "HoursController_placeClosedToday",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClosedTodayDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClosedTodayResultDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Hours"
+        ]
+      }
+    },
     "/search": {
       "get": {
         "operationId": "SearchController_find",
@@ -3126,6 +3340,18 @@
             "schema": {
               "minimum": 1,
               "type": "integer"
+            }
+          },
+          {
+            "name": "open_now",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "true",
+                "false"
+              ],
+              "type": "string"
             }
           }
         ],
@@ -3330,6 +3556,18 @@
             "schema": {
               "minimum": 1,
               "type": "integer"
+            }
+          },
+          {
+            "name": "open_now",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "true",
+                "false"
+              ],
+              "type": "string"
             }
           }
         ],
@@ -8306,6 +8544,80 @@
             "type": "string",
             "nullable": true
           },
+          "openState": {
+            "type": "object",
+            "properties": {
+              "state": {
+                "type": "string",
+                "enum": [
+                  "open",
+                  "closes_soon",
+                  "opens_soon",
+                  "closed",
+                  "unknown"
+                ]
+              },
+              "changesAt": {
+                "type": "string",
+                "nullable": true
+              }
+            },
+            "required": [
+              "state",
+              "changesAt"
+            ],
+            "nullable": true
+          },
+          "specialDays": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "date": {
+                  "type": "string"
+                },
+                "closed": {
+                  "type": "boolean"
+                },
+                "ranges": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "opens": {
+                        "type": "string"
+                      },
+                      "closes": {
+                        "type": "string"
+                      },
+                      "closesNextDay": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "opens",
+                      "closes",
+                      "closesNextDay"
+                    ]
+                  }
+                },
+                "note": {
+                  "type": "string",
+                  "nullable": true
+                }
+              },
+              "required": [
+                "date",
+                "closed",
+                "ranges",
+                "note"
+              ]
+            }
+          },
+          "closedUntil": {
+            "type": "string",
+            "nullable": true
+          },
           "createdAt": {
             "type": "string"
           },
@@ -8339,6 +8651,9 @@
           "isMine",
           "canEdit",
           "redirectedFrom",
+          "openState",
+          "specialDays",
+          "closedUntil",
           "createdAt",
           "updatedAt"
         ]
@@ -9087,6 +9402,255 @@
           "restoredPlaceId"
         ]
       },
+      "HoursViewDto": {
+        "type": "object",
+        "properties": {
+          "weekly": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "day": {
+                  "type": "number"
+                },
+                "opens": {
+                  "type": "string"
+                },
+                "closes": {
+                  "type": "string"
+                },
+                "closesNextDay": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "day",
+                "opens",
+                "closes",
+                "closesNextDay"
+              ]
+            }
+          },
+          "usesPlaceHours": {
+            "type": "boolean"
+          },
+          "specialDays": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "date": {
+                  "type": "string"
+                },
+                "closed": {
+                  "type": "boolean"
+                },
+                "ranges": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "opens": {
+                        "type": "string"
+                      },
+                      "closes": {
+                        "type": "string"
+                      },
+                      "closesNextDay": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "opens",
+                      "closes",
+                      "closesNextDay"
+                    ]
+                  }
+                },
+                "note": {
+                  "type": "string",
+                  "nullable": true
+                }
+              },
+              "required": [
+                "date",
+                "closed",
+                "ranges",
+                "note"
+              ]
+            }
+          },
+          "closedUntil": {
+            "type": "string",
+            "nullable": true
+          },
+          "openState": {
+            "type": "object",
+            "properties": {
+              "state": {
+                "type": "string",
+                "enum": [
+                  "open",
+                  "closes_soon",
+                  "opens_soon",
+                  "closed",
+                  "unknown"
+                ]
+              },
+              "changesAt": {
+                "type": "string",
+                "nullable": true
+              }
+            },
+            "required": [
+              "state",
+              "changesAt"
+            ],
+            "nullable": true
+          }
+        },
+        "required": [
+          "weekly",
+          "usesPlaceHours",
+          "specialDays",
+          "closedUntil",
+          "openState"
+        ]
+      },
+      "StoreWeeklyDto": {
+        "type": "object",
+        "properties": {
+          "weekly": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "opens": {
+                  "type": "string",
+                  "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                },
+                "closes": {
+                  "type": "string",
+                  "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                },
+                "day": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 7
+                }
+              },
+              "required": [
+                "opens",
+                "closes",
+                "day"
+              ]
+            }
+          }
+        },
+        "required": [
+          "weekly"
+        ]
+      },
+      "SpecialDaysDto": {
+        "type": "object",
+        "properties": {
+          "days": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "date": {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                },
+                "closed": {
+                  "type": "boolean"
+                },
+                "ranges": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "opens": {
+                        "type": "string",
+                        "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                      },
+                      "closes": {
+                        "type": "string",
+                        "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                      }
+                    },
+                    "required": [
+                      "opens",
+                      "closes"
+                    ]
+                  }
+                },
+                "note": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                }
+              },
+              "required": [
+                "date",
+                "closed"
+              ]
+            }
+          }
+        },
+        "required": [
+          "days"
+        ]
+      },
+      "ClosedTodayDto": {
+        "type": "object",
+        "properties": {
+          "closed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "closed"
+        ]
+      },
+      "ClosedTodayResultDto": {
+        "type": "object",
+        "properties": {
+          "closedUntil": {
+            "type": "string",
+            "nullable": true
+          },
+          "openState": {
+            "type": "object",
+            "properties": {
+              "state": {
+                "type": "string",
+                "enum": [
+                  "open",
+                  "closes_soon",
+                  "opens_soon",
+                  "closed",
+                  "unknown"
+                ]
+              },
+              "changesAt": {
+                "type": "string",
+                "nullable": true
+              }
+            },
+            "required": [
+              "state",
+              "changesAt"
+            ],
+            "nullable": true
+          }
+        },
+        "required": [
+          "closedUntil",
+          "openState"
+        ]
+      },
       "SearchResponseDto": {
         "type": "object",
         "properties": {
@@ -9256,6 +9820,30 @@
                 },
                 "isLandmark": {
                   "type": "boolean"
+                },
+                "openState": {
+                  "type": "object",
+                  "properties": {
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "open",
+                        "closes_soon",
+                        "opens_soon",
+                        "closed",
+                        "unknown"
+                      ]
+                    },
+                    "changesAt": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "state",
+                    "changesAt"
+                  ],
+                  "nullable": true
                 }
               },
               "required": [
@@ -9277,7 +9865,8 @@
                 "slug",
                 "cover",
                 "isVerified",
-                "isLandmark"
+                "isLandmark",
+                "openState"
               ]
             }
           },
@@ -9440,6 +10029,30 @@
                 },
                 "isLandmark": {
                   "type": "boolean"
+                },
+                "openState": {
+                  "type": "object",
+                  "properties": {
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "open",
+                        "closes_soon",
+                        "opens_soon",
+                        "closed",
+                        "unknown"
+                      ]
+                    },
+                    "changesAt": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "state",
+                    "changesAt"
+                  ],
+                  "nullable": true
                 }
               },
               "required": [
@@ -9461,7 +10074,8 @@
                 "slug",
                 "cover",
                 "isVerified",
-                "isLandmark"
+                "isLandmark",
+                "openState"
               ]
             }
           },
@@ -10007,6 +10621,30 @@
                     "rating": {
                       "type": "number",
                       "nullable": true
+                    },
+                    "openState": {
+                      "type": "object",
+                      "properties": {
+                        "state": {
+                          "type": "string",
+                          "enum": [
+                            "open",
+                            "closes_soon",
+                            "opens_soon",
+                            "closed",
+                            "unknown"
+                          ]
+                        },
+                        "changesAt": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "state",
+                        "changesAt"
+                      ],
+                      "nullable": true
                     }
                   },
                   "required": [
@@ -10018,7 +10656,8 @@
                     "cover",
                     "distanceMeters",
                     "isVerified",
-                    "rating"
+                    "rating",
+                    "openState"
                   ]
                 },
                 {
@@ -10087,6 +10726,30 @@
                     },
                     "distanceMeters": {
                       "type": "number"
+                    },
+                    "openState": {
+                      "type": "object",
+                      "properties": {
+                        "state": {
+                          "type": "string",
+                          "enum": [
+                            "open",
+                            "closes_soon",
+                            "opens_soon",
+                            "closed",
+                            "unknown"
+                          ]
+                        },
+                        "changesAt": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "state",
+                        "changesAt"
+                      ],
+                      "nullable": true
                     }
                   },
                   "required": [
@@ -10096,7 +10759,8 @@
                     "slug",
                     "name",
                     "category",
-                    "distanceMeters"
+                    "distanceMeters",
+                    "openState"
                   ]
                 },
                 {
@@ -12702,6 +13366,21 @@
                         "open_now": {
                           "type": "boolean",
                           "nullable": true
+                        },
+                        "open_state": {
+                          "type": "string",
+                          "enum": [
+                            "open",
+                            "closes_soon",
+                            "opens_soon",
+                            "closed",
+                            "unknown"
+                          ],
+                          "nullable": true
+                        },
+                        "open_changes_at": {
+                          "type": "string",
+                          "nullable": true
                         }
                       },
                       "required": [
@@ -12716,7 +13395,9 @@
                         "price",
                         "slug",
                         "info_kind",
-                        "open_now"
+                        "open_now",
+                        "open_state",
+                        "open_changes_at"
                       ]
                     }
                   },

@@ -1503,6 +1503,16 @@ Weekly opening hours for a place. Several rows per day are allowed (e.g. a Jumma
 
 ---
 
+**0044 (ADR 049): business hours.**
+
+- `store_hours` has the same shape for stores; a store with none uses its place's.
+- `hours_exceptions` holds special days by local date (closed all day, or that day's ranges) for a place or a store.
+- `closed_until` on places and stores is the owner's "closed today".
+- The open state comes only from `is_open_at(entity_type, id, at)`, computed in the owning tenant's
+  `tenants.timezone` (validated against `pg_timezone_names`).
+
+---
+
 ### 4.6 `place_claims`
 
 A member's request to be recognised as the owner of a place.

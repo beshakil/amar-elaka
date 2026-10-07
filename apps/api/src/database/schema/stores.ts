@@ -1,4 +1,13 @@
-import { boolean, integer, numeric, pgTable, text, uuid } from 'drizzle-orm/pg-core';
+import {
+  boolean,
+  integer,
+  numeric,
+  pgTable,
+  smallint,
+  text,
+  time,
+  uuid,
+} from 'drizzle-orm/pg-core';
 import { auditColumns, geographyPoint, id, softDeleteColumns, timestamptz } from './columns';
 import { subscriptionPlans } from './commerce';
 import { sellerTypes, sellerVerificationLevels, storeMemberRoles, storeStatuses } from './enums';
@@ -46,6 +55,8 @@ export const stores = pgTable('stores', {
   nameEn: text('name_en'),
   // 0043: name_bn in Latin letters, for duplicate detection.
   nameTranslit: text('name_translit'),
+  // 0044: the owner's "closed today" toggle.
+  closedUntil: timestamptz('closed_until'),
   description: text('description'),
   // Composite FKs (tenant_id, *_media_id) -> media_assets, SET NULL.
   logoMediaId: uuid('logo_media_id'),
@@ -104,5 +115,20 @@ export const storeFollows = pgTable('store_follows', {
   // Composite FK (tenant_id, store_id) -> stores, RESTRICT.
   storeId: uuid('store_id').notNull(),
   notifyNewPosts: boolean('notify_new_posts').notNull().default(true),
+  ...auditColumns(),
+});
+
+/** 0044 A store's weekly schedule (same shape as place_hours). */
+export const storeHours = pgTable('store_hours', {
+  id: id(),
+  tenantId: uuid('tenant_id')
+    .notNull()
+    .references(() => tenants.id, { onDelete: 'restrict' }),
+  // Composite FK (tenant_id, store_id) -> stores, CASCADE.
+  storeId: uuid('store_id').notNull(),
+  isoDayOfWeek: smallint('iso_day_of_week').notNull(),
+  opensAt: time('opens_at').notNull(),
+  closesAt: time('closes_at').notNull(),
+  closesNextDay: boolean('closes_next_day').notNull().default(false),
   ...auditColumns(),
 });

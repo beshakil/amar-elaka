@@ -3,6 +3,7 @@ import {
   bigint,
   boolean,
   char,
+  date,
   integer,
   jsonb,
   numeric,
@@ -215,6 +216,8 @@ export const places = pgTable('places', {
   // merged_into_place_id) -> places, SET NULL.
   mergedIntoPlaceId: uuid('merged_into_place_id'),
   mergedAt: timestamptz('merged_at'),
+  // 0044: the owner's "closed today" toggle.
+  closedUntil: timestamptz('closed_until'),
   fieldVerifiedAt: timestamptz('field_verified_at'),
   statusCode: text('status_code')
     .notNull()
@@ -450,5 +453,26 @@ export const placeMerges = pgTable('place_merges', {
   undoUntil: timestamptz('undo_until').notNull(),
   undoneAt: timestamptz('undone_at'),
   undoneByUserId: uuid('undone_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+  ...auditColumns(),
+});
+
+/**
+ * 0044 Special days of a place or a store, by local date: closed all day, or
+ * that day's own range. Composite FKs to places/stores stay in SQL.
+ */
+export const hoursExceptions = pgTable('hours_exceptions', {
+  id: id(),
+  tenantId: uuid('tenant_id')
+    .notNull()
+    .references(() => tenants.id, { onDelete: 'restrict' }),
+  placeId: uuid('place_id'),
+  storeId: uuid('store_id'),
+  onDate: date('on_date').notNull(),
+  isClosed: boolean('is_closed').notNull(),
+  opensAt: time('opens_at'),
+  closesAt: time('closes_at'),
+  closesNextDay: boolean('closes_next_day').notNull().default(false),
+  note: text('note'),
+  createdByUserId: uuid('created_by_user_id').references(() => users.id, { onDelete: 'set null' }),
   ...auditColumns(),
 });

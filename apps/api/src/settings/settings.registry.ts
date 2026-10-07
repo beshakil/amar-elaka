@@ -367,6 +367,13 @@ export const SETTING_DEFINITIONS = {
   duplicate_name_stopwords: textArray,
   duplicate_batch_lookback_hours: wholeNumber,
   merge_undo_days: wholeNumber,
+
+  // Business hours and open now (ADR 049, migration 0044)
+  hours_opens_soon_minutes: wholeNumber,
+  hours_closes_soon_minutes: wholeNumber,
+  hours_lookahead_days: wholeNumber,
+  hours_ranges_per_day_max: wholeNumber,
+  hours_special_days_max: wholeNumber,
 } as const satisfies Record<string, z.ZodTypeAny>;
 
 export type SettingKey = keyof typeof SETTING_DEFINITIONS;

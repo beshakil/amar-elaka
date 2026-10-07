@@ -20,6 +20,8 @@ const featureRow = z.object({
   info_kind: z.string().nullable(),
   open_now: z.boolean().nullable(),
   kind: z.string().nullable(),
+  open_state: z.string().nullable(),
+  open_changes_at: z.coerce.date().nullable(),
 });
 export type FeatureRow = z.infer<typeof featureRow>;
 
@@ -37,7 +39,7 @@ export interface FeaturesRequest {
 }
 
 /**
- * The geo query layer's map read (ADR 045, 046): map_features (0041) — one
+ * The geo query layer's map read (ADR 045, 046): map_features (0044) — one
  * query, our own tables only, radius-bounded and grid-clustered in PostGIS.
  */
 @Injectable()
@@ -46,7 +48,7 @@ export class MapFeaturesRepository {
     const { box, center } = request;
     const rows = await tx.execute(sql`
       select layer, point_count, lng, lat, id, tenant_id, name_bn, name_en,
-             category_slug, price, slug, info_kind, open_now, kind
+             category_slug, price, slug, info_kind, open_now, kind, open_state, open_changes_at
       from public.map_features(
         ${box.minLng}, ${box.minLat}, ${box.maxLng}, ${box.maxLat}, ${request.zoom},
         ${textArray(request.layers)}, ${request.category}, ${request.openNow},
