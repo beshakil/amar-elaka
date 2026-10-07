@@ -135,7 +135,11 @@
     "moderationPostNotFound": "এই এলাকায় এমন কোনো পোস্ট নেই।",
     "moderationIllegalTransition": "পোস্টটির অবস্থা বদলে গেছে, এই কাজটি আর করা যাবে না। পাতাটি রিফ্রেশ করুন।",
     "legalHoldBlocksScrub": "এই পোস্টে আইনি হোল্ড আছে, তাই স্থায়ীভাবে মুছে ফেলা যাবে না। কিছুই বদলানো হয়নি।",
-    "moderationBulkTooLarge": "একবারে এত বেশি পোস্টে কাজ করা যাবে না।"
+    "moderationBulkTooLarge": "একবারে এত বেশি পোস্টে কাজ করা যাবে না।",
+    "placeItemGone": "এটি আর নেই; তালিকা নতুন করে দেখুন।",
+    "placeAlreadyDecided": "এটির সিদ্ধান্ত আগেই হয়ে গেছে।",
+    "placeStatusLocked": "জায়গার এই অবস্থায় এটি করা যায় না।",
+    "placeLocationOtherTenant": "নতুন লোকেশনটি অন্য এলাকার মধ্যে পড়েছে।"
   },
   "error": {
     "title": "কিছু একটা ভুল হয়েছে",
@@ -212,6 +216,120 @@
       "sold": "বিক্রি হয়েছে",
       "expired": "মেয়াদোত্তীর্ণ",
       "removed": "সরানো"
+    },
+    "tabs": "মডারেশনের ধরন",
+    "tab": {
+      "posts": "পোস্ট",
+      "places": "জায়গা"
+    },
+    "confirmDecision": "নিশ্চিত করুন",
+    "places": {
+      "tabsLabel": "জায়গার কিউ",
+      "tab": {
+        "new": "নতুন জায়গা ({count, number})",
+        "claims": "মালিকানার দাবি ({count, number})",
+        "suggestions": "সংশোধনের প্রস্তাব ({count, number})",
+        "duplicates": "সম্ভাব্য ডুপ্লিকেট ({count, number})",
+        "reports": "রিপোর্ট ({count, number})"
+      },
+      "newDescription": "সদস্যদের যোগ করা জায়গা, রিভিউয়ের অপেক্ষায়; সবচেয়ে পুরোনোটি আগে।",
+      "claimsDescription": "\"এই দোকানটি আমার\" দাবি, প্রমাণসহ।",
+      "suggestionsDescription": "লোকেশন, ফোন বা খোলার সময় ঠিক করার প্রস্তাব। অনুমোদন দিলে জায়গায় বসে যাবে এবং প্রস্তাবকের ট্রাস্ট স্কোর বাড়বে।",
+      "duplicatesDescription": "একই জায়গা দুবার থাকতে পারে: মিলিয়ে দিন অথবা আলাদা বলে রাখুন। মেলানো কিছুদিন ফেরানো যায়।",
+      "reportsDescription": "যেসব জায়গা নিয়ে রিপোর্ট খোলা আছে, জায়গা ধরে সাজানো।",
+      "name": "নাম",
+      "location": "লোকেশন",
+      "boundary": "সীমানা",
+      "outside": "এলাকার বাইরে",
+      "photos": "ছবি",
+      "age": "অপেক্ষা",
+      "evidenceHeader": "প্রমাণ",
+      "otp": "OTP যাচাই করা নম্বর",
+      "competing": "আরও দাবি",
+      "note": "নোট",
+      "changes": "পরিবর্তন",
+      "trust": "প্রস্তাবকের ট্রাস্ট",
+      "flagged": "নতুন/চিহ্নিত",
+      "resembles": "যার মতো",
+      "neighbourArea": "পাশের এলাকার জায়গা",
+      "score": "মিল",
+      "source": {
+        "create": "যোগ করার সময়",
+        "batch": "রাতের যাচাই",
+        "report": "সদস্যের রিপোর্ট"
+      },
+      "reasons": "কারণ",
+      "reporters": "রিপোর্টকারী",
+      "notes": "রিপোর্টকারীদের কথা",
+      "possiblyClosed": "সম্ভবত বন্ধ",
+      "approve": "অনুমোদন",
+      "reject": "বাতিল",
+      "merge": "মিলিয়ে দিন",
+      "notDuplicate": "ডুপ্লিকেট নয়",
+      "approvedPlace": "জায়গা অনুমোদিত হয়েছে",
+      "rejectedPlace": "জায়গা বাতিল হয়েছে",
+      "approvedClaim": "দাবি অনুমোদিত হয়েছে",
+      "rejectedClaim": "দাবি বাতিল হয়েছে",
+      "approvedSuggestion": "প্রস্তাব জায়গায় বসানো হয়েছে",
+      "rejectedSuggestion": "প্রস্তাব বাতিল হয়েছে",
+      "merged": "জায়গা দুটি মেলানো হয়েছে",
+      "dismissedPair": "আলাদা জায়গা হিসেবে রাখা হয়েছে",
+      "rejectPlaceTitle": "জায়গা বাতিল করুন",
+      "rejectClaimTitle": "দাবি বাতিল করুন",
+      "rejectSuggestionTitle": "প্রস্তাব বাতিল করুন",
+      "unpublishTitle": "জায়গা ম্যাপ থেকে সরান",
+      "decision": {
+        "dismiss": "রিপোর্ট খারিজ",
+        "resolved": "ঠিক করা হয়েছে",
+        "confirm_closed": "বন্ধ নিশ্চিত",
+        "clear_closed_flag": "এখনো খোলা",
+        "unpublish": "ম্যাপ থেকে সরান"
+      },
+      "decided": {
+        "dismiss": "রিপোর্ট খারিজ করা হয়েছে",
+        "resolved": "রিপোর্ট সমাধান হিসেবে বন্ধ হয়েছে",
+        "confirm_closed": "জায়গাটি স্থায়ীভাবে বন্ধ হিসেবে চিহ্নিত",
+        "clear_closed_flag": "জায়গাটি খোলা হিসেবে রাখা হয়েছে",
+        "unpublish": "জায়গাটি ম্যাপ থেকে সরানো হয়েছে"
+      },
+      "reportReason": {
+        "wrong_location": "ভুল লোকেশন",
+        "closed_permanently": "স্থায়ীভাবে বন্ধ",
+        "duplicate": "ডুপ্লিকেট",
+        "wrong_information": "ভুল তথ্য",
+        "inappropriate": "অনুপযুক্ত"
+      },
+      "reason": {
+        "place_already_claimed": "জায়গার মালিকানা আগেই দাবি করা",
+        "suggestion_incorrect": "প্রস্তাবটি ঠিক নয়"
+      },
+      "evidence": {
+        "otp_to_listed_phone": "তালিকার নম্বরে OTP",
+        "trade_license": "ট্রেড লাইসেন্স",
+        "shop_front_photo": "দোকানের সামনের ছবি",
+        "agent_visit": "এজেন্টের পরিদর্শন",
+        "document": "নথি"
+      },
+      "field": {
+        "location": "লোকেশন",
+        "phones": "ফোন",
+        "hours": "খোলার সময়"
+      },
+      "moved": "{metres, number} মিটার সরেছে",
+      "noHours": "সময় দেওয়া নেই",
+      "day": {
+        "1": "সোম",
+        "2": "মঙ্গল",
+        "3": "বুধ",
+        "4": "বৃহঃ",
+        "5": "শুক্র",
+        "6": "শনি",
+        "7": "রবি"
+      },
+      "class": {
+        "likely": "প্রায় নিশ্চিত",
+        "possible": "সম্ভাব্য"
+      }
     }
   },
   "heatmap": {

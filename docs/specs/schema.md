@@ -1524,6 +1524,18 @@ Weekly opening hours for a place. Several rows per day are allowed (e.g. a Jumma
 
 ---
 
+**0046 (ADR 051): place reports and edit suggestions.**
+
+- `places.possibly_closed_at`: set by `report_place()` at `place_closed_report_threshold` distinct "closed
+  permanently" reporters, cleared by a moderator's decision; staff/system only (as is `merged_into_place_id` now).
+- `place_edit_suggestions` (TENANT-SCOPED): a member's proposed `changes` (any of location / phones / hours) with the
+  place's `current_values`; `status_code` pending / approved / rejected / withdrawn, one pending per member per place;
+  filed only by `suggest_place_edit()`. RLS: the suggester reads their own, staff of the tenant read and decide,
+  the system reads (trust input `approved_edits`).
+- `report_reasons` + wrong_location, closed_permanently, inappropriate; `duplicate_candidates.source_code` + report.
+
+---
+
 ### 4.6 `place_claims`
 
 A member's request to be recognised as the owner of a place.

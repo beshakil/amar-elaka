@@ -349,12 +349,16 @@ class FakeOfflineMapRepository extends OfflineMapRepository {
     this.areaIndex,
     this.kindList = const [],
   }) : super(
-         db: memoryDatabase(),
+         db: _sharedDb,
          api: FakeOfflineMapApi(_unavailable),
          mapApi: FakePointsMapApi(),
-         downloader: FileDownloader(Dio()),
+         downloader: FileDownloader(testDio()),
          supportDir: () async => Directory.systemTemp,
        );
+
+  /// Never queried (every read is overridden); one for all, so drift doesn't
+  /// warn about many databases.
+  static final _sharedDb = memoryDatabase();
 
   static const _unavailable = OfflineMapManifest(
     available: false,
@@ -424,4 +428,14 @@ OfflineMapRow installedRow({
   updateCheckHours: 24,
   downloadedAt: DateTime.utc(2026, 10, 1),
   checkedAt: checkedAt ?? DateTime.utc(2026, 10, 1),
+);
+
+/// Like the app's downloader client (fileDownloaderProvider): every request
+/// gives up rather than wait forever, so a connection whose close went
+/// missing under load fails and resumes instead of hanging the test.
+Dio testDio() => Dio(
+  BaseOptions(
+    connectTimeout: const Duration(seconds: 5),
+    receiveTimeout: const Duration(seconds: 10),
+  ),
 );

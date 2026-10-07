@@ -52,7 +52,7 @@ export interface NewCandidate {
   score: number;
   classification: 'likely' | 'possible';
   signals: Record<string, unknown>;
-  source: 'create' | 'batch';
+  source: 'create' | 'batch' | 'report';
 }
 
 const PROBE_ROW = z.object({
@@ -68,6 +68,15 @@ const PROBE_ROW = z.object({
 });
 export type ProbeRow = z.infer<typeof PROBE_ROW>;
 
+const PAIR_SIGNAL_ROW = z.object({
+  other_tenant_id: z.string(),
+  distance_m: z.number(),
+  name_similarity: z.number(),
+  phone_match: z.boolean(),
+  same_category: z.boolean(),
+});
+export type PairSignalRow = z.infer<typeof PAIR_SIGNAL_ROW>;
+
 const QUEUE_ROW = z.object({
   id: z.string(),
   entity_type_code: z.enum(['place', 'store']),
@@ -79,7 +88,7 @@ const QUEUE_ROW = z.object({
   score: z.string(),
   classification_code: z.enum(['likely', 'possible']),
   signals: z.record(z.unknown()),
-  source_code: z.enum(['create', 'batch']),
+  source_code: z.enum(['create', 'batch', 'report']),
   status_code: z.enum(['open', 'merged', 'dismissed']),
   created_at: z.coerce.date(),
 });
@@ -126,6 +135,22 @@ export class DuplicatesRepository {
         ${options.radiusM}::integer, ${textArray(options.stopwords)},
         ${options.minNameSimilarity}::real, ${options.limit}::integer)`);
     return z.array(STORE_SIGNAL_ROW).parse([...rows]);
+  }
+
+  /** The signals between a place of this tenant and the one a duplicate report names (0046). */
+  async pairSignals(
+    tx: DatabaseTransaction,
+    placeId: string,
+    otherId: string,
+    stopwords: readonly string[],
+  ): Promise<PairSignalRow | undefined> {
+    const rows = await tx.execute(sql`
+      select other_tenant_id, distance_m, name_similarity, phone_match, same_category
+      from public.place_pair_signals(${placeId}::uuid, ${otherId}::uuid, ${textArray(stopwords)})`);
+    return z
+      .array(PAIR_SIGNAL_ROW)
+      .max(1)
+      .parse([...rows])[0];
   }
 
   /** Files pairs; one row per pair ever, so a known (or dismissed) pair is skipped. Returns how many were new. */

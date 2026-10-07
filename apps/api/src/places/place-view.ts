@@ -54,6 +54,7 @@ export function toPlaceView(
     landmarkRadiusKm: row.landmark_radius_km === null ? null : Number(row.landmark_radius_km),
     source: row.source_code,
     fieldVerified: row.field_verified_at !== null,
+    possiblyClosed: row.possibly_closed_at !== null,
     photos: media
       .filter((m) => m.media_asset_id !== row.street_photo_media_id)
       .map((m) => photoOf(storage, m)),

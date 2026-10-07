@@ -30,6 +30,7 @@ const PLACE_ROW = z.object({
   field_verified_at: nullableDate,
   status_code: z.enum(PLACE_STATUSES),
   closed_until: nullableDate,
+  possibly_closed_at: nullableDate,
   rating_avg: z.string().nullable(),
   rating_count: z.number(),
   deleted_at: nullableDate,
@@ -43,7 +44,7 @@ const PLACE_COLUMNS = sql`
   p.address_text, st_y(p.location::geometry) as lat, st_x(p.location::geometry) as lng,
   p.geo_area_id, p.outside_boundary, p.is_landmark, p.landmark_radius_km::text as landmark_radius_km,
   p.source_code, p.created_by_user_id, p.claimed_by_member_id, p.claim_store_id,
-  p.street_photo_media_id, p.field_verified_at, p.status_code, p.closed_until, p.rating_avg::text as rating_avg,
+  p.street_photo_media_id, p.field_verified_at, p.status_code, p.closed_until, p.possibly_closed_at, p.rating_avg::text as rating_avg,
   p.rating_count, p.deleted_at, p.created_at, p.updated_at`;
 
 const MEDIA_ROW = z.object({

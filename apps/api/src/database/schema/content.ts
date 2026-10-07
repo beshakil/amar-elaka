@@ -218,6 +218,8 @@ export const places = pgTable('places', {
   mergedAt: timestamptz('merged_at'),
   // 0044: the owner's "closed today" toggle.
   closedUntil: timestamptz('closed_until'),
+  // 0046: flagged by enough "closed permanently" reports; a moderator decides.
+  possiblyClosedAt: timestamptz('possibly_closed_at'),
   fieldVerifiedAt: timestamptz('field_verified_at'),
   statusCode: text('status_code')
     .notNull()
@@ -305,6 +307,38 @@ export const placeRevisions = pgTable('place_revisions', {
   kindCode: text('kind_code').notNull(),
   revertsRevisionId: uuid('reverts_revision_id'),
   xactId: xid8('xact_id').notNull(),
+  ...auditColumns(),
+});
+
+/**
+ * 0046 A member's proposed location / phones / weekly hours for a place,
+ * pending until a moderator approves (applied through the normal edit path)
+ * or rejects it. Filed by suggest_place_edit(), never inserted directly.
+ */
+export const placeEditSuggestions = pgTable('place_edit_suggestions', {
+  id: id(),
+  tenantId: uuid('tenant_id')
+    .notNull()
+    .references(() => tenants.id, { onDelete: 'restrict' }),
+  // Composite FKs (tenant_id, place_id) -> places CASCADE and
+  // (tenant_id, suggester_member_id) -> tenant_members RESTRICT.
+  placeId: uuid('place_id').notNull(),
+  suggesterMemberId: uuid('suggester_member_id').notNull(),
+  changes: jsonb('changes').$type<Record<string, unknown>>().notNull(),
+  currentValues: jsonb('current_values')
+    .$type<Record<string, unknown>>()
+    .notNull()
+    .default(sql`'{}'::jsonb`),
+  note: text('note'),
+  statusCode: text('status_code').notNull().default('pending'),
+  decidedByUserId: uuid('decided_by_user_id').references(() => users.id, {
+    onDelete: 'set null',
+  }),
+  decidedAt: timestamptz('decided_at'),
+  decisionReasonCode: text('decision_reason_code').references(() => moderationReasons.code, {
+    onDelete: 'restrict',
+  }),
+  decisionNote: text('decision_note'),
   ...auditColumns(),
 });
 

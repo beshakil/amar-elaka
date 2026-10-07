@@ -41,6 +41,13 @@ class ProfileScreen extends ConsumerWidget {
                   onPressed: () => context.push(RoutePaths.profileCompletion),
                 ),
               ),
+              ListTile(
+                key: const ValueKey('profile-saved'),
+                leading: const Icon(Icons.bookmark_border),
+                title: Text(l10n.profileSaved),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => context.push(RoutePaths.saved),
+              ),
               const _SavedSearchesTile(),
               const SizedBox(height: AppSpacing.md),
               AppButton(

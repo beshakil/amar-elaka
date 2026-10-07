@@ -11,7 +11,9 @@ export type NotificationType =
   | 'place_approved'
   | 'place_rejected'
   | 'place_claim_approved'
-  | 'place_claim_rejected';
+  | 'place_claim_rejected'
+  | 'place_edit_approved'
+  | 'place_edit_rejected';
 
 export interface OutgoingNotification {
   userId: string;

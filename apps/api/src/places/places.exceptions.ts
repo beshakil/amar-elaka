@@ -358,3 +358,102 @@ export class PlaceMergeTargetGoneException extends DomainException {
     );
   }
 }
+
+// ---- reports and edit suggestions (0046, ADR 051) ---------------------------
+
+/** A claimed owner can't report their own place; they edit it. */
+export class PlaceReportOwnPlaceException extends DomainException {
+  readonly code = 'PLACE_REPORT_OWN_PLACE';
+  readonly httpStatus = HttpStatus.CONFLICT;
+
+  constructor() {
+    super('This is your own place; edit it instead.');
+  }
+}
+
+/** A duplicate report's other place is gone, the same place, or too far away. */
+export class PlaceDuplicateTargetInvalidException extends DomainException {
+  readonly code = 'PLACE_DUPLICATE_TARGET_INVALID';
+  readonly httpStatus = HttpStatus.UNPROCESSABLE_ENTITY;
+  readonly issues: { reason: 'not_found' | 'too_far'; maxMeters: number | null };
+
+  constructor(reason: 'not_found' | 'too_far', maxMeters: number | null) {
+    super(
+      reason === 'too_far'
+        ? `The other place must be within ${maxMeters} m.`
+        : 'Choose another place on the map that this one duplicates.',
+    );
+    this.issues = { reason, maxMeters };
+  }
+}
+
+/** The decision needs open reports (or the "possibly closed" flag) on the place. */
+export class PlaceNoOpenReportsException extends DomainException {
+  readonly code = 'PLACE_NO_OPEN_REPORTS';
+  readonly httpStatus = HttpStatus.CONFLICT;
+
+  constructor() {
+    super('This place has no open reports to decide on.');
+  }
+}
+
+export class PlaceSuggestionNotFoundException extends DomainException {
+  readonly code = 'PLACE_SUGGESTION_NOT_FOUND';
+  readonly httpStatus = HttpStatus.NOT_FOUND;
+
+  constructor() {
+    super('This suggestion does not exist.');
+  }
+}
+
+export class PlaceSuggestionNotPendingException extends DomainException {
+  readonly code = 'PLACE_SUGGESTION_NOT_PENDING';
+  readonly httpStatus = HttpStatus.CONFLICT;
+
+  constructor() {
+    super('This suggestion was already decided.');
+  }
+}
+
+/** One pending suggestion per member per place. */
+export class PlaceSuggestionPendingExistsException extends DomainException {
+  readonly code = 'PLACE_SUGGESTION_PENDING_EXISTS';
+  readonly httpStatus = HttpStatus.CONFLICT;
+
+  constructor() {
+    super('Your earlier suggestion for this place is still waiting for a moderator.');
+  }
+}
+
+/** Every suggested value is what the place already has. */
+export class PlaceSuggestionNoChangeException extends DomainException {
+  readonly code = 'PLACE_SUGGESTION_NO_CHANGE';
+  readonly httpStatus = HttpStatus.UNPROCESSABLE_ENTITY;
+
+  constructor() {
+    super('That is what the place already shows.');
+  }
+}
+
+export class PlaceSuggestionNoteTooLongException extends DomainException {
+  readonly code = 'PLACE_SUGGESTION_NOTE_TOO_LONG';
+  readonly httpStatus = HttpStatus.UNPROCESSABLE_ENTITY;
+  readonly issues: { max: number };
+
+  constructor(max: number) {
+    super(`The note can be at most ${max} characters.`);
+    this.issues = { max };
+  }
+}
+
+/** place_suggestions_per_user_per_day reached. */
+export class PlaceSuggestionLimitReachedException extends DomainException {
+  readonly code = 'PLACE_SUGGESTION_LIMIT_REACHED';
+  readonly httpStatus = HttpStatus.TOO_MANY_REQUESTS;
+  readonly issues: { max: number };
+
+  constructor(max: number) {
+    super(`At most ${max} suggestions can be sent in 24 hours.`);
+    this.issues = { max };
+  }
+}

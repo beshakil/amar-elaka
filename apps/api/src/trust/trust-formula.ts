@@ -6,7 +6,7 @@
 
 /** Bump when the formula changes shape, so old and new scores aren't compared. */
 // settings-exempt: formula version tag, not a tunable number
-export const TRUST_ALGORITHM_VERSION = 1;
+export const TRUST_ALGORITHM_VERSION = 2;
 // settings-exempt: the score's fixed range (a CHECK in 0027)
 export const TRUST_MIN = 0;
 // settings-exempt: see above
@@ -20,6 +20,8 @@ export interface TrustInputs {
   removedPosts: number;
   upheldReports: number;
   bans: number;
+  /** Place edit suggestions a moderator approved (0046). */
+  approvedEdits: number;
   phoneVerified: boolean;
   storeVerified: boolean;
   memberSince: Date;
@@ -37,11 +39,14 @@ export interface TrustWeights {
   phoneVerified: number;
   storeVerified: number;
   perBan: number;
+  perApprovedEdit: number;
+  maxApprovedEditPoints: number;
 }
 
 export type TrustComponents = Record<
   | 'base'
   | 'approved_posts'
+  | 'approved_edits'
   | 'rejected_posts'
   | 'removed_posts'
   | 'upheld_reports'
@@ -66,6 +71,10 @@ export function computeTrust(
     approved_posts: Math.min(
       inputs.approvedPosts * weights.perApprovedPost,
       weights.maxApprovedPoints,
+    ),
+    approved_edits: Math.min(
+      inputs.approvedEdits * weights.perApprovedEdit,
+      weights.maxApprovedEditPoints,
     ),
     rejected_posts: -inputs.rejectedPosts * weights.perRejectedPost,
     removed_posts: -inputs.removedPosts * weights.perRemovedPost,

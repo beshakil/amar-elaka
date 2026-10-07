@@ -49,6 +49,20 @@ export function apiErrorMessageKey(error: unknown): string {
       return 'moderationBulkTooLarge';
     case 'VALIDATION_FAILED':
       return 'validationFailed';
+    case 'PLACE_NOT_FOUND':
+    case 'PLACE_SUGGESTION_NOT_FOUND':
+    case 'CLAIM_NOT_FOUND':
+    case 'DUPLICATE_CANDIDATE_NOT_FOUND':
+      return 'placeItemGone';
+    case 'PLACE_NOT_PENDING':
+    case 'PLACE_SUGGESTION_NOT_PENDING':
+    case 'CLAIM_NOT_PENDING':
+    case 'PLACE_NO_OPEN_REPORTS':
+      return 'placeAlreadyDecided';
+    case 'PLACE_STATUS_LOCKED':
+      return 'placeStatusLocked';
+    case 'PLACE_LOCATION_OTHER_TENANT':
+      return 'placeLocationOtherTenant';
     default:
       return error.status >= 500 ? 'server' : 'unexpected';
   }

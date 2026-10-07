@@ -2971,6 +2971,299 @@
         ]
       }
     },
+    "/places/{id}/report": {
+      "post": {
+        "operationId": "PlaceModerationController_report",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportPlaceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaceReportResultDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "PlaceModeration"
+        ]
+      }
+    },
+    "/place-reports/queue": {
+      "get": {
+        "operationId": "PlaceModerationController_reportQueue",
+        "parameters": [
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "reason",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "wrong_location",
+                "closed_permanently",
+                "duplicate",
+                "wrong_information",
+                "inappropriate"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaceReportQueueDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "PlaceModeration"
+        ]
+      }
+    },
+    "/places/{id}/reports/decision": {
+      "post": {
+        "operationId": "PlaceModerationController_decide",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlaceReportDecisionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaceReportDecisionResultDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "PlaceModeration"
+        ]
+      }
+    },
+    "/places/{id}/suggestions": {
+      "post": {
+        "operationId": "PlaceModerationController_suggest",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SuggestPlaceEditDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaceSuggestionDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "PlaceModeration"
+        ]
+      }
+    },
+    "/place-suggestions/queue": {
+      "get": {
+        "operationId": "PlaceModerationController_suggestionQueue",
+        "parameters": [
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuggestionQueueDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "PlaceModeration"
+        ]
+      }
+    },
+    "/place-suggestions/{id}/approve": {
+      "post": {
+        "operationId": "PlaceModerationController_approve",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApproveSuggestionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuggestionDecisionResultDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "PlaceModeration"
+        ]
+      }
+    },
+    "/place-suggestions/{id}/reject": {
+      "post": {
+        "operationId": "PlaceModerationController_reject",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RejectSuggestionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuggestionDecisionResultDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "PlaceModeration"
+        ]
+      }
+    },
     "/stores/{id}/hours": {
       "get": {
         "operationId": "HoursController_storeHours",
@@ -3182,6 +3475,110 @@
         },
         "tags": [
           "Hours"
+        ]
+      }
+    },
+    "/notifications": {
+      "get": {
+        "operationId": "InboxController_page",
+        "parameters": [
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InboxPageDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Inbox"
+        ]
+      }
+    },
+    "/notifications/unread-count": {
+      "get": {
+        "operationId": "InboxController_unreadCount",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnreadCountDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Inbox"
+        ]
+      }
+    },
+    "/notifications/read-all": {
+      "post": {
+        "operationId": "InboxController_markAllRead",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnreadCountDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Inbox"
+        ]
+      }
+    },
+    "/notifications/{id}/read": {
+      "post": {
+        "operationId": "InboxController_markRead",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Inbox"
         ]
       }
     },
@@ -8497,6 +8894,9 @@
           "fieldVerified": {
             "type": "boolean"
           },
+          "possiblyClosed": {
+            "type": "boolean"
+          },
           "photos": {
             "type": "array",
             "items": {
@@ -8730,6 +9130,7 @@
           "landmarkRadiusKm",
           "source",
           "fieldVerified",
+          "possiblyClosed",
           "photos",
           "streetPhoto",
           "businessHours",
@@ -9412,7 +9813,8 @@
                   "type": "string",
                   "enum": [
                     "create",
-                    "batch"
+                    "batch",
+                    "report"
                   ]
                 },
                 "status": {
@@ -9487,6 +9889,562 @@
         "required": [
           "mergeId",
           "restoredPlaceId"
+        ]
+      },
+      "ReportPlaceDto": {
+        "type": "object",
+        "properties": {
+          "reasonCode": {
+            "type": "string",
+            "enum": [
+              "wrong_location",
+              "closed_permanently",
+              "duplicate",
+              "wrong_information",
+              "inappropriate"
+            ]
+          },
+          "text": {
+            "type": "string"
+          },
+          "duplicateOfPlaceId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "reasonCode"
+        ]
+      },
+      "PlaceReportResultDto": {
+        "type": "object",
+        "properties": {
+          "reportId": {
+            "type": "string"
+          },
+          "created": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "reportId",
+          "created"
+        ]
+      },
+      "PlaceReportQueueDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "placeId": {
+                  "type": "string"
+                },
+                "nameBn": {
+                  "type": "string"
+                },
+                "nameEn": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "status": {
+                  "type": "string"
+                },
+                "location": {
+                  "type": "object",
+                  "properties": {
+                    "lat": {
+                      "type": "number"
+                    },
+                    "lng": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "lat",
+                    "lng"
+                  ]
+                },
+                "possiblyClosed": {
+                  "type": "boolean"
+                },
+                "reasons": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "integer"
+                  }
+                },
+                "reporterCount": {
+                  "type": "integer"
+                },
+                "notes": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "firstReportedAt": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "placeId",
+                "nameBn",
+                "nameEn",
+                "status",
+                "location",
+                "possiblyClosed",
+                "reasons",
+                "reporterCount",
+                "notes",
+                "firstReportedAt"
+              ]
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ]
+      },
+      "PlaceReportDecisionDto": {
+        "type": "object",
+        "properties": {
+          "decision": {
+            "type": "string",
+            "enum": [
+              "dismiss",
+              "resolved",
+              "confirm_closed",
+              "clear_closed_flag",
+              "unpublish"
+            ]
+          },
+          "reasonCode": {
+            "type": "string",
+            "enum": [
+              "spam",
+              "wrong_category",
+              "duplicate",
+              "policy_violation",
+              "prohibited_item",
+              "scam_suspected",
+              "poor_quality_listing",
+              "contact_info_exposed",
+              "other",
+              "illegal_content",
+              "doxxing",
+              "csam",
+              "credible_threat"
+            ]
+          },
+          "reasonText": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "decision"
+        ]
+      },
+      "PlaceReportDecisionResultDto": {
+        "type": "object",
+        "properties": {
+          "placeId": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "dismiss",
+              "resolved",
+              "confirm_closed",
+              "clear_closed_flag",
+              "unpublish"
+            ]
+          },
+          "status": {
+            "type": "string"
+          },
+          "possiblyClosed": {
+            "type": "boolean"
+          },
+          "reportsClosed": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "placeId",
+          "decision",
+          "status",
+          "possiblyClosed",
+          "reportsClosed"
+        ]
+      },
+      "SuggestPlaceEditDto": {
+        "type": "object",
+        "properties": {
+          "location": {
+            "type": "object",
+            "properties": {
+              "lat": {
+                "type": "number",
+                "minimum": -90,
+                "maximum": 90
+              },
+              "lng": {
+                "type": "number",
+                "minimum": -180,
+                "maximum": 180
+              }
+            },
+            "required": [
+              "lat",
+              "lng"
+            ]
+          },
+          "phones": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "hours": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "day": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 7
+                },
+                "opens": {
+                  "type": "string",
+                  "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                },
+                "closes": {
+                  "type": "string",
+                  "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                }
+              },
+              "required": [
+                "day",
+                "opens",
+                "closes"
+              ]
+            }
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      },
+      "PlaceSuggestionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "placeId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "approved",
+              "rejected",
+              "withdrawn"
+            ]
+          },
+          "changes": {
+            "type": "object",
+            "properties": {
+              "location": {
+                "type": "object",
+                "properties": {
+                  "lat": {
+                    "type": "number"
+                  },
+                  "lng": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "lat",
+                  "lng"
+                ]
+              },
+              "phones": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "hours": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "day": {
+                      "type": "number"
+                    },
+                    "opens": {
+                      "type": "string"
+                    },
+                    "closes": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "day",
+                    "opens",
+                    "closes"
+                  ]
+                }
+              }
+            }
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "placeId",
+          "status",
+          "changes",
+          "note",
+          "createdAt"
+        ]
+      },
+      "SuggestionQueueDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "placeId": {
+                  "type": "string"
+                },
+                "placeNameBn": {
+                  "type": "string"
+                },
+                "placeNameEn": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "changes": {
+                  "type": "object",
+                  "properties": {
+                    "location": {
+                      "type": "object",
+                      "properties": {
+                        "lat": {
+                          "type": "number"
+                        },
+                        "lng": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "lat",
+                        "lng"
+                      ]
+                    },
+                    "phones": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "hours": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "day": {
+                            "type": "number"
+                          },
+                          "opens": {
+                            "type": "string"
+                          },
+                          "closes": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "day",
+                          "opens",
+                          "closes"
+                        ]
+                      }
+                    }
+                  }
+                },
+                "current": {
+                  "type": "object",
+                  "properties": {
+                    "location": {
+                      "type": "object",
+                      "properties": {
+                        "lat": {
+                          "type": "number"
+                        },
+                        "lng": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "lat",
+                        "lng"
+                      ]
+                    },
+                    "phones": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "hours": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "day": {
+                            "type": "number"
+                          },
+                          "opens": {
+                            "type": "string"
+                          },
+                          "closes": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "day",
+                          "opens",
+                          "closes"
+                        ]
+                      }
+                    }
+                  }
+                },
+                "note": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "suggesterMemberId": {
+                  "type": "string"
+                },
+                "suggesterTrustScore": {
+                  "type": "integer"
+                },
+                "createdAt": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "placeId",
+                "placeNameBn",
+                "placeNameEn",
+                "changes",
+                "current",
+                "note",
+                "suggesterMemberId",
+                "suggesterTrustScore",
+                "createdAt"
+              ]
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ]
+      },
+      "ApproveSuggestionDto": {
+        "type": "object",
+        "properties": {
+          "reasonText": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "SuggestionDecisionResultDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "placeId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "approved",
+              "rejected"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "placeId",
+          "status"
+        ]
+      },
+      "RejectSuggestionDto": {
+        "type": "object",
+        "properties": {
+          "reasonCode": {
+            "type": "string",
+            "enum": [
+              "suggestion_incorrect",
+              "spam",
+              "wrong_category",
+              "duplicate",
+              "policy_violation",
+              "prohibited_item",
+              "scam_suspected",
+              "poor_quality_listing",
+              "contact_info_exposed",
+              "other",
+              "illegal_content",
+              "doxxing",
+              "csam",
+              "credible_threat"
+            ]
+          },
+          "reasonText": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "reasonCode"
         ]
       },
       "HoursViewDto": {
@@ -9736,6 +10694,78 @@
         "required": [
           "closedUntil",
           "openState"
+        ]
+      },
+      "InboxPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "params": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string",
+                    "nullable": true
+                  }
+                },
+                "deepLink": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "entityId": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "read": {
+                  "type": "boolean"
+                },
+                "createdAt": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "type",
+                "params",
+                "deepLink",
+                "entityId",
+                "read",
+                "createdAt"
+              ]
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          },
+          "unreadCount": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor",
+          "unreadCount"
+        ]
+      },
+      "UnreadCountDto": {
+        "type": "object",
+        "properties": {
+          "unreadCount": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "unreadCount"
         ]
       },
       "SearchResponseDto": {

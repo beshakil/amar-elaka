@@ -64,7 +64,10 @@ export class TrustRepository {
                  or r.post_id in (select p.id from public.posts p
                                   where p.tenant_id = ${tenantId}::uuid and p.author_member_id = m.id))) as upheld_reports,
         (select count(*)::int from public.bans b
-          where b.tenant_id = ${tenantId}::uuid and b.user_id = m.user_id and b.revoked_at is null) as bans
+          where b.tenant_id = ${tenantId}::uuid and b.user_id = m.user_id and b.revoked_at is null) as bans,
+        (select count(*)::int from public.place_edit_suggestions s
+          where s.tenant_id = ${tenantId}::uuid and s.suggester_member_id = m.id
+            and s.status_code = 'approved') as approved_edits
       from m join public.users u on u.id = m.user_id`);
     const [row] = z
       .array(
@@ -77,6 +80,7 @@ export class TrustRepository {
           removed_posts: z.number(),
           upheld_reports: z.number(),
           bans: z.number(),
+          approved_edits: z.number(),
         }),
       )
       .max(1)
@@ -91,6 +95,7 @@ export class TrustRepository {
         removedPosts: row.removed_posts,
         upheldReports: row.upheld_reports,
         bans: row.bans,
+        approvedEdits: row.approved_edits,
       }
     );
   }

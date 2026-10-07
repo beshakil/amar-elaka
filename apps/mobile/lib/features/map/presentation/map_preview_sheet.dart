@@ -66,6 +66,8 @@ class MapPreviewSheet extends StatelessWidget {
     required this.onRoad,
     required this.onDirections,
     required this.onCall,
+    this.onReport,
+    this.onSuggest,
     super.key,
   });
 
@@ -88,6 +90,10 @@ class MapPreviewSheet extends StatelessWidget {
 
   /// Null when there is no way to call (no public number, not a post).
   final VoidCallback? onCall;
+
+  /// Places only (ADR 051): "সমস্যা জানান" and "তথ্য সংশোধন".
+  final VoidCallback? onReport;
+  final VoidCallback? onSuggest;
 
   @override
   Widget build(BuildContext context) {
@@ -228,6 +234,26 @@ class MapPreviewSheet extends StatelessWidget {
                   ),
               ],
             ),
+            if (onReport != null || onSuggest != null)
+              Wrap(
+                spacing: AppSpacing.sm,
+                children: [
+                  if (onSuggest != null)
+                    TextButton.icon(
+                      key: const ValueKey('map-preview-suggest'),
+                      icon: const Icon(Icons.edit_outlined),
+                      label: Text(l10n.placeSuggestOpen),
+                      onPressed: onSuggest,
+                    ),
+                  if (onReport != null)
+                    TextButton.icon(
+                      key: const ValueKey('map-preview-report'),
+                      icon: const Icon(Icons.flag_outlined),
+                      label: Text(l10n.placeReportOpen),
+                      onPressed: onReport,
+                    ),
+                ],
+              ),
             switch (road) {
               RoadIdle() => const SizedBox.shrink(),
               RoadLoading() => Padding(

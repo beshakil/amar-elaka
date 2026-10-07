@@ -18,7 +18,11 @@ import '../../../core/network/connectivity_provider.dart';
 import '../../../core/platform/external_apps.dart';
 import '../../../core/routing/route_paths.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../core/routing/auth_gate.dart';
 import '../../offline_map/data/offline_map_repository.dart';
+import '../../place_feedback/data/place_feedback_api.dart';
+import '../../place_feedback/presentation/place_feedback_messages.dart';
+import '../../place_feedback/presentation/place_report_sheet.dart';
 import '../../offline_map/domain/offline_points.dart';
 import '../../post/application/current_tenant.dart';
 import '../../post_detail/application/contact_actions.dart';
@@ -916,6 +920,40 @@ class _PreviewLoaderState extends ConsumerState<_PreviewLoader> {
     }
   }
 
+  /// "সমস্যা জানান" (ADR 051): sign in first; the answer never says more than "sent".
+  Future<void> _report() async {
+    if (!requireLogin(context, ref)) return;
+    final l10n = AppLocalizations.of(context)!;
+    final locale = Localizations.localeOf(context).languageCode;
+    final messenger = ScaffoldMessenger.of(context);
+    final picked = await PlaceReportSheet.show(
+      context,
+      placeId: _props.id!,
+      location: (lat: widget.feature.lat, lng: widget.feature.lng),
+    );
+    if (picked == null || !mounted) return;
+    try {
+      await ref
+          .read(placeFeedbackApiProvider)
+          .report(
+            _props.id!,
+            picked.reason,
+            picked.text,
+            duplicateOf: picked.duplicateOf,
+          );
+      messenger.showSnackBar(SnackBar(content: Text(l10n.placeReportSent)));
+    } on AppException catch (error) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(placeFeedbackError(error, l10n, locale))),
+      );
+    }
+  }
+
+  void _suggest() {
+    if (!requireLogin(context, ref)) return;
+    unawaited(context.push(RoutePaths.placeSuggestFor(_props.id!)));
+  }
+
   /// A post: through its contact action (the lead). Others: the first public
   /// number, straight to the dialer.
   Future<void> _call() async {
@@ -962,6 +1000,11 @@ class _PreviewLoaderState extends ConsumerState<_PreviewLoader> {
           onRoad: widget.user == null ? null : () => unawaited(_askRoad()),
           onDirections: () => unawaited(_directions()),
           onCall: canCall ? () => unawaited(_call()) : null,
+          // Places only: members report them and suggest fixes (ADR 051).
+          onReport: _props.layer == 'places'
+              ? () => unawaited(_report())
+              : null,
+          onSuggest: _props.layer == 'places' ? _suggest : null,
         ),
         if (_props.layer == 'posts')
           Padding(

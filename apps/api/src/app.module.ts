@@ -24,6 +24,7 @@ import { ModerationModule } from './moderation/moderation.module';
 import { PostsModule } from './posts/posts.module';
 import { PlacesModule } from './places/places.module';
 import { HoursModule } from './hours/hours.module';
+import { InboxModule } from './notifications/inbox/inbox.module';
 import { PlatformJobsModule } from './jobs/platform-jobs.module';
 import { LocationsModule } from './locations/locations.module';
 import { MapModule } from './map/map.module';
@@ -53,6 +54,7 @@ import { TenantsModule } from './tenants/tenants.module';
     PostsModule,
     PlacesModule,
     HoursModule,
+    InboxModule,
     ModerationModule,
     SearchModule,
     FeedModule,

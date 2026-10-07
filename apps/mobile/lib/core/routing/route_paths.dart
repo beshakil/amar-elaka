@@ -34,6 +34,16 @@ abstract final class RoutePaths {
   static const String savedSearches = '/saved-searches';
   static String savedSearchFor(String id) => '$savedSearches/$id';
 
+  /// Saved posts, places and stores (ADR 037).
+  static const String saved = '/saved';
+
+  /// The in-app notification inbox.
+  static const String notifications = '/notifications';
+
+  /// "তথ্য সংশোধন" for a place (ADR 051).
+  static const String placeSuggest = '/place-suggest';
+  static String placeSuggestFor(String placeId) => '$placeSuggest/$placeId';
+
   /// "এলাকার ম্যাপ ডাউনলোড" (ADR 050).
   static const String offlineMap = '/offline-map';
 

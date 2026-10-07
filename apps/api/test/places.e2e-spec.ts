@@ -280,8 +280,8 @@ describe('Places and claims (e2e)', () => {
     return id;
   };
   const notificationsOf = (userId: string) =>
-    admin<{ type_code: string }[]>`
-      select type_code from notifications where user_id = ${userId} order by created_at`;
+    admin<{ type_code: string; params: Record<string, string | null> }[]>`
+      select type_code, params from notifications where user_id = ${userId} order by created_at`;
   const actionsOfClaim = (claimId: string) =>
     admin<{ action_code: string; reason_code: string }[]>`
       select action_code, reason_code from moderation_actions where place_claim_id = ${claimId} order by id`;
@@ -523,6 +523,11 @@ describe('Places and claims (e2e)', () => {
       expect((await notificationsOf(OWNER)).map((x) => x.type_code)).toContain(
         'place_claim_approved',
       );
+      // The inbox says which place (clients word it from the params).
+      const approvedNote = (await notificationsOf(OWNER)).find(
+        (x) => x.type_code === 'place_claim_approved',
+      );
+      expect(approvedNote!.params.placeName).toBe(place.nameBn);
 
       // The verified owner can now edit their place; nobody can claim it again.
       expect(

@@ -88,6 +88,8 @@ export class TrustScoreService {
       phoneVerified,
       storeVerified,
       perBan,
+      perApprovedEdit,
+      maxApprovedEditPoints,
     ] = await Promise.all([
       get('trust_base_score'),
       get('trust_points_per_approved_post'),
@@ -100,6 +102,8 @@ export class TrustScoreService {
       get('trust_points_phone_verified'),
       get('trust_points_store_verified'),
       get('trust_penalty_per_ban'),
+      get('trust_points_per_approved_edit'),
+      get('trust_max_approved_edit_points'),
     ]);
     return {
       base,
@@ -113,6 +117,8 @@ export class TrustScoreService {
       phoneVerified,
       storeVerified,
       perBan,
+      perApprovedEdit,
+      maxApprovedEditPoints,
     };
   }
 

@@ -9,6 +9,8 @@ export interface NavItem {
   icon: 'dashboard' | 'shield' | 'users' | 'building' | 'flag' | 'map';
   /** Omitted for items every member of that nav set may see. */
   requires?: { module: string; action: string };
+  /** Any one of these grants is enough (a section with several queues). */
+  requiresAny?: readonly { module: string; action: string }[];
   /** Also only these roles (a grant other roles share, but a report they may not read). */
   roles?: readonly string[];
 }
@@ -24,7 +26,10 @@ export const TENANT_ADMIN_NAV: NavItem[] = [
     key: 'moderation',
     href: '/moderation',
     icon: 'flag',
-    requires: { module: 'posts', action: 'approve' },
+    requiresAny: [
+      { module: 'posts', action: 'approve' },
+      { module: 'places', action: 'approve' },
+    ],
   },
   {
     key: 'heatmap',
@@ -47,6 +52,7 @@ export function visibleNav(permissions: EffectivePermissions): NavItem[] {
   return items.filter(
     (item) =>
       (!item.requires || hasGrant(permissions, item.requires)) &&
+      (!item.requiresAny || item.requiresAny.some((grant) => hasGrant(permissions, grant))) &&
       (!item.roles || item.roles.includes(permissions.role ?? '')),
   );
 }

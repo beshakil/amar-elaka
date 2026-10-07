@@ -323,6 +323,20 @@
       "when": 1791330379534,
       "tag": "0045_offline_maps_and_heatmap",
       "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1791348325837,
+      "tag": "0046_place_reports_and_suggestions",
+      "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1791352129721,
+      "tag": "0047_notification_inbox",
+      "breakpoints": true
     }
   ]
 }

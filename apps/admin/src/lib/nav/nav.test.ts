@@ -50,9 +50,14 @@ describe('visibleNav', () => {
     expect(keys(visibleNav(moderator))).toEqual(['overview']);
   });
 
-  it('shows the moderation queue to whoever may approve posts', () => {
+  it('shows the moderation queue to whoever may approve posts or places', () => {
     const approver = { isPlatformAdmin: false, grants: [{ module: 'posts', action: 'approve' }] };
     expect(keys(visibleNav(approver))).toEqual(['overview', 'moderation']);
+    const placeModerator = {
+      isPlatformAdmin: false,
+      grants: [{ module: 'places', action: 'approve' }],
+    };
+    expect(keys(visibleNav(placeModerator))).toEqual(['overview', 'moderation']);
   });
 
   it('gives a platform admin the platform set', () => {

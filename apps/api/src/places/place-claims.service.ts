@@ -314,11 +314,16 @@ export class PlaceClaimsService {
   }
 
   private async notifyApproval(approved: ApprovedClaim): Promise<void> {
+    // The name, so the inbox can say which place (the clients render from params).
+    const place = await this.tenantDb.transaction((tx) => this.repo.find(tx, approved.placeId), {
+      accessMode: 'read only',
+    });
+    const placeName = place?.name_bn ?? null;
     if (approved.claimantUserId) {
       await this.notifications.send({
         userId: approved.claimantUserId,
         type: 'place_claim_approved',
-        params: { placeId: approved.placeId, storeId: approved.storeId },
+        params: { placeId: approved.placeId, placeName, storeId: approved.storeId },
         deepLink: `/places/${approved.placeId}`,
         entityId: approved.placeId,
         dedupeKey: `place_claim_approved:${approved.placeId}:${approved.storeId}`,
@@ -330,6 +335,7 @@ export class PlaceClaimsService {
         type: 'place_claim_rejected',
         params: {
           placeId: approved.placeId,
+          placeName,
           reasonCode: 'place_already_claimed',
           reasonText: null,
         },

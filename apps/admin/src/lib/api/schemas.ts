@@ -98,6 +98,122 @@ export const catalogCategorySchema = z.object({
 });
 export type CatalogCategory = z.infer<typeof catalogCategorySchema>;
 
+// ---- the Places tab of the moderation queue (ADR 047, 048, 051) -------------
+
+const latLng = z.object({ lat: z.number(), lng: z.number() });
+const hoursRange = z.object({ day: z.number(), opens: z.string(), closes: z.string() });
+const suggestionChanges = z.object({
+  location: latLng.optional(),
+  phones: z.array(z.string()).optional(),
+  hours: z.array(hoursRange).optional(),
+});
+export type SuggestionChanges = z.infer<typeof suggestionChanges>;
+
+/** Matches ReviewQueueDto (GET /places/review-queue). */
+export const placeReviewQueueSchema = z.object({
+  items: z.array(
+    z.object({
+      id: z.string(),
+      nameBn: z.string(),
+      nameEn: z.string().nullable(),
+      categoryId: z.string(),
+      location: latLng,
+      outsideBoundary: z.boolean(),
+      photoCount: z.number(),
+      createdByUserId: z.string().nullable(),
+      queuedAt: z.string(),
+    }),
+  ),
+  nextCursor: z.string().nullable(),
+});
+export type PlaceReviewItem = z.infer<typeof placeReviewQueueSchema>['items'][number];
+
+/** Matches ClaimQueueDto (GET /place-claims/queue). */
+export const placeClaimQueueSchema = z.object({
+  items: z.array(
+    z.object({
+      id: z.string(),
+      place: z.object({ id: z.string(), nameBn: z.string(), phones: z.array(z.string()) }),
+      claimantMemberId: z.string(),
+      claimantUserId: z.string().nullable(),
+      evidence: z.array(z.string()),
+      otpVerifiedPhone: z.string().nullable(),
+      documentIds: z.array(z.string()),
+      note: z.string().nullable(),
+      competingClaims: z.number(),
+      queuedAt: z.string(),
+    }),
+  ),
+  nextCursor: z.string().nullable(),
+});
+export type PlaceClaimItem = z.infer<typeof placeClaimQueueSchema>['items'][number];
+
+/** Matches DuplicatePageDto (GET /places/duplicates). */
+export const duplicatePageSchema = z.object({
+  items: z.array(
+    z.object({
+      id: z.string(),
+      entityType: z.enum(['place', 'store']),
+      entity: z.object({ id: z.string(), nameBn: z.string().nullable() }),
+      candidate: z.object({ id: z.string(), tenantId: z.string(), nameBn: z.string().nullable() }),
+      score: z.number(),
+      classification: z.enum(['likely', 'possible']),
+      signals: z.record(z.unknown()),
+      source: z.enum(['create', 'batch', 'report']),
+      status: z.enum(['open', 'merged', 'dismissed']),
+      createdAt: z.string(),
+    }),
+  ),
+  nextCursor: z.string().nullable(),
+});
+export type DuplicateItem = z.infer<typeof duplicatePageSchema>['items'][number];
+
+/** Matches PlaceReportQueueDto (GET /place-reports/queue). */
+export const placeReportQueueSchema = z.object({
+  items: z.array(
+    z.object({
+      placeId: z.string(),
+      nameBn: z.string(),
+      nameEn: z.string().nullable(),
+      status: z.string(),
+      location: latLng,
+      possiblyClosed: z.boolean(),
+      reasons: z.record(z.number()),
+      reporterCount: z.number(),
+      notes: z.array(z.string()),
+      firstReportedAt: z.string(),
+    }),
+  ),
+  nextCursor: z.string().nullable(),
+});
+export type PlaceReportItem = z.infer<typeof placeReportQueueSchema>['items'][number];
+
+/** Matches SuggestionQueueDto (GET /place-suggestions/queue). */
+export const placeSuggestionQueueSchema = z.object({
+  items: z.array(
+    z.object({
+      id: z.string(),
+      placeId: z.string(),
+      placeNameBn: z.string(),
+      placeNameEn: z.string().nullable(),
+      changes: suggestionChanges,
+      current: suggestionChanges,
+      note: z.string().nullable(),
+      suggesterMemberId: z.string(),
+      suggesterTrustScore: z.number(),
+      createdAt: z.string(),
+    }),
+  ),
+  nextCursor: z.string().nullable(),
+});
+export type PlaceSuggestionItem = z.infer<typeof placeSuggestionQueueSchema>['items'][number];
+
+/**
+ * The decision endpoints' answers differ (a dismissal is 204, no body); the
+ * page only needs "it worked" and reloads.
+ */
+export const placeActionResultSchema = z.object({}).passthrough().nullable();
+
 type Api = components['schemas'];
 /** True when every value the API may send is one this app's schema accepts. */
 type Accepts<Local, Published> = [Published] extends [Local] ? true : false;
@@ -112,6 +228,11 @@ export type _ApiContract = [
   Assert<Accepts<Heatmap, Api['HeatmapDto']>>,
   Assert<Accepts<MapConfig, Api['MapConfigDto']>>,
   Assert<Accepts<CatalogCategory, Api['CatalogCategoryDto']>>,
+  Assert<Accepts<z.infer<typeof placeReviewQueueSchema>, Api['ReviewQueueDto']>>,
+  Assert<Accepts<z.infer<typeof placeClaimQueueSchema>, Api['ClaimQueueDto']>>,
+  Assert<Accepts<z.infer<typeof duplicatePageSchema>, Api['DuplicatePageDto']>>,
+  Assert<Accepts<z.infer<typeof placeReportQueueSchema>, Api['PlaceReportQueueDto']>>,
+  Assert<Accepts<z.infer<typeof placeSuggestionQueueSchema>, Api['SuggestionQueueDto']>>,
 ];
 
 /** Matches QueuePageDto (apps/api/src/moderation/dto/moderation.dto.ts). */

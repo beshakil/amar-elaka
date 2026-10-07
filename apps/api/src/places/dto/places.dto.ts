@@ -227,6 +227,8 @@ export const placeSchema = z.object({
   landmarkRadiusKm: z.number().nullable(),
   source: z.string(),
   fieldVerified: z.boolean(),
+  /** Enough members reported it closed for good; a moderator is checking (0046). */
+  possiblyClosed: z.boolean(),
   photos: z.array(photoSchema),
   streetPhoto: photoSchema.nullable(),
   businessHours: z.array(hoursSchema),
@@ -393,7 +395,7 @@ export const duplicateItemSchema = z.object({
   score: z.number(),
   classification: z.enum(['likely', 'possible']),
   signals: z.record(z.unknown()),
-  source: z.enum(['create', 'batch']),
+  source: z.enum(['create', 'batch', 'report']),
   status: z.enum(['open', 'merged', 'dismissed']),
   createdAt: z.string(),
 });

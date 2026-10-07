@@ -176,6 +176,8 @@ export const SETTING_DEFINITIONS = {
   trust_points_phone_verified: wholeNumber,
   trust_points_store_verified: wholeNumber,
   trust_penalty_per_ban: wholeNumber,
+  trust_points_per_approved_edit: wholeNumber,
+  trust_max_approved_edit_points: wholeNumber,
   trust_auto_approve_threshold: wholeNumber,
   moderation_sample_rate_percent: wholeNumber,
   moderation_banned_keywords: textArray,
@@ -395,6 +397,17 @@ export const SETTING_DEFINITIONS = {
   heatmap_window_days: wholeNumber,
   heatmap_geohash_precision: wholeNumber,
   heatmap_cells_max: wholeNumber,
+
+  // Place reports and edit suggestions (ADR 051, migration 0046)
+  place_closed_report_threshold: wholeNumber,
+  place_suggestions_per_user_per_day: wholeNumber,
+  place_suggestion_note_max_length: wholeNumber,
+  place_report_queue_notes_max: wholeNumber,
+  duplicate_report_radius_m: wholeNumber,
+
+  // The in-app notification inbox (migration 0047)
+  notifications_page_size_default: wholeNumber,
+  notifications_page_size_max: wholeNumber,
 } as const satisfies Record<string, z.ZodTypeAny>;
 
 export type SettingKey = keyof typeof SETTING_DEFINITIONS;

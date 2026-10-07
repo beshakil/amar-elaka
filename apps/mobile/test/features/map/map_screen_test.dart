@@ -453,6 +453,26 @@ void main() {
     );
   });
 
+  testWidgets(
+    'a place can be reported or corrected from its preview; a post cannot',
+    (tester) async {
+      await pumpMap(tester);
+      await openList(tester);
+      await tester.tap(find.text('মিরপুর জেনারেল হাসপাতাল'));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('map-preview-report')), findsOneWidget);
+      expect(find.byKey(const ValueKey('map-preview-suggest')), findsOneWidget);
+      Navigator.of(
+        tester.element(find.byKey(const ValueKey('map-preview'))),
+      ).pop();
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('আইফোন ১৩'));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('map-preview-report')), findsNothing);
+      expect(find.byKey(const ValueKey('map-preview-suggest')), findsNothing);
+    },
+  );
+
   group('offline (ADR 050)', () {
     OfflinePointRow cached(String id, double lng, double lat, String kind) =>
         OfflinePointRow(

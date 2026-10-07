@@ -70,6 +70,16 @@ export interface ScoredPlaceCandidate {
   signals: DuplicateSignals;
 }
 
+export interface ReportedPair {
+  tenantId: string;
+  placeId: string;
+  otherId: string;
+  otherTenantId: string;
+  score: number;
+  classification: DuplicateClass;
+  signals: DuplicateSignals;
+}
+
 /**
  * Duplicate places and stores, and the merge tool (ADR 048).
  *
@@ -161,6 +171,66 @@ export class DuplicatesService {
         })),
       ),
     );
+  }
+
+  /**
+   * The pair a member's duplicate report names (0046), scored like any other
+   * pair; a person said so, so a pair below the possible score still counts
+   * as possible. Read as the system of the reported place's tenant (the other
+   * place may be a neighbour's). File it with fileReportedPair() once the
+   * report itself is in.
+   */
+  async scoreReportedPair(
+    tenantId: string,
+    placeId: string,
+    otherId: string,
+  ): Promise<ReportedPair | { refused: 'not_found' | 'too_far'; maxMeters: number }> {
+    const [stopwords, maxMeters, weights] = await Promise.all([
+      this.settings.get('duplicate_name_stopwords', tenantId),
+      this.settings.get('duplicate_report_radius_m', tenantId),
+      this.weights(tenantId),
+    ]);
+    const pair = await this.asSystem(tenantId, (tx) =>
+      this.repo.pairSignals(tx, placeId, otherId, stopwords),
+    );
+    if (!pair) return { refused: 'not_found', maxMeters };
+    if (pair.distance_m > maxMeters) return { refused: 'too_far', maxMeters };
+    const signals: DuplicateSignals = {
+      nameSimilarity: pair.name_similarity,
+      phoneMatch: pair.phone_match,
+      sameCategory: pair.same_category,
+      distanceM: pair.distance_m,
+    };
+    const score = duplicateScore(signals, weights);
+    return {
+      tenantId,
+      placeId,
+      otherId,
+      otherTenantId: pair.other_tenant_id,
+      score,
+      classification: classifyDuplicate(score, weights) ?? 'possible',
+      signals,
+    };
+  }
+
+  /** Queues a reported pair (source 'report'); false when the pair was already known. */
+  async fileReportedPair(pair: ReportedPair): Promise<boolean> {
+    const filed = await this.asSystem(pair.tenantId, (tx) =>
+      this.repo.file(tx, [
+        {
+          entityType: 'place',
+          tenantId: pair.tenantId,
+          entityId: pair.placeId,
+          candidateTenantId: pair.otherTenantId,
+          candidateId: pair.otherId,
+          score: pair.score,
+          classification: pair.classification,
+          signals: { ...pair.signals },
+          source: 'report',
+        },
+      ]),
+    );
+    return filed > 0;
   }
 
   // ---- moderators ----------------------------------------------------------

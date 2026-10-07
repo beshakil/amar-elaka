@@ -66,6 +66,7 @@ async function main(): Promise<void> {
       const storeIds = await seedStores(tx, tenantIds, memberIds);
       await seedPosts(tx, tenantIds, memberIds, storeIds, categoryIds, geoAreaIdBySlug);
       await seedPlaces(tx, tenantIds, memberIds, categoryIds, geoAreaIdBySlug);
+      await seedPlaceModeration(tx, tenantIds, memberIds);
       await seedSavedAndFollows(tx, userIds.get('buyer')!);
       await seedSearchQueries(tx, tenantIds);
       await seedSavedSearches(tx, tenantIds, userIds.get('buyer')!);
@@ -799,6 +800,66 @@ async function seedPlaces(
     values ${tx(rows as never)}
     on conflict (id) do nothing`;
   console.log(`places: ${rows.length}`);
+}
+
+/**
+ * The moderators' Places tab has something in it (ADR 051): on Mirpur's first
+ * place a wrong-location and a closed report (below the "possibly closed"
+ * threshold), and on its second a pending phone suggestion. Filed through
+ * report_place() / suggest_place_edit() as the members (moderation_actions
+ * takes no other writer), then the seed's system context is restored.
+ */
+async function seedPlaceModeration(
+  tx: TransactionSql,
+  tenantIds: Map<string, string>,
+  memberIds: MemberIds,
+): Promise<void> {
+  const tenantId = tenantIds.get(TENANT_SLUGS.mirpur)!;
+  const places = await tx<{ id: string }[]>`
+    select id from places where tenant_id = ${tenantId} and status_code = 'published'
+    order by slug limit 2`;
+  if (places.length < 2) return;
+  const [first, second] = [places[0]!.id, places[1]!.id];
+
+  const asMember = async (memberId: string, work: () => Promise<unknown>) => {
+    const [m] = await tx<{ user_id: string }[]>`
+      select user_id from tenant_members where id = ${memberId}`;
+    await tx`select set_config('app.tenant_id', ${tenantId}, true),
+                    set_config('app.user_id', ${m!.user_id}, true),
+                    set_config('app.member_id', ${memberId}, true),
+                    set_config('app.role', 'member', true)`;
+    try {
+      await work();
+    } finally {
+      await tx`select set_config('app.tenant_id', '', true), set_config('app.user_id', '', true),
+                      set_config('app.member_id', '', true), set_config('app.role', 'system', true)`;
+    }
+  };
+
+  // A repeat run finds the open reports again (report_place returns them).
+  await asMember(
+    memberIds.mirpur.buyer,
+    () => tx`select report_place(${first}, 'wrong_location', 'পিনটা রাস্তার উল্টো পাশে')`,
+  );
+  await asMember(
+    memberIds.mirpur.seller,
+    () => tx`select report_place(${first}, 'closed_permanently', 'দোকান বন্ধ হয়ে গেছে')`,
+  );
+  const [pending] = await tx<{ n: number }[]>`
+    select count(*)::int as n from place_edit_suggestions
+    where place_id = ${second} and suggester_member_id = ${memberIds.mirpur.buyer}
+      and status_code = 'pending'`;
+  if (pending!.n === 0) {
+    await asMember(
+      memberIds.mirpur.buyer,
+      () =>
+        tx`select suggest_place_edit(${second}, ${tx.json({ phones: ['+8801711000777'] })},
+                                   (select jsonb_build_object('phones', to_jsonb(phones))
+                                    from places where id = ${second}),
+                                   'দোকানের নতুন নম্বর')`,
+    );
+  }
+  console.log('place moderation: 2 reports, 1 suggestion');
 }
 
 // ---------------------------------------------------------------------------

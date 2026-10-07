@@ -17,6 +17,8 @@ const WEIGHTS: TrustWeights = {
   phoneVerified: 10,
   storeVerified: 15,
   perBan: 30,
+  perApprovedEdit: 2,
+  maxApprovedEditPoints: 10,
 };
 const NOW = new Date('2026-09-25T00:00:00Z');
 const fresh: TrustInputs = {
@@ -25,6 +27,7 @@ const fresh: TrustInputs = {
   removedPosts: 0,
   upheldReports: 0,
   bans: 0,
+  approvedEdits: 0,
   phoneVerified: false,
   storeVerified: false,
   memberSince: NOW,
@@ -69,6 +72,17 @@ describe('trust formula', () => {
     });
     expect(score).toBe(0); // 20 + 10 - 8 - 15 - 10 = -3 → 0
     expect(computeTrust({ ...fresh, bans: 5 }, WEIGHTS, NOW).score).toBe(0);
+  });
+});
+
+describe('approved place edit suggestions (0046)', () => {
+  it('earn points per approved suggestion, up to their cap', () => {
+    expect(
+      computeTrust({ ...fresh, approvedEdits: 3 }, WEIGHTS, NOW).components.approved_edits,
+    ).toBe(6);
+    const many = computeTrust({ ...fresh, approvedEdits: 20 }, WEIGHTS, NOW);
+    expect(many.components.approved_edits).toBe(10);
+    expect(many.score).toBe(30);
   });
 });
 
