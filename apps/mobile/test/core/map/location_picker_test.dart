@@ -4,6 +4,8 @@ import 'package:amar_elaka_app/core/map/geo_api.dart';
 import 'package:amar_elaka_app/core/map/location_picker.dart';
 import 'package:amar_elaka_app/core/map/map_config_provider.dart';
 import 'package:amar_elaka_app/core/network/api_exception.dart';
+import 'package:amar_elaka_app/features/offline_map/data/offline_map_repository.dart';
+import 'package:amar_elaka_app/features/offline_map/domain/offline_areas.dart';
 import 'package:amar_elaka_app/features/post/application/current_tenant.dart';
 import 'package:amar_elaka_app/features/tenant_bootstrap/data/location_service.dart';
 import 'package:amar_elaka_app/l10n/app_localizations.dart';
@@ -13,6 +15,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../../features/post/post_test_harness.dart'
     show FakeLocationService, testTenant;
+import '../../features/offline_map/offline_map_test_support.dart';
 import 'map_test_support.dart';
 
 /// LocationPicker (ADR 046) without the native map: the test drives the
@@ -37,12 +40,16 @@ Future<PickerProbe> pumpPicker(
   FakeGeoApi? geo,
   LocationService? location,
   String purpose = 'store_setup',
+  FakeOfflineMapRepository? offline,
 }) async {
   final picker = PickerProbe(geo ?? FakeGeoApi(), LocationPickerController());
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
         geoApiProvider.overrideWithValue(picker.geo),
+        offlineMapRepositoryProvider.overrideWithValue(
+          offline ?? FakeOfflineMapRepository(),
+        ),
         mapConfigProvider.overrideWith((ref) async => testMapConfig),
         baseMapEnabledProvider.overrideWithValue(false),
         currentTenantConfigProvider.overrideWithValue(testTenant),
@@ -267,4 +274,54 @@ void main() {
     expect(picker.last.point, (lat: 23.8069, lng: 90.3687));
     expect(picker.geo.reverseCalls, hasLength(2));
   });
+
+  testWidgets(
+    'offline with the area downloaded: the area name from the phone; search says it needs internet',
+    (tester) async {
+      final geo = FakeGeoApi()
+        ..areasError = const NetworkException()
+        ..reverseError = const NetworkException();
+      final picker = await pumpPicker(
+        tester,
+        geo: geo,
+        offline: FakeOfflineMapRepository(
+          row: installedRow(),
+          areaIndex: OfflineAreaIndex.fromGeoJson(testAreasGeoJson()),
+        ),
+      );
+      await drag(tester, picker.controller, (lat: 23.83, lng: 90.36));
+      await tester.pump(_debounce);
+      await tester.pumpAndSettle();
+      expect(find.text('পল্লবী, মিরপুর'), findsOneWidget);
+      expect(
+        find.text(
+          'ইন্টারনেট নেই — পিন দিয়েই এগোতে পারেন, ঠিকানা পরে লিখে দিন',
+        ),
+        findsOneWidget,
+      );
+      await tester.tap(find.byKey(const ValueKey('location-confirm')));
+      expect(picker.confirmed!.point, (lat: 23.83, lng: 90.36));
+      expect(picker.confirmed!.label, 'পল্লবী, মিরপুর');
+
+      await tester.enterText(
+        find.descendant(
+          of: find.byKey(const ValueKey('location-search')),
+          matching: find.byType(TextField),
+        ),
+        'মিরপুর ১০',
+      );
+      await tester.pump(testMapConfig.client.autocompleteDebounce);
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('location-search-offline')),
+        findsOneWidget,
+      );
+      expect(
+        find.text(
+          'ইন্টারনেট নেই — ঠিকানা খোঁজা যাচ্ছে না। মানচিত্রে পিন বসিয়ে এগোন',
+        ),
+        findsOneWidget,
+      );
+    },
+  );
 }

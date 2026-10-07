@@ -7,8 +7,8 @@
     "node": ">=20"
   },
   "scripts": {
-    "dev": "next dev --port 3002",
-    "build": "next build",
+    "dev": "node scripts/copy-maplibre-worker.mjs && next dev --port 3002",
+    "build": "node scripts/copy-maplibre-worker.mjs && next build",
     "start": "next start --port 3002",
     "lint": "next typegen && eslint \"src/**/*.{ts,tsx}\" \"*.ts\"",
     "typecheck": "next typegen && tsc --noEmit -p tsconfig.json",
@@ -17,14 +17,17 @@
   },
   "dependencies": {
     "@amar-elaka/dynamic-form": "workspace:*",
+    "@amar-elaka/map-style": "workspace:^",
     "@amar-elaka/shared-types": "workspace:*",
     "@hookform/resolvers": "^5.9.1",
     "@tanstack/react-table": "^9.2.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.47.0",
+    "maplibre-gl": "^6.12.0",
     "next": "^15.5.26",
     "next-intl": "^4.14.6",
+    "pmtiles": "^4.5.0",
     "radix-ui": "^1.6.7",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",

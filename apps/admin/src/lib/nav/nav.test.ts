@@ -31,6 +31,21 @@ describe('visibleNav', () => {
     expect(keys(visibleNav(tenantAdmin))).toEqual(['overview', 'moderation', 'roles']);
   });
 
+  it("shows the heatmap to the tenant's admins only, not to a marketer who also reads analytics", () => {
+    expect(keys(visibleNav({ ...tenantAdmin, role: 'tenant_admin' }))).toEqual([
+      'overview',
+      'moderation',
+      'heatmap',
+      'roles',
+    ]);
+    const marketer = {
+      isPlatformAdmin: false,
+      grants: [{ module: 'analytics', action: 'read' }],
+      role: 'marketer',
+    };
+    expect(keys(visibleNav(marketer))).toEqual(['overview']);
+  });
+
   it('hides items whose grant the viewer lacks', () => {
     expect(keys(visibleNav(moderator))).toEqual(['overview']);
   });

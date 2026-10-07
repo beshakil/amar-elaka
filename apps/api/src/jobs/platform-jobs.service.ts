@@ -7,6 +7,7 @@ import { TenantDb } from '../database/tenant-db';
 import {
   QUEUE_GEO,
   QUEUE_PLACES,
+  QUEUE_MAP,
   QUEUE_MEDIA,
   QUEUE_POSTS,
   QUEUE_SAVED_SEARCHES,
@@ -37,6 +38,7 @@ export class PlatformJobsService {
     @InjectQueue(QUEUE_SAVED_SEARCHES) savedSearchesQueue: Queue<ScheduledJobData>,
     @InjectQueue(QUEUE_GEO) geoQueue: Queue<ScheduledJobData>,
     @InjectQueue(QUEUE_PLACES) placesQueue: Queue<ScheduledJobData>,
+    @InjectQueue(QUEUE_MAP) mapQueue: Queue<ScheduledJobData>,
   ) {
     this.queues = {
       [QUEUE_POSTS]: postsQueue,
@@ -44,6 +46,7 @@ export class PlatformJobsService {
       [QUEUE_SAVED_SEARCHES]: savedSearchesQueue,
       [QUEUE_GEO]: geoQueue,
       [QUEUE_PLACES]: placesQueue,
+      [QUEUE_MAP]: mapQueue,
     };
   }
 

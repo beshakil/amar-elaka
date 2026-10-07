@@ -233,6 +233,15 @@ jobs:
       - name: Apply migrations
         working-directory: apps/api
         run: pnpm exec tsx -e "import('./test/db/test-database').then((db) => db.resetAndMigrate())"
+      # offline-map.e2e cuts a tenant's file with the real CLI (ADR 050);
+      # the same pinned release and checksum as apps/api/Dockerfile.
+      - name: Install the go-pmtiles CLI
+        run: |
+          curl -fsSL -o /tmp/pmtiles.tgz \
+            https://github.com/protomaps/go-pmtiles/releases/download/v1.31.2/go-pmtiles_1.31.2_Linux_x86_64.tar.gz
+          echo "3ed7dbf4ec2e6dfe5e25b6f70d1ffc932729f93c86db353bf514dd71010a312f  /tmp/pmtiles.tgz" | sha256sum -c -
+          sudo tar -xzf /tmp/pmtiles.tgz -C /usr/local/bin pmtiles
+          pmtiles version
       - name: API e2e suites
         run: pnpm --filter @amar-elaka/api test:e2e
 

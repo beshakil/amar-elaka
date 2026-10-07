@@ -6,6 +6,7 @@ import 'core/design/theme_mode_controller.dart';
 import 'core/design/tokens/app_typography.dart';
 import 'core/design/widgets/offline_banner.dart';
 import 'core/routing/app_router.dart';
+import 'features/offline_map/application/offline_map_controller.dart';
 import 'features/post/application/draft_sync.dart';
 import 'l10n/app_localizations.dart';
 
@@ -19,6 +20,8 @@ class App extends ConsumerWidget {
     // Posts submitted offline go out when the connection returns, whatever
     // screen is open (a provider nobody listens to is paused).
     ref.listen(draftSyncProvider, (_, _) {});
+    // A newer downloaded map, looked for once per run (ADR 050).
+    ref.listen(offlineMapAutoUpdateProvider, (_, _) {});
 
     return MaterialApp.router(
       onGenerateTitle: (context) => AppLocalizations.of(context)!.appTitle,

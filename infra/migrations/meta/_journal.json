@@ -316,6 +316,13 @@
       "when": 1791327728961,
       "tag": "0044_business_hours_open_now",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1791330379534,
+      "tag": "0045_offline_maps_and_heatmap",
+      "breakpoints": true
     }
   ]
 }

@@ -89,8 +89,18 @@ export class MapConfigService {
     };
   }
 
+  /** The tiles directory on disk (MAP_TILES_PATH). */
+  get tilesRoot(): string {
+    return this.root;
+  }
+
+  /** The public URL of a file under the tiles directory. */
+  tilesUrl(path: string): string {
+    return `${this.publicBase ?? MAP_TILES_ROUTE}/${path}`;
+  }
+
   /** current.json, cached until its mtime changes; null (logged) when missing or malformed. */
-  private async manifest(): Promise<TilesManifest | null> {
+  async manifest(): Promise<TilesManifest | null> {
     const path = join(this.root, TILES_MANIFEST_FILE);
     let mtimeMs: number;
     try {

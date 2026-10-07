@@ -374,6 +374,27 @@ export const SETTING_DEFINITIONS = {
   hours_lookahead_days: wholeNumber,
   hours_ranges_per_day_max: wholeNumber,
   hours_special_days_max: wholeNumber,
+
+  // Offline map areas and the demand/supply heatmap (ADR 050, migration 0045)
+  offline_map_max_mb: wholeNumber,
+  offline_map_max_zoom: wholeNumber,
+  offline_map_min_zoom: wholeNumber,
+  offline_map_buffer_km: decimal,
+  offline_map_glyph_ranges: z.array(z.string().regex(/^\d+-\d+$/)),
+  offline_map_point_sets: z
+    .array(
+      z.object({
+        layers: z.array(z.enum(MAP_LAYERS)).nonempty(),
+        kinds: z.array(code).optional(),
+      }),
+    )
+    .nonempty(),
+  offline_map_update_check_hours: wholeNumber,
+  offline_map_area_simplify_m: decimal,
+  heatmap_min_cell_count: wholeNumber,
+  heatmap_window_days: wholeNumber,
+  heatmap_geohash_precision: wholeNumber,
+  heatmap_cells_max: wholeNumber,
 } as const satisfies Record<string, z.ZodTypeAny>;
 
 export type SettingKey = keyof typeof SETTING_DEFINITIONS;

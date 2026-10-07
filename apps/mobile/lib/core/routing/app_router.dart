@@ -27,6 +27,7 @@ import '../../features/tenant_bootstrap/application/tenant_bootstrap_controller.
 import '../../features/tenant_bootstrap/presentation/location_permission_screen.dart';
 import '../../features/tenant_bootstrap/presentation/tenant_confirm_screen.dart';
 import '../../features/tenant_bootstrap/presentation/tenant_picker_screen.dart';
+import '../../features/offline_map/presentation/offline_map_screen.dart';
 import 'app_shell.dart';
 import 'redirect_logic.dart';
 import 'route_paths.dart';
@@ -125,6 +126,10 @@ GoRouter appRouter(Ref ref) {
                 SavedSearchResultsScreen(id: state.pathParameters['id']!),
           ),
         ],
+      ),
+      GoRoute(
+        path: RoutePaths.offlineMap,
+        builder: (context, state) => const OfflineMapScreen(),
       ),
       // Debug-only: `kDebugMode` is a compile-time constant, so this branch
       // (and DesignSystemScreen's tree) is tree-shaken out of release builds.

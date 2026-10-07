@@ -52,3 +52,38 @@ export const unmetDemandSchema = z.object({
 });
 export type UnmetDemand = z.infer<typeof unmetDemandSchema>;
 export class UnmetDemandDto extends createZodDto(unmetDemandSchema) {}
+
+// ---- demand/supply heatmap (ADR 050) -------------------------------------------
+
+const slug = z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
+
+export const heatmapQuerySchema = z
+  .object({
+    /** demand: searches and saved searches; supply: live posts and stores. */
+    type: z.enum(['demand', 'supply']),
+    /** A category slug, with its subcategories (stores have none: left out). */
+    category: slug.optional(),
+  })
+  .strict();
+export type HeatmapQuery = z.infer<typeof heatmapQuerySchema>;
+export class HeatmapQueryDto extends createZodDto(heatmapQuerySchema) {}
+
+export const heatmapSchema = z.object({
+  type: z.enum(['demand', 'supply']),
+  category: z.string().nullable(),
+  /** Geohash length of the grid (heatmap_geohash_precision). */
+  precision: z.number(),
+  /** No cell has fewer distinct people than this (heatmap_min_cell_count). */
+  minCellCount: z.number(),
+  /** Demand: how far back searches count (heatmap_window_days). */
+  windowDays: z.number(),
+  /**
+   * Cells, densest first: the geohash, its centre (never a real point), and
+   * how many searches / listings fall in it.
+   */
+  cells: z.array(
+    z.object({ geohash: z.string(), lat: z.number(), lng: z.number(), count: z.number() }),
+  ),
+});
+export type Heatmap = z.infer<typeof heatmapSchema>;
+export class HeatmapDto extends createZodDto(heatmapSchema) {}

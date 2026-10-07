@@ -1,9 +1,9 @@
-import 'package:amar_elaka_api/amar_elaka_api.dart' as api;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 
 import '../../l10n/app_localizations.dart';
+import '../../features/offline_map/application/offline_map_source.dart';
 import '../design/tokens/app_spacing.dart';
 import 'map_config_provider.dart';
 import 'map_style.dart';
@@ -17,6 +17,10 @@ final baseMapEnabledProvider = Provider<bool>((ref) => true);
 /// dark with the app's theme. Bengali map text is shaped from Noto Sans
 /// Bengali font files (`font-faces`). Never Barikoi tiles; never
 /// tile.openstreetmap.org.
+///
+/// With the area downloaded (ADR 050) the style reads the archive, fonts and
+/// sprites from the phone instead: always when the user prefers it or there's
+/// no connection, and whenever `/map/config` fails.
 ///
 /// The OpenStreetMap / Protomaps credit is always visible as text (the native
 /// attribution button alone hides it behind an (i)).
@@ -61,26 +65,54 @@ class _BaseMapState extends ConsumerState<BaseMap> {
   Future<String?>? _style;
   Object? _styleKey;
 
-  /// The style for these inputs, loaded once per distinct (config, theme, language).
-  Future<String?> _styleFor(api.MapConfig config, bool dark, String lang) {
-    final key = (config.tiles?.url, config.fallbackStyleUrl, dark, lang);
+  /// The style for these inputs, loaded once per distinct (source, theme, language).
+  Future<String?> _styleFor({
+    required String? tilesUrl,
+    required String assetsBaseUrl,
+    required String? fallbackStyleUrl,
+    required bool dark,
+    required String lang,
+  }) {
+    final key = (tilesUrl, assetsBaseUrl, fallbackStyleUrl, dark, lang);
     if (key != _styleKey) {
       _styleKey = key;
-      final tiles = config.tiles;
-      _style = tiles != null
+      _style = tilesUrl != null
           ? MapStyles.load(
               DefaultAssetBundle.of(context),
               dark: dark,
-              tilesUrl: tiles.url,
-              assetsBaseUrl: config.assetsBaseUrl,
+              tilesUrl: tilesUrl,
+              assetsBaseUrl: assetsBaseUrl,
               labelLanguage: lang,
             )
           // map_style_fallback: emergencies only — a Barikoi style costs 4
           // Barikoi calls per map load.
-          : Future.value(config.fallbackStyleUrl);
+          : Future.value(fallbackStyleUrl);
     }
     return _style!;
   }
+
+  Widget _styled(Future<String?> style, Widget placeholder) =>
+      FutureBuilder<String?>(
+        future: style,
+        builder: (context, snapshot) => switch (snapshot) {
+          AsyncSnapshot(hasData: true, :final data?) => _map(data),
+          AsyncSnapshot(connectionState: ConnectionState.done) =>
+            const _Unavailable(),
+          _ => placeholder,
+        },
+      );
+
+  Widget _local(LocalMapSource source, bool dark, Widget placeholder) =>
+      _styled(
+        _styleFor(
+          tilesUrl: source.tilesUrl,
+          assetsBaseUrl: source.assetsBaseUrl,
+          fallbackStyleUrl: null,
+          dark: dark,
+          lang: widget.labelLanguage ?? source.labelLanguage,
+        ),
+        placeholder,
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -95,22 +127,25 @@ class _BaseMapState extends ConsumerState<BaseMap> {
         child: placeholder,
       );
     }
+    final dark = widget.dark ?? theme.brightness == Brightness.dark;
+    final local = ref.watch(localMapSourceProvider);
+    if (local != null) return _local(local, dark, placeholder);
     final config = ref.watch(mapConfigProvider);
     return switch (config) {
-      AsyncData(:final value) => FutureBuilder<String?>(
-        future: _styleFor(
-          value,
-          widget.dark ?? theme.brightness == Brightness.dark,
-          widget.labelLanguage ?? value.labelLanguage,
+      AsyncData(:final value) => _styled(
+        _styleFor(
+          tilesUrl: value.tiles?.url,
+          assetsBaseUrl: value.assetsBaseUrl,
+          fallbackStyleUrl: value.fallbackStyleUrl,
+          dark: dark,
+          lang: widget.labelLanguage ?? value.labelLanguage,
         ),
-        builder: (context, snapshot) => switch (snapshot) {
-          AsyncSnapshot(hasData: true, :final data?) => _map(data),
-          AsyncSnapshot(connectionState: ConnectionState.done) =>
-            const _Unavailable(),
-          _ => placeholder,
-        },
+        placeholder,
       ),
-      AsyncError() => const _Unavailable(),
+      AsyncError() => switch (ref.watch(installedLocalMapSourceProvider)) {
+        final installed? => _local(installed, dark, placeholder),
+        null => const _Unavailable(),
+      },
       _ => placeholder,
     };
   }

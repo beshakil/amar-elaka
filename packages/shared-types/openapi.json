@@ -4183,6 +4183,49 @@
         ]
       }
     },
+    "/analytics/heatmap": {
+      "get": {
+        "operationId": "UnmetDemandController_heatmap",
+        "parameters": [
+          {
+            "name": "type",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "demand",
+                "supply"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "category",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeatmapDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "UnmetDemand"
+        ]
+      }
+    },
     "/seo/listing-status/{id}": {
       "get": {
         "operationId": "SeoController_listingStatus",
@@ -4597,6 +4640,48 @@
         ]
       }
     },
+    "/map/offline": {
+      "get": {
+        "operationId": "OfflineMapController_manifest",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OfflineMapManifestDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "OfflineMap"
+        ]
+      }
+    },
+    "/map/offline/areas": {
+      "get": {
+        "operationId": "OfflineMapController_areas",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OfflineAreasDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "OfflineMap"
+        ]
+      }
+    },
     "/platform/jobs": {
       "get": {
         "operationId": "PlatformJobsController_health",
@@ -4641,7 +4726,8 @@
                 "pause-idle-saved-searches",
                 "refresh-unmet-demand",
                 "purge-geo-provider-calls",
-                "detect-duplicates"
+                "detect-duplicates",
+                "build-offline-maps"
               ],
               "type": "string"
             }
@@ -4687,7 +4773,8 @@
                 "pause-idle-saved-searches",
                 "refresh-unmet-demand",
                 "purge-geo-provider-calls",
-                "detect-duplicates"
+                "detect-duplicates",
+                "build-offline-maps"
               ],
               "type": "string"
             }
@@ -12579,6 +12666,65 @@
           "rows"
         ]
       },
+      "HeatmapDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "demand",
+              "supply"
+            ]
+          },
+          "category": {
+            "type": "string",
+            "nullable": true
+          },
+          "precision": {
+            "type": "number"
+          },
+          "minCellCount": {
+            "type": "number"
+          },
+          "windowDays": {
+            "type": "number"
+          },
+          "cells": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "geohash": {
+                  "type": "string"
+                },
+                "lat": {
+                  "type": "number"
+                },
+                "lng": {
+                  "type": "number"
+                },
+                "count": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "geohash",
+                "lat",
+                "lng",
+                "count"
+              ]
+            }
+          }
+        },
+        "required": [
+          "type",
+          "category",
+          "precision",
+          "minCellCount",
+          "windowDays",
+          "cells"
+        ]
+      },
       "ListingStatusDto": {
         "type": "object",
         "properties": {
@@ -13562,6 +13708,161 @@
           "route"
         ]
       },
+      "OfflineMapManifestDto": {
+        "type": "object",
+        "properties": {
+          "available": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "not_built",
+              "too_large",
+              "failed"
+            ],
+            "nullable": true
+          },
+          "archive": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              },
+              "bytes": {
+                "type": "number"
+              },
+              "sha256": {
+                "type": "string"
+              },
+              "version": {
+                "type": "string"
+              },
+              "maxZoom": {
+                "type": "number"
+              },
+              "bounds": {},
+              "builtAt": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "path",
+              "url",
+              "bytes",
+              "sha256",
+              "version",
+              "maxZoom",
+              "bounds",
+              "builtAt"
+            ],
+            "nullable": true
+          },
+          "assets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                },
+                "bytes": {
+                  "type": "number"
+                },
+                "sha256": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path",
+                "url",
+                "bytes",
+                "sha256"
+              ]
+            }
+          },
+          "assetsBytes": {
+            "type": "number"
+          },
+          "totalBytes": {
+            "type": "number"
+          },
+          "pointSets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "layers": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "posts",
+                      "stores",
+                      "places",
+                      "landmarks",
+                      "info"
+                    ]
+                  }
+                },
+                "kinds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "nullable": true
+                }
+              },
+              "required": [
+                "layers",
+                "kinds"
+              ]
+            }
+          },
+          "labelLanguage": {
+            "type": "string"
+          },
+          "updateCheckHours": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "available",
+          "reason",
+          "archive",
+          "assets",
+          "assetsBytes",
+          "totalBytes",
+          "pointSets",
+          "labelLanguage",
+          "updateCheckHours"
+        ]
+      },
+      "OfflineAreasDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "FeatureCollection"
+            ]
+          },
+          "features": {
+            "type": "array",
+            "items": {}
+          }
+        },
+        "required": [
+          "type",
+          "features"
+        ]
+      },
       "JobHealthDto": {
         "type": "object",
         "properties": {
@@ -13578,7 +13879,8 @@
               "pause-idle-saved-searches",
               "refresh-unmet-demand",
               "purge-geo-provider-calls",
-              "detect-duplicates"
+              "detect-duplicates",
+              "build-offline-maps"
             ]
           },
           "queue": {
@@ -13844,7 +14146,8 @@
               "pause-idle-saved-searches",
               "refresh-unmet-demand",
               "purge-geo-provider-calls",
-              "detect-duplicates"
+              "detect-duplicates",
+              "build-offline-maps"
             ]
           },
           "queue": {

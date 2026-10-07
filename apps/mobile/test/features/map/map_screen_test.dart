@@ -1,8 +1,12 @@
 import 'package:amar_elaka_api/amar_elaka_api.dart';
 import 'package:amar_elaka_app/core/map/base_map.dart';
 import 'package:amar_elaka_app/core/map/map_config_provider.dart';
+import 'package:amar_elaka_app/core/network/api_exception.dart';
+import 'package:amar_elaka_app/core/network/connectivity_provider.dart';
+import 'package:amar_elaka_app/core/storage/app_database.dart';
 import 'package:amar_elaka_app/core/platform/external_apps.dart';
 import 'package:amar_elaka_app/features/map/presentation/map_screen.dart';
+import 'package:amar_elaka_app/features/offline_map/data/offline_map_repository.dart';
 import 'package:amar_elaka_app/features/post/application/current_tenant.dart';
 import 'package:amar_elaka_app/features/tenant_bootstrap/data/location_service.dart';
 import 'package:amar_elaka_app/l10n/app_localizations.dart';
@@ -11,6 +15,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../core/map/map_test_support.dart';
+import '../offline_map/offline_map_test_support.dart';
 import '../post/post_test_harness.dart' show FakeLocationService, testTenant;
 
 /// The Map tab (ADR 046) without the native map (no platform view in widget
@@ -50,6 +55,9 @@ class FakeMapApi implements MapApi {
   var routeCalls = 0;
   var distanceCalls = 0;
 
+  /// Thrown by every call (no network) until cleared.
+  AppException? error;
+
   @override
   Future<MapConfig> config() async => testMapConfig;
 
@@ -61,6 +69,7 @@ class FakeMapApi implements MapApi {
     Set<String>? kinds,
     bool openNow = false,
   }) async {
+    if (error case final e?) throw e;
     featureQueries.add((
       bbox: bbox,
       zoom: zoom,
@@ -117,6 +126,7 @@ class FakeMapApi implements MapApi {
     required String id,
     required String tenantId,
   }) async {
+    if (error case final e?) throw e;
     previews.add('$layer/$id');
     return MapPreview(
       layer: layer,
@@ -136,6 +146,7 @@ class FakeMapApi implements MapApi {
     required double toLat,
     required double toLng,
   }) async {
+    if (error case final e?) throw e;
     distanceCalls++;
     return const MapDistance(straightLineMeters: 871.4);
   }
@@ -148,6 +159,7 @@ class FakeMapApi implements MapApi {
     required double toLng,
     required String mode,
   }) async {
+    if (error case final e?) throw e;
     routeCalls++;
     return RouteAnswer(
       mode: mode,
@@ -193,9 +205,12 @@ Future<MapHarness> pumpMap(
   WidgetTester tester, {
   LocationService? location,
   FakeApps? apps,
+  FakeOfflineMapRepository? offline,
+  AppException? networkError,
+  bool online = true,
 }) async {
   final harness = MapHarness(
-    FakeMapApi(),
+    FakeMapApi()..error = networkError,
     apps ?? FakeApps(),
     MapScreenController(),
   );
@@ -203,6 +218,10 @@ Future<MapHarness> pumpMap(
     ProviderScope(
       overrides: [
         mapApiProvider.overrideWithValue(harness.api),
+        isOnlineProvider.overrideWith((ref) => Stream.value(online)),
+        offlineMapRepositoryProvider.overrideWithValue(
+          offline ?? FakeOfflineMapRepository(),
+        ),
         mapConfigProvider.overrideWith((ref) async => testMapConfig),
         externalAppsProvider.overrideWithValue(harness.apps),
         baseMapEnabledProvider.overrideWithValue(false),
@@ -433,4 +452,86 @@ void main() {
       Uri.parse('google.navigation:q=23.807,90.369'),
     );
   });
+
+  group('offline (ADR 050)', () {
+    OfflinePointRow cached(String id, double lng, double lat, String kind) =>
+        OfflinePointRow(
+          rowId: 0,
+          tenantId: 't1',
+          featureId: id,
+          featureTenantId: 't1',
+          layer: 'places',
+          kind: kind,
+          infoKind: null,
+          nameBn: id == 'h1' ? 'মিরপুর জেনারেল হাসপাতাল' : 'লাজ ফার্মা',
+          nameEn: null,
+          lat: lat,
+          lng: lng,
+        );
+
+    FakeOfflineMapRepository downloaded() => FakeOfflineMapRepository(
+      row: installedRow(),
+      pointRows: [
+        cached('h1', 90.369, 23.807, 'hospital'),
+        cached('p1', 90.3688, 23.8068, 'pharmacy'),
+        // Far outside the viewport: not shown.
+        cached('far', 90.6, 24.2, 'hospital'),
+      ],
+      kindList: testMapConfig.kinds,
+    );
+
+    testWidgets(
+      'no network with the area downloaded: the cached points, with a notice',
+      (tester) async {
+        await pumpMap(
+          tester,
+          offline: downloaded(),
+          networkError: const NetworkException(),
+          online: false,
+        );
+        expect(
+          find.text(
+            'ইন্টারনেট নেই — ডাউনলোড করা ম্যাপ আর জরুরি জায়গাগুলো দেখানো হচ্ছে',
+          ),
+          findsOneWidget,
+        );
+        expect(find.text(_l10nBn.mapLoadFailed), findsNothing);
+        await openList(tester);
+        expect(find.text('মিরপুর জেনারেল হাসপাতাল'), findsOneWidget);
+        expect(find.text('লাজ ফার্মা'), findsOneWidget);
+        expect(find.byType(ListTile), findsNWidgets(2));
+      },
+    );
+
+    testWidgets('no network and nothing downloaded: the plain failure', (
+      tester,
+    ) async {
+      await pumpMap(tester, networkError: const NetworkException());
+      expect(find.text(_l10nBn.mapLoadFailed), findsOneWidget);
+      expect(find.text(_l10nBn.mapOfflinePoints), findsNothing);
+    });
+
+    testWidgets(
+      'the preview offline: the straight line from the phone, the road says it needs internet',
+      (tester) async {
+        final h = await pumpMap(
+          tester,
+          offline: downloaded(),
+          networkError: const NetworkException(),
+          online: false,
+        );
+        await openList(tester);
+        await tester.tap(find.text('মিরপুর জেনারেল হাসপাতাল'));
+        await tester.pumpAndSettle();
+        // Haversine from the user (23.8069, 90.3687) to the hospital: ~33 m.
+        expect(find.textContaining('সোজা দূরত্ব'), findsOneWidget);
+        await tester.tap(find.byKey(const ValueKey('map-preview-road')));
+        await tester.pumpAndSettle();
+        expect(find.text(_l10nBn.mapRouteOffline), findsOneWidget);
+        expect(h.api.routeCalls, 0);
+      },
+    );
+  });
 }
+
+final _l10nBn = lookupAppLocalizations(const Locale('bn'));

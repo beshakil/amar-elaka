@@ -12,6 +12,8 @@ export const QUEUE_SAVED_SEARCHES = 'saved-searches';
 export const QUEUE_GEO = 'geo';
 /** Places upkeep (nightly duplicate check): one queue, one processor (places/duplicates.processor.ts). */
 export const QUEUE_PLACES = 'places';
+/** Map upkeep (cutting each tenant's offline map file): one queue, one processor (map/offline/offline-map.processor.ts). */
+export const QUEUE_MAP = 'map';
 
 /** BullMQ has no built-in dead-letter concept — a job that exhausts its retries is relayed onto `<queue>-dlq` instead (queue/dlq.util.ts). */
 export function deadLetterQueueName(queueName: string): string {
@@ -36,6 +38,7 @@ export const JOB_PAUSE_IDLE_SAVED_SEARCHES = 'pause-idle-saved-searches';
 export const JOB_REFRESH_UNMET_DEMAND = 'refresh-unmet-demand';
 export const JOB_PURGE_GEO_PROVIDER_CALLS = 'purge-geo-provider-calls';
 export const JOB_DETECT_DUPLICATES = 'detect-duplicates';
+export const JOB_BUILD_OFFLINE_MAPS = 'build-offline-maps';
 
 export interface SendEmailJob {
   to: string;
@@ -96,6 +99,9 @@ export interface QueueJobs {
   };
   [QUEUE_PLACES]: {
     [JOB_DETECT_DUPLICATES]: ScheduledJobData;
+  };
+  [QUEUE_MAP]: {
+    [JOB_BUILD_OFFLINE_MAPS]: ScheduledJobData;
   };
   [QUEUE_SEARCH]: {
     [JOB_RELAY_SEARCH_OUTBOX]: SearchJob;

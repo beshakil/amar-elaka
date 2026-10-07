@@ -1513,6 +1513,17 @@ Weekly opening hours for a place. Several rows per day are allowed (e.g. a Jumma
 
 ---
 
+**0045 (ADR 050): offline map area and heatmap.**
+
+- `offline_map_files` (TENANT-SCOPED) records each per-tenant PMTiles cut of a national version: `status_code`
+  ready / too_large / failed, `file_name` under `tenants/`, `bytes`, `sha256`, `max_zoom`, bounds and `error`.
+  Unique on `(tenant_id, national_version)`. RLS: read within the tenant; writes by system or platform admin.
+- `heatmap_cells(...)` aggregates demand (searches with an origin, saved searches inside the boundary) or supply
+  (live posts, active stores) to geohash cells with at least `heatmap_min_cell_count` distinct people. Tenant
+  admins and platform staff only.
+
+---
+
 ### 4.6 `place_claims`
 
 A member's request to be recognised as the owner of a place.

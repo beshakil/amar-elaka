@@ -11,7 +11,7 @@ import {
   text,
   uuid,
 } from 'drizzle-orm/pg-core';
-import { auditColumns, id } from './columns';
+import { auditColumns, id, timestamptz } from './columns';
 import {
   counterTypes,
   geoProviderEndpoints,
@@ -93,5 +93,26 @@ export const geoProviderCalls = pgTable('geo_provider_calls', {
     .references(() => geoProviderStatuses.code, { onDelete: 'restrict' }),
   // Attribution only (SET NULL), never a scope.
   tenantId: uuid('tenant_id').references(() => tenants.id, { onDelete: 'set null' }),
+  ...auditColumns(),
+});
+
+// Per-tenant offline map cuts of a national PMTiles version (0045, ADR 050).
+export const offlineMapFiles = pgTable('offline_map_files', {
+  id: id(),
+  tenantId: uuid('tenant_id')
+    .notNull()
+    .references(() => tenants.id, { onDelete: 'cascade' }),
+  nationalVersion: text('national_version').notNull(),
+  statusCode: text('status_code').notNull(),
+  fileName: text('file_name'),
+  bytes: bigint('bytes', { mode: 'number' }),
+  sha256: text('sha256'),
+  maxZoom: smallint('max_zoom'),
+  minLng: numeric('min_lng', { precision: 9, scale: 6 }),
+  minLat: numeric('min_lat', { precision: 9, scale: 6 }),
+  maxLng: numeric('max_lng', { precision: 9, scale: 6 }),
+  maxLat: numeric('max_lat', { precision: 9, scale: 6 }),
+  error: text('error'),
+  builtAt: timestamptz('built_at').notNull().defaultNow(),
   ...auditColumns(),
 });

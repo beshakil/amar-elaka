@@ -6,9 +6,11 @@ export interface NavItem {
   /** Key into the `nav` message catalog — no label is hardcoded here. */
   key: string;
   href: Route;
-  icon: 'dashboard' | 'shield' | 'users' | 'building' | 'flag';
+  icon: 'dashboard' | 'shield' | 'users' | 'building' | 'flag' | 'map';
   /** Omitted for items every member of that nav set may see. */
   requires?: { module: string; action: string };
+  /** Also only these roles (a grant other roles share, but a report they may not read). */
+  roles?: readonly string[];
 }
 
 /**
@@ -24,6 +26,13 @@ export const TENANT_ADMIN_NAV: NavItem[] = [
     icon: 'flag',
     requires: { module: 'posts', action: 'approve' },
   },
+  {
+    key: 'heatmap',
+    href: '/heatmap',
+    icon: 'map',
+    requires: { module: 'analytics', action: 'read' },
+    roles: ['tenant_admin', 'partner_owner'],
+  },
   { key: 'roles', href: '/roles', icon: 'shield', requires: { module: 'roles', action: 'read' } },
 ];
 
@@ -35,5 +44,9 @@ export const PLATFORM_ADMIN_NAV: NavItem[] = [
 
 export function visibleNav(permissions: EffectivePermissions): NavItem[] {
   const items = permissions.isPlatformAdmin ? PLATFORM_ADMIN_NAV : TENANT_ADMIN_NAV;
-  return items.filter((item) => !item.requires || hasGrant(permissions, item.requires));
+  return items.filter(
+    (item) =>
+      (!item.requires || hasGrant(permissions, item.requires)) &&
+      (!item.roles || item.roles.includes(permissions.role ?? '')),
+  );
 }

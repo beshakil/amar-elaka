@@ -60,6 +60,44 @@ export const roleSchema = z.object({
 });
 export type Role = z.infer<typeof roleSchema>;
 
+/** Matches HeatmapDto (apps/api/src/analytics/dto/analytics.dto.ts, ADR 050). */
+export const heatmapSchema = z.object({
+  type: z.enum(['demand', 'supply']),
+  category: z.string().nullable(),
+  precision: z.number(),
+  minCellCount: z.number(),
+  windowDays: z.number(),
+  cells: z.array(
+    z.object({ geohash: z.string(), lat: z.number(), lng: z.number(), count: z.number() }),
+  ),
+});
+export type Heatmap = z.infer<typeof heatmapSchema>;
+
+/** The parts of MapConfigDto (GET /map/config, ADR 043) the heatmap page draws its base map with. */
+export const mapConfigSchema = z.object({
+  tiles: z
+    .object({
+      url: z.string(),
+      version: z.string(),
+      maxZoom: z.number(),
+      bounds: z.array(z.number()),
+    })
+    .nullable(),
+  assetsBaseUrl: z.string(),
+  labelLanguage: z.enum(['bn', 'en']),
+});
+export type MapConfig = z.infer<typeof mapConfigSchema>;
+
+/** The parts of CatalogCategoryDto the heatmap's category filter lists. */
+export const catalogCategorySchema = z.object({
+  id: z.string(),
+  parentId: z.string().nullable(),
+  slug: z.string(),
+  kind: z.enum(['marketplace', 'service', 'job', 'rental', 'place', 'module']),
+  name: z.object({ bn: z.string(), en: z.string() }),
+});
+export type CatalogCategory = z.infer<typeof catalogCategorySchema>;
+
 type Api = components['schemas'];
 /** True when every value the API may send is one this app's schema accepts. */
 type Accepts<Local, Published> = [Published] extends [Local] ? true : false;
@@ -71,6 +109,9 @@ export type _ApiContract = [
   Assert<Accepts<EffectivePermissions, Api['MyPermissionsDto']>>,
   Assert<Accepts<Me, Api['MeResultDto']>>,
   Assert<Accepts<Role, Api['RoleDto']>>,
+  Assert<Accepts<Heatmap, Api['HeatmapDto']>>,
+  Assert<Accepts<MapConfig, Api['MapConfigDto']>>,
+  Assert<Accepts<CatalogCategory, Api['CatalogCategoryDto']>>,
 ];
 
 /** Matches QueuePageDto (apps/api/src/moderation/dto/moderation.dto.ts). */

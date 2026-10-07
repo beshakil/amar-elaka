@@ -9,13 +9,15 @@
     "members": "সদস্য",
     "expandSidebar": "সাইডবার খুলুন",
     "collapseSidebar": "সাইডবার বন্ধ করুন",
-    "moderation": "মডারেশন"
+    "moderation": "মডারেশন",
+    "heatmap": "চাহিদা ও জোগান"
   },
   "breadcrumb": {
     "label": "ব্রেডক্রাম্ব",
     "overview": "ড্যাশবোর্ড",
     "roles": "রোল",
-    "tenants": "এলাকা"
+    "tenants": "এলাকা",
+    "heatmap": "চাহিদা ও জোগান"
   },
   "shell": {
     "logout": "লগ আউট"
@@ -210,6 +212,23 @@
       "sold": "বিক্রি হয়েছে",
       "expired": "মেয়াদোত্তীর্ণ",
       "removed": "সরানো"
+    }
+  },
+  "heatmap": {
+    "title": "চাহিদা ও জোগানের মানচিত্র",
+    "privacy": "শুধু এলাকাভিত্তিক হিসাব — কারও অবস্থান দেখানো হয় না, আর যে ঘরে {min} জনের কম মানুষ, সেটি লুকানো থাকে।",
+    "category": "ক্যাটাগরি",
+    "allCategories": "সব ক্যাটাগরি",
+    "storesNotInCategory": "ক্যাটাগরি বেছে নিলে দোকান গোনা হয় না (দোকানের ক্যাটাগরি নেই)।",
+    "cellCount": "{count, plural, =0 {কোনো ঘর নেই} other {#টি ঘর}}",
+    "noBaseMap": "মানচিত্র এখনো তৈরি হয়নি (scripts/map/build-tiles.sh)।",
+    "demand": {
+      "title": "চাহিদা",
+      "help": "গত {days} দিনের খোঁজ আর চালু সেভ করা খোঁজ।"
+    },
+    "supply": {
+      "title": "জোগান",
+      "help": "চালু বিজ্ঞাপন আর সক্রিয় দোকান।"
     }
   }
 }

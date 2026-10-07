@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 
+import '../../features/offline_map/data/offline_map_repository.dart';
 import '../../features/post/application/current_tenant.dart';
 import '../../features/tenant_bootstrap/data/location_service.dart';
 import '../../l10n/app_localizations.dart';
@@ -136,6 +137,9 @@ class _LocationPickerState extends ConsumerState<LocationPicker> {
   bool _lookingUp = false;
   String? _notice;
   List<api.GeocodeResult>? _results;
+
+  /// The last search couldn't reach the server.
+  bool _searchOffline = false;
 
   api.MapClientConfig? get _client =>
       ref.read(mapConfigProvider).asData?.value.client;
@@ -272,7 +276,13 @@ class _LocationPickerState extends ConsumerState<LocationPicker> {
             setState(() => _area = areaLabel(areas.areas, locale));
             _emit();
           })
-          .catchError((Object _) {}),
+          .catchError((Object _) async {
+            // No network: name it from the downloaded area outlines.
+            final label = await _offlineAreaLabel(point, locale);
+            if (!mounted || requestId != _lookup || label == null) return;
+            setState(() => _area ??= label);
+            _emit();
+          }),
     );
     if (knownAddress != null) return;
 
@@ -300,10 +310,24 @@ class _LocationPickerState extends ConsumerState<LocationPicker> {
       if (!mounted || requestId != _lookup) return;
       setState(() {
         _lookingUp = false;
-        _notice = e is NetworkException
+        _notice = e is NetworkException || e is TimeoutException
             ? l10n.locationPickerOffline
             : l10n.locationPickerAddressFailed;
       });
+    }
+  }
+
+  /// The area's name from the downloaded map (ADR 050); null without one.
+  Future<String?> _offlineAreaLabel(GeoPoint point, String locale) async {
+    final tenantId = ref.read(currentTenantConfigProvider)?.id;
+    if (tenantId == null) return null;
+    try {
+      final index = await ref
+          .read(offlineMapRepositoryProvider)
+          .areas(tenantId);
+      return index?.label(point.lat, point.lng, locale);
+    } on Object {
+      return null;
     }
   }
 
@@ -356,7 +380,10 @@ class _LocationPickerState extends ConsumerState<LocationPicker> {
     final client = _client;
     if (query.isEmpty ||
         (client != null && query.runes.length < client.autocompleteMinChars)) {
-      setState(() => _results = null);
+      setState(() {
+        _results = null;
+        _searchOffline = false;
+      });
       return;
     }
     _searchDebounce = Timer(
@@ -373,9 +400,16 @@ class _LocationPickerState extends ConsumerState<LocationPicker> {
             ...response.results.where((r) => r.source != 'barikoi'),
             ...response.results.where((r) => r.source == 'barikoi'),
           ];
-          setState(() => _results = results);
-        } on AppException {
-          if (mounted) setState(() => _results = const []);
+          setState(() {
+            _results = results;
+            _searchOffline = false;
+          });
+        } on AppException catch (e) {
+          if (!mounted) return;
+          setState(() {
+            _results = const [];
+            _searchOffline = e is NetworkException || e is TimeoutException;
+          });
         }
       },
     );
@@ -384,7 +418,10 @@ class _LocationPickerState extends ConsumerState<LocationPicker> {
   void _pickResult(api.GeocodeResult result, String locale) {
     FocusScope.of(context).unfocus();
     _search.clear();
-    setState(() => _results = null);
+    setState(() {
+      _results = null;
+      _searchOffline = false;
+    });
     _moveTo(
       (lat: result.location.lat, lng: result.location.lng),
       knownAddress: locale == 'bn'
@@ -429,7 +466,16 @@ class _LocationPickerState extends ConsumerState<LocationPicker> {
             child: results.isEmpty
                 ? Padding(
                     padding: const EdgeInsets.all(AppSpacing.md),
-                    child: Text(l10n.locationPickerSearchEmpty),
+                    child: Text(
+                      _searchOffline
+                          ? l10n.locationPickerSearchOffline
+                          : l10n.locationPickerSearchEmpty,
+                      key: ValueKey(
+                        _searchOffline
+                            ? 'location-search-offline'
+                            : 'location-search-empty',
+                      ),
+                    ),
                   )
                 : ListView(
                     key: const ValueKey('location-results'),

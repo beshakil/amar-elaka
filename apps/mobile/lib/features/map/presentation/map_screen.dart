@@ -14,9 +14,12 @@ import '../../../core/map/directions.dart';
 import '../../../core/map/map_config_provider.dart';
 import '../../../core/map/map_pin_images.dart';
 import '../../../core/network/api_exception.dart';
+import '../../../core/network/connectivity_provider.dart';
 import '../../../core/platform/external_apps.dart';
 import '../../../core/routing/route_paths.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../offline_map/data/offline_map_repository.dart';
+import '../../offline_map/domain/offline_points.dart';
 import '../../post/application/current_tenant.dart';
 import '../../post_detail/application/contact_actions.dart';
 import '../../tenant_bootstrap/data/location_service.dart';
@@ -56,6 +59,8 @@ class MapScreenController {
 /// * opens at the user's location, the area's centre as fallback;
 /// * features from GET /map/features (ADR 045) — clustered on the server,
 ///   our own data only — for the toggled `map_kinds` and "open now";
+/// * without a network, the downloaded area's essential points (ADR 050)
+///   over the downloaded map, with a notice;
 /// * fetched on open, on a toggle change and on a cluster tap; a pan only
 ///   offers "এই এলাকায় খুঁজুন" (no refetch per pan);
 /// * pins are icons (style images drawn by Flutter); from
@@ -86,6 +91,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   bool _loading = false;
   bool _failed = false;
   int _request = 0;
+
+  /// Showing the downloaded area's cached points (no network).
+  bool _offline = false;
+  List<api.MapKind>? _offlineKinds;
 
   /// What the shown features were fetched for, and where the camera is.
   LatLngBox? _fetchedBox;
@@ -124,6 +133,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   }
 
   api.MapConfig? get _config => ref.read(mapConfigProvider).asData?.value;
+
+  /// The `map_kinds`: from GET /map/config, else saved with the download.
+  List<api.MapKind> get _kindList =>
+      _config?.kinds ?? _offlineKinds ?? const <api.MapKind>[];
 
   /// One request on open: where (the user, else the area's centre) and
   /// which kinds (GET /map/config) are settled first.
@@ -197,27 +210,73 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         _fetchedBox = box;
         _fetchedZoom = zoom;
         _failed = false;
+        _offline = false;
         _loading = false;
       });
       _labelOf.clear();
       await _draw();
       await _updateLabels();
-    } on AppException {
-      if (mounted && id == _request) {
-        setState(() {
+    } on AppException catch (e) {
+      final offline = e is NetworkException || e is TimeoutException
+          ? await _offlineFeatures(box, zoom)
+          : null;
+      if (!mounted || id != _request) return;
+      setState(() {
+        _loading = false;
+        if (offline == null) {
           _failed = true;
-          _loading = false;
-        });
+          return;
+        }
+        _features = offline;
+        _fetchedBox = box;
+        _fetchedZoom = zoom;
+        _failed = false;
+        _offline = true;
+      });
+      if (offline != null) {
+        _labelOf.clear();
+        await _draw();
+        await _updateLabels();
       }
+    }
+  }
+
+  Future<void> _refilterOffline(LatLngBox box, double zoom) async {
+    final id = ++_request;
+    final offline = await _offlineFeatures(box, zoom);
+    if (!mounted || id != _request || offline == null) return;
+    setState(() {
+      _features = offline;
+      _fetchedBox = box;
+      _fetchedZoom = zoom;
+    });
+    await _draw();
+  }
+
+  /// No network: the downloaded area's cached points in [box], or null
+  /// without a download.
+  Future<api.MapFeatures?> _offlineFeatures(LatLngBox box, double zoom) async {
+    final tenantId = ref.read(currentTenantConfigProvider)?.id;
+    if (tenantId == null) return null;
+    final repo = ref.read(offlineMapRepositoryProvider);
+    try {
+      if (await repo.current(tenantId) == null) return null;
+      _offlineKinds ??= await repo.kinds(tenantId);
+      return offlineFeatures(
+        await repo.points(tenantId),
+        box: box,
+        zoom: zoom,
+        kinds: _kinds,
+      );
+    } on Object {
+      return null;
     }
   }
 
   /// The features as the map's GeoJSON source: the API's, plus each pin's
   /// style image name and its name image (when it has one).
   Map<String, dynamic> _collection() {
-    final kinds = {
-      for (final k in _config?.kinds ?? <api.MapKind>[]) k.code: k,
-    };
+    final kinds = {for (final k in _kindList) k.code: k};
     final features = _features?.features ?? const <api.MapFeature>[];
     return {
       'type': 'FeatureCollection',
@@ -259,6 +318,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     if (_fetchOnIdle) {
       _fetchOnIdle = false;
       unawaited(_load());
+      return;
+    }
+    if (_offline) {
+      // The cached points are on the phone: just show this viewport's.
+      unawaited(_refilterOffline(box, zoom));
       return;
     }
     final fetched = _fetchedBox;
@@ -378,10 +442,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     _labels.clear();
     _labelOf.clear();
     final ratio = MediaQuery.devicePixelRatioOf(context);
-    final icons = {
-      for (final k in _config?.kinds ?? <api.MapKind>[]) k.icon,
-      null,
-    };
+    final icons = {for (final k in _kindList) k.icon, null};
     for (final icon in icons) {
       await map.addImage(
         MapPinImages.imageName(icon),
@@ -503,12 +564,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   }
 
   Future<void> _chooseLayers() async {
-    final config = _config;
-    if (config == null) return;
+    final kinds = _kindList;
+    if (kinds.isEmpty) return;
     final choice = await showMapLayersSheet(
       context,
-      kinds: config.kinds,
-      selected: _kinds ?? {for (final k in config.kinds) k.code},
+      kinds: kinds,
+      selected: _kinds ?? {for (final k in kinds) k.code},
       openNow: _openNow,
     );
     if (choice == null || !mounted) return;
@@ -524,7 +585,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     api.MapFeature feature,
     String locale,
   ) {
-    final kind = _config?.kinds
+    final kind = _kindList
         .where((k) => k.code == feature.properties.kind)
         .firstOrNull;
     return l10n.mapClusterItem(
@@ -588,6 +649,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           if (features?.clipped ?? false) l10n.mapClipped,
           if (features?.truncated ?? false) l10n.mapTruncated,
           if (_failed) l10n.mapLoadFailed,
+          if (_offline) l10n.mapOfflinePoints,
         ])
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
@@ -776,13 +838,30 @@ class _PreviewLoaderState extends ConsumerState<_PreviewLoader> {
           );
       if (mounted) setState(() => _straight = distance.straightLineMeters);
     } on AppException {
-      // The distance is a nicety; the sheet works without it.
+      // The distance is a nicety: without the API, the great circle.
+      if (mounted) {
+        setState(
+          () => _straight = haversineMeters(
+            user.lat,
+            user.lng,
+            widget.feature.lat,
+            widget.feature.lng,
+          ),
+        );
+      }
     }
   }
 
   Future<void> _askRoad() async {
     final user = widget.user;
     if (user == null) return;
+    if (ref.read(isOnlineProvider).value == false) {
+      // Known offline: don't wait for a timeout.
+      setState(
+        () => _road = RoadFailed(AppLocalizations.of(context)!.mapRouteOffline),
+      );
+      return;
+    }
     await _showRoad(
       ref
           .read(routeCacheProvider)
@@ -810,8 +889,15 @@ class _PreviewLoaderState extends ConsumerState<_PreviewLoader> {
           e.statusCode == 429 ? l10n.mapRouteLimited : l10n.mapRouteFailed,
         ),
       );
-    } on AppException {
-      if (mounted) setState(() => _road = RoadFailed(l10n.mapRouteFailed));
+    } on AppException catch (e) {
+      if (!mounted) return;
+      // No network: say so plainly — the road needs the internet.
+      final offline = e is NetworkException || e is TimeoutException;
+      setState(
+        () => _road = RoadFailed(
+          offline ? l10n.mapRouteOffline : l10n.mapRouteFailed,
+        ),
+      );
     }
   }
 

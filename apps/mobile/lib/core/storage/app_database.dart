@@ -10,6 +10,7 @@ import 'package:drift_flutter/drift_flutter.dart';
 import 'json_list_converter.dart';
 import 'tables/emergency_contact_table.dart';
 import 'tables/feed_cache_table.dart';
+import 'tables/offline_map_tables.dart';
 import 'tables/post_drafts_table.dart';
 import 'tables/tenant_config_table.dart';
 
@@ -18,9 +19,17 @@ part 'app_database.g.dart';
 /// Local cache — tenant config, emergency contacts and each feed query's
 /// first page (`FeedCache`): cached copies of server responses,
 /// refreshed on bootstrap. The one exception is `PostDrafts`, the source of
-/// truth for posts not yet on the server.
+/// truth for posts not yet on the server. `OfflineMaps` / `OfflinePoints`:
+/// the downloaded map area and its essential points (ADR 050).
 @DriftDatabase(
-  tables: [TenantConfigCache, EmergencyContactCache, FeedCache, PostDrafts],
+  tables: [
+    TenantConfigCache,
+    EmergencyContactCache,
+    FeedCache,
+    PostDrafts,
+    OfflineMaps,
+    OfflinePoints,
+  ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(driftDatabase(name: 'amar_elaka'));
@@ -29,7 +38,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -40,6 +49,10 @@ class AppDatabase extends _$AppDatabase {
           tenantConfigCache,
           tenantConfigCache.typicalReviewHours,
         );
+      }
+      if (from < 3) {
+        await m.createTable(offlineMaps);
+        await m.createTable(offlinePoints);
       }
     },
   );

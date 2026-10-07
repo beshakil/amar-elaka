@@ -11,6 +11,9 @@ import { MapPreviewRepository } from './map-preview.repository';
 import { MapPreviewService } from './map-preview.service';
 import { MAP_FEATURES_CACHE, MapFeaturesService } from './map-features.service';
 import { MapTilesRoutes } from './map-tiles.routes';
+import { OfflineMapController } from './offline/offline-map.controller';
+import { OfflineMapRepository } from './offline/offline-map.repository';
+import { OfflineMapService } from './offline/offline-map.service';
 
 /**
  * The map (ADR 043, ADR 045): the self-hosted base map — one Bangladesh
@@ -22,7 +25,7 @@ import { MapTilesRoutes } from './map-tiles.routes';
  */
 @Module({
   imports: [SettingsModule, CacheModule, LocationsModule, StorageModule],
-  controllers: [MapController],
+  controllers: [MapController, OfflineMapController],
   providers: [
     MapConfigService,
     MapTilesRoutes,
@@ -30,6 +33,8 @@ import { MapTilesRoutes } from './map-tiles.routes';
     MapFeaturesRepository,
     MapPreviewService,
     MapPreviewRepository,
+    OfflineMapService,
+    OfflineMapRepository,
     { provide: MAP_FEATURES_CACHE, useExisting: CacheService },
   ],
 })

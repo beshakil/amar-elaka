@@ -95,6 +95,13 @@ export const EnvSchema = z
         .optional(),
     ),
 
+    // Offline map areas (ADR 050): the worker cuts each tenant's file from the
+    // national archive with the go-pmtiles CLI (pinned in apps/api/Dockerfile).
+    PMTILES_BIN: z.string().min(1).default('pmtiles'),
+    // Transport tuning (CLAUDE.md rule 5): one extract of a tenant takes well under a second.
+    PMTILES_TIMEOUT_MS: z.coerce.number().int().positive().default(120_000),
+    PMTILES_MAX_ATTEMPTS: z.coerce.number().int().positive().default(2),
+
     // Object storage — S3_* fields only matter when STORAGE_DRIVER=s3 (see
     // the superRefine below), so they're optional here.
     STORAGE_DRIVER: z.enum(['local', 's3']).default('local'),

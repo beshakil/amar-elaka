@@ -34,6 +34,9 @@ abstract final class RoutePaths {
   static const String savedSearches = '/saved-searches';
   static String savedSearchFor(String id) => '$savedSearches/$id';
 
+  /// "এলাকার ম্যাপ ডাউনলোড" (ADR 050).
+  static const String offlineMap = '/offline-map';
+
   static const String designSystem = '/design-system';
   static const String formPreview = '/form-preview';
   static const String mapDebug = '/map-debug';

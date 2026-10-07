@@ -15,6 +15,7 @@ export 'src/feed/feed.dart';
 export 'src/geocode/geocode.dart';
 export 'src/map/map_config.dart';
 export 'src/map/map_features.dart';
+export 'src/map/offline_map.dart';
 export 'src/media/create_upload_request.dart';
 export 'src/media/create_upload_result.dart';
 export 'src/posts/post_detail.dart';

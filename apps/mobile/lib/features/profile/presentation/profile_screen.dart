@@ -11,6 +11,7 @@ import '../../../core/routing/route_paths.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../auth/domain/auth_session_state.dart';
+import '../../offline_map/application/offline_map_controller.dart';
 import '../../search/application/saved_searches_controller.dart';
 
 /// `AppShell` provides the shared app bar/bottom nav; this is body content only.
@@ -80,7 +81,9 @@ class ProfileScreen extends ConsumerWidget {
             ],
           ),
         },
-        const SizedBox(height: AppSpacing.xl),
+        const SizedBox(height: AppSpacing.md),
+        const _OfflineMapTile(),
+        const SizedBox(height: AppSpacing.md),
         Text(
           l10n.profileThemeLabel,
           style: Theme.of(context).textTheme.titleMedium,
@@ -159,6 +162,33 @@ class _SavedSearchesTile extends ConsumerWidget {
       title: Text(l10n.profileSavedSearches),
       trailing: const Icon(Icons.chevron_right),
       onTap: () => context.push(RoutePaths.savedSearches),
+    );
+  }
+}
+
+/// "এলাকার ম্যাপ ডাউনলোড" — for guests too (it needs an area, not a login);
+/// a dot when a newer version waits.
+class _OfflineMapTile extends ConsumerWidget {
+  const _OfflineMapTile();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+    final state = ref.watch(offlineMapControllerProvider);
+    return ListTile(
+      key: const ValueKey('profile-offline-map'),
+      leading: Badge(
+        isLabelVisible: state.updateAvailable,
+        child: const Icon(Icons.download_for_offline_outlined),
+      ),
+      title: Text(l10n.offlineMapTitle),
+      subtitle: Text(
+        state.installed != null
+            ? l10n.offlineMapTileInstalled
+            : l10n.offlineMapTileHint,
+      ),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () => context.push(RoutePaths.offlineMap),
     );
   }
 }

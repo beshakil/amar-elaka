@@ -7,6 +7,7 @@ import {
   Building2,
   Flag,
   LayoutDashboard,
+  Map as MapIcon,
   PanelLeftClose,
   PanelLeftOpen,
   Shield,
@@ -23,6 +24,7 @@ const ICONS = {
   users: Users,
   building: Building2,
   flag: Flag,
+  map: MapIcon,
 } as const;
 
 /**
