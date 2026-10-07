@@ -1,3 +1,5 @@
+import { DEFAULT_MAX_ITEMS } from '@/lib/media/upload-queue';
+import { UPLOAD_COMPRESSION } from '@/lib/media/compress-image';
 import type { EditorTenant } from './post-editor';
 
 /** What the editor needs to know about the area. */
@@ -6,6 +8,7 @@ export function editorTenant(tenant: {
   nameBn: string;
   mapCenter: { lat: number; lng: number };
   moderation?: { typicalReviewHours: number } | undefined;
+  media?: { postMaxPhotos: number; imageMaxLongEdgePx: number } | undefined;
 }): EditorTenant {
   return {
     id: tenant.id,
@@ -13,5 +16,8 @@ export function editorTenant(tenant: {
     mapCenter: tenant.mapCenter,
     // The seeded default (moderation_typical_review_hours) for an older API.
     typicalReviewHours: tenant.moderation?.typicalReviewHours ?? 12,
+    // The seeded defaults (post_max_media, media_variant_full_px) for an older API.
+    maxPhotos: tenant.media?.postMaxPhotos ?? DEFAULT_MAX_ITEMS,
+    imageMaxLongEdgePx: tenant.media?.imageMaxLongEdgePx ?? UPLOAD_COMPRESSION.maxLongEdge,
   };
 }

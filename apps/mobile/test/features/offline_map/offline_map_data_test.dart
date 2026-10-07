@@ -9,7 +9,6 @@ import 'package:amar_elaka_app/features/offline_map/data/file_downloader.dart';
 import 'package:amar_elaka_app/features/offline_map/data/offline_map_repository.dart';
 import 'package:amar_elaka_app/features/offline_map/domain/offline_areas.dart';
 import 'package:amar_elaka_app/features/offline_map/domain/offline_points.dart';
-import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../post/post_test_harness.dart' show memoryDatabase;
@@ -111,7 +110,7 @@ void main() {
       final target = File('${dir.path}/a.pmtiles');
       await target.writeAsBytes(body.sublist(0, 50000));
       final progress = <int>[];
-      await FileDownloader(Dio()).download(
+      await FileDownloader(testDio()).download(
         server.url('a.pmtiles'),
         target,
         expectedBytes: body.length,
@@ -127,7 +126,7 @@ void main() {
       server.dropAfter = 70000;
       final target = File('${dir.path}/a.pmtiles');
       await FileDownloader(
-        Dio(),
+        testDio(),
       ).download(server.url('a.pmtiles'), target, expectedBytes: body.length);
       expect(server.ranges.first, isNull);
       expect(server.ranges, hasLength(2));
@@ -142,7 +141,7 @@ void main() {
         final target = File('${dir.path}/a.pmtiles');
         await target.writeAsBytes(body.sublist(0, 1000));
         await FileDownloader(
-          Dio(),
+          testDio(),
         ).download(server.url('a.pmtiles'), target, expectedBytes: body.length);
         expect(await target.length(), body.length);
         expect(sha256Hex(await target.readAsBytes()), sha256Hex(body));
@@ -153,7 +152,7 @@ void main() {
       final target = File('${dir.path}/a.pmtiles');
       await target.writeAsBytes(body);
       await FileDownloader(
-        Dio(),
+        testDio(),
       ).download(server.url('a.pmtiles'), target, expectedBytes: body.length);
       expect(server.ranges, isEmpty);
     });
@@ -188,7 +187,7 @@ void main() {
         db: db,
         api: api,
         mapApi: mapApi,
-        downloader: FileDownloader(Dio()),
+        downloader: FileDownloader(testDio()),
         supportDir: () async => support,
       );
     });

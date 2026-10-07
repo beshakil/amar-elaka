@@ -20,7 +20,7 @@ import { PostCard } from '@/components/posts/post-card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { CatalogCategory, MapConfig, Ownership, Post } from '@/lib/api/schemas';
-import { compressImage } from '@/lib/media/compress-image';
+import { compressImage, UPLOAD_COMPRESSION } from '@/lib/media/compress-image';
 import { UploadQueue } from '@/lib/media/upload-queue';
 import { createWebUploadTransport } from '@/lib/media/web-upload-transport';
 import {
@@ -49,6 +49,10 @@ export interface EditorTenant {
   nameBn: string;
   mapCenter: { lat: number; lng: number };
   typicalReviewHours: number;
+  /** The API's post_max_media: the picker offers no more. */
+  maxPhotos: number;
+  /** The API's media_variant_full_px: nothing bigger is uploaded. */
+  imageMaxLongEdgePx: number;
 }
 
 type Mode = { kind: 'create' } | { kind: 'edit'; post: Post };
@@ -134,7 +138,13 @@ export function PostEditor({
   const ownershipCheck = useRef(0);
 
   const [queue] = useState(
-    () => new UploadQueue({ transport: createWebUploadTransport(), compress: compressImage }),
+    () =>
+      new UploadQueue({
+        transport: createWebUploadTransport(),
+        maxItems: tenant.maxPhotos,
+        compress: (file) =>
+          compressImage(file, { ...UPLOAD_COMPRESSION, maxLongEdge: tenant.imageMaxLongEdgePx }),
+      }),
   );
   useEffect(() => () => queue.dispose(), [queue]);
 

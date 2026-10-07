@@ -54,6 +54,11 @@ export const tenantConfigSchema = z.object({
     email: z.string().nullable(),
     whatsappE164: z.string().nullable(),
   }),
+  /**
+   * What the clients' photo pickers and compressors must match: post_max_media
+   * (the API refuses more) and media_variant_full_px (the largest variant kept).
+   */
+  media: z.object({ postMaxPhotos: z.number(), imageMaxLongEdgePx: z.number() }),
   /** What a seller is promised after submitting a post that waits for review. */
   moderation: z.object({ typicalReviewHours: z.number() }),
   /** The public web's cache windows (seconds) and SEO rules (ADR 039). */

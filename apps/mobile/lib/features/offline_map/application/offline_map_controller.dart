@@ -84,9 +84,11 @@ class OfflineMapController extends Notifier<OfflineMapState> {
           .watch(offlineMapRepositoryProvider)
           .watch(tenantId)
           .listen(
-            (row) => state = row == null
-                ? state.copyWith(clearInstalled: true)
-                : state.copyWith(installed: row),
+            (row) => _emit(
+              () => row == null
+                  ? state.copyWith(clearInstalled: true)
+                  : state.copyWith(installed: row),
+            ),
           );
     }
     ref.onDispose(() {
@@ -100,18 +102,24 @@ class OfflineMapController extends Notifier<OfflineMapState> {
   Future<void> check() async {
     final tenantId = _tenantId;
     if (tenantId == null || state.phase == OfflineMapPhase.downloading) return;
-    state = state.copyWith(phase: OfflineMapPhase.checking, clearError: true);
+    _emit(
+      () => state.copyWith(phase: OfflineMapPhase.checking, clearError: true),
+    );
     try {
       final manifest = await _repo.manifest();
       await _repo.markChecked(tenantId);
-      state = state.copyWith(
-        manifest: manifest,
-        phase: OfflineMapPhase.idle,
-        error: manifest.available ? null : _unavailable(manifest),
-        clearError: manifest.available,
+      _emit(
+        () => state.copyWith(
+          manifest: manifest,
+          phase: OfflineMapPhase.idle,
+          error: manifest.available ? null : _unavailable(manifest),
+          clearError: manifest.available,
+        ),
       );
     } on AppException catch (e) {
-      state = state.copyWith(phase: OfflineMapPhase.failed, error: _errorOf(e));
+      _emit(
+        () => state.copyWith(phase: OfflineMapPhase.failed, error: _errorOf(e)),
+      );
     }
   }
 
@@ -122,39 +130,49 @@ class OfflineMapController extends Notifier<OfflineMapState> {
     var manifest = state.manifest;
     if (manifest == null || !manifest.available) {
       await check();
+      if (!ref.mounted) return;
       manifest = state.manifest;
       if (manifest == null || !manifest.available) return;
     }
+    final ready = manifest;
     final cancel = _cancel = CancelToken();
-    state = state.copyWith(
-      phase: OfflineMapPhase.downloading,
-      done: 0,
-      total: manifest.totalBytes,
-      clearError: true,
+    _emit(
+      () => state.copyWith(
+        phase: OfflineMapPhase.downloading,
+        done: 0,
+        total: ready.totalBytes,
+        clearError: true,
+      ),
     );
     try {
       final row = await _repo.install(
         tenantId,
-        manifest,
+        ready,
         cancel: cancel,
         onProgress: (done, total) =>
-            state = state.copyWith(done: done, total: total),
+            _emit(() => state.copyWith(done: done, total: total)),
       );
-      state = state.copyWith(installed: row, phase: OfflineMapPhase.idle);
+      _emit(() => state.copyWith(installed: row, phase: OfflineMapPhase.idle));
     } on ChecksumMismatchException {
-      state = state.copyWith(
-        phase: OfflineMapPhase.failed,
-        error: OfflineMapError.checksum,
+      _emit(
+        () => state.copyWith(
+          phase: OfflineMapPhase.failed,
+          error: OfflineMapError.checksum,
+        ),
       );
     } on AppException catch (e) {
       // Cancelled: back to idle, the partial files stay for a resume.
-      state = cancel.isCancelled
-          ? state.copyWith(phase: OfflineMapPhase.idle)
-          : state.copyWith(phase: OfflineMapPhase.failed, error: _errorOf(e));
+      _emit(
+        () => cancel.isCancelled
+            ? state.copyWith(phase: OfflineMapPhase.idle)
+            : state.copyWith(phase: OfflineMapPhase.failed, error: _errorOf(e)),
+      );
     } on Object {
-      state = state.copyWith(
-        phase: OfflineMapPhase.failed,
-        error: OfflineMapError.failed,
+      _emit(
+        () => state.copyWith(
+          phase: OfflineMapPhase.failed,
+          error: OfflineMapError.failed,
+        ),
       );
     } finally {
       _cancel = null;
@@ -168,11 +186,13 @@ class OfflineMapController extends Notifier<OfflineMapState> {
     if (tenantId == null) return;
     _cancel?.cancel();
     await _repo.delete(tenantId);
-    state = state.copyWith(
-      clearInstalled: true,
-      phase: OfflineMapPhase.idle,
-      done: 0,
-      clearError: true,
+    _emit(
+      () => state.copyWith(
+        clearInstalled: true,
+        phase: OfflineMapPhase.idle,
+        done: 0,
+        clearError: true,
+      ),
     );
   }
 
@@ -198,8 +218,15 @@ class OfflineMapController extends Notifier<OfflineMapState> {
     final tenantId = _tenantId;
     if (tenantId == null) return null;
     final row = await _repo.current(tenantId);
-    if (row != null) state = state.copyWith(installed: row);
+    if (row != null) _emit(() => state.copyWith(installed: row));
     return row;
+  }
+
+  /// Sets the state unless this controller is already gone (the area changed,
+  /// or the app tore it down mid-download): the work finishing late is fine,
+  /// writing to a disposed provider is not.
+  void _emit(OfflineMapState Function() next) {
+    if (ref.mounted) state = next();
   }
 
   static OfflineMapError _unavailable(OfflineMapManifest manifest) =>

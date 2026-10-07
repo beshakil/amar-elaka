@@ -5674,6 +5674,21 @@
               "whatsappE164"
             ]
           },
+          "media": {
+            "type": "object",
+            "properties": {
+              "postMaxPhotos": {
+                "type": "number"
+              },
+              "imageMaxLongEdgePx": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "postMaxPhotos",
+              "imageMaxLongEdgePx"
+            ]
+          },
           "moderation": {
             "type": "object",
             "properties": {
@@ -5726,6 +5741,7 @@
           "enabledCategories",
           "emergencyNumbers",
           "support",
+          "media",
           "moderation",
           "web"
         ]

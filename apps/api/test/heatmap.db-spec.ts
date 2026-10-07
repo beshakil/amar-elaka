@@ -202,6 +202,54 @@ describe('heatmap_cells (0045)', () => {
     expect(await cells(AS_ADMIN, 'supply', 'heat-cars')).toEqual([]);
   });
 
+  it('owns saved searches by resolve_owning_tenant, like unmet demand: just outside the polygon still counts (0048)', async () => {
+    // 2 km west of tenant A's square: outside its polygon, inside the 5 km
+    // boundary buffer, nearest to A. The old polygon test left it out.
+    const OUTSIDE = 'SRID=4326;POINT(91.981 22.5501)';
+    for (const n of [6, 7]) {
+      await admin`
+        insert into saved_searches (user_id, name, center)
+        values (${userId(n)}, 'buffer', ${OUTSIDE})`;
+    }
+    try {
+      const rows = await as(
+        app,
+        AS_ADMIN,
+        (tx) => tx<Cell[]>`
+          select geohash, lat, lng, count, people from heatmap_cells('demand', null, 6, 30, 2, 100)`,
+      );
+      const west = rows.find((c) => c.lng < 92.0);
+      expect(west).toMatchObject({ people: 2 });
+      // Tenant B (east of A) never gets it.
+      expect(
+        (
+          await as(
+            app,
+            AS_ADMIN_B,
+            (tx) => tx<Cell[]>`
+            select geohash, lat, lng, count, people from heatmap_cells('demand', null, 6, 30, 2, 100)`,
+          )
+        ).find((c) => c.lng < 92.0),
+      ).toBeUndefined();
+    } finally {
+      await admin`delete from saved_searches where name = 'buffer' and user_id::text like ${FIXTURE}`;
+    }
+  });
+
+  it('supply leaves out a live post past expires_at (0048)', async () => {
+    const before = (await cells(AS_ADMIN, 'supply'))[0]!;
+    await admin`
+      update posts set expires_at = now() - interval '1 minute'
+      where tenant_id = ${TENANT} and author_member_id = ${memberId(1)}`;
+    try {
+      // One of the five sellers gone: the busy cell drops below five people.
+      expect(await cells(AS_ADMIN, 'supply')).toEqual([]);
+      expect(before.people).toBe(5);
+    } finally {
+      await admin`update posts set expires_at = null where tenant_id = ${TENANT} and author_member_id = ${memberId(1)}`;
+    }
+  });
+
   it("is the tenant's own data, for its admins only", async () => {
     expect(await cells(AS_ADMIN_B, 'demand')).toEqual([]);
     await expect(cells(AS_MEMBER, 'demand')).rejects.toMatchObject({ code: '42501' });

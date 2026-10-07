@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/dio_client.dart';
+import '../../post/application/current_tenant.dart';
 import '../data/image_compressor.dart';
 import '../data/media_upload_transport.dart';
 import '../data/upload_queue_store.dart';
@@ -307,9 +308,15 @@ final uploadQueueProvider = Provider.autoDispose.family<UploadQueue, String>((
   ref,
   queueId,
 ) {
+  // The tenant's limits (post_max_media, media_variant_full_px): the picker
+  // offers no more than the API accepts, and nothing bigger than it keeps.
+  final media = ref.read(currentTenantConfigProvider)?.media;
   final queue = UploadQueue(
     queueId: queueId,
-    compressor: PluginImageCompressor(),
+    maxItems: media?.postMaxPhotos ?? UploadQueue.defaultMaxItems,
+    compressor: PluginImageCompressor(
+      maxLongEdge: media?.imageMaxLongEdgePx ?? UploadCompression.maxLongEdge,
+    ),
     transport: DioMediaUploadTransport(ref.watch(dioClientProvider)),
     store: PersistentUploadQueueStore(),
   );

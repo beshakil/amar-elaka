@@ -6,6 +6,7 @@ import 'package:flutter_image_compress/flutter_image_compress.dart';
 
 /// Compression rules applied on the phone BEFORE upload: users pay for data,
 /// so a 5 MB camera photo leaves the phone as a ~150 KB WebP.
+/// Defaults until the tenant's config says otherwise (TenantConfig.media).
 abstract final class UploadCompression {
   /// Longest edge after compression.
   static const maxLongEdge = 1200;
@@ -34,6 +35,11 @@ int compressionBound(
 }
 
 class PluginImageCompressor implements ImageCompressor {
+  /// [maxLongEdge]: the tenant's media_variant_full_px (TenantConfig.media).
+  PluginImageCompressor({this.maxLongEdge = UploadCompression.maxLongEdge});
+
+  final int maxLongEdge;
+
   /// One compression at a time across the app, whatever the upload
   /// concurrency: decoding a 12–48 MP photo takes tens of MB of native memory,
   /// and two at once is what gets the app killed on a 2 GB Android 8 phone.
@@ -50,7 +56,7 @@ class PluginImageCompressor implements ImageCompressor {
 
   Future<int> _compress(String sourcePath, String targetPath) async {
     final (width, height) = await _dimensions(sourcePath);
-    final bound = compressionBound(width, height);
+    final bound = compressionBound(width, height, maxLongEdge);
     final result = await FlutterImageCompress.compressAndGetFile(
       sourcePath,
       targetPath,

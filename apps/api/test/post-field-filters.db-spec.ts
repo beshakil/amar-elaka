@@ -78,6 +78,11 @@ describe('Field filters on 100k posts', () => {
 
   async function cleanUp(): Promise<void> {
     await admin`delete from posts where tenant_id::text like ${FIXTURE_PREFIX}`;
+    // 100k inserts and their deletes each queue a search event; left behind,
+    // the next suite to run the search relay drains 200k of them (and times out).
+    await admin`
+      delete from outbox_events
+      where aggregate_table = 'posts' and payload->>'tenant_id' like ${FIXTURE_PREFIX}`;
     await admin`delete from category_field_schemas where category_id::text like ${FIXTURE_PREFIX}`;
     await admin`delete from categories where id::text like ${FIXTURE_PREFIX}`;
     await admin`delete from tenant_members where tenant_id::text like ${FIXTURE_PREFIX}`;

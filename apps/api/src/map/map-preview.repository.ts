@@ -50,7 +50,7 @@ export class MapPreviewRepository {
           left join public.geo_areas ga on ga.id = p.geo_area_id
           ${firstImage('post_id', 'p')}
           where p.id = ${id} and p.status_code = 'live' and p.deleted_at is null
-            and not p.hidden_by_owner`,
+            and not p.hidden_by_owner and (p.expires_at is null or p.expires_at > now())`,
         );
       case 'stores':
         return this.one(

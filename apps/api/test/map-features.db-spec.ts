@@ -428,6 +428,48 @@ describe('map_features (0039–0041)', () => {
     expect(rows.find((r) => r.id === PLACE_OPEN)!.open_now).toBe(true);
   });
 
+  it('states only what it returns: is_open_at runs per feature shown, never per row in the box (0048)', async () => {
+    // How many times is_open_at() ran inside one map_features() call, as ae_app.
+    const openStateCalls = (openNow: boolean, layers: string[], zoom: number) =>
+      admin.begin(async (tx) => {
+        await tx`set local track_functions = 'all'`;
+        await tx`select set_config('app.role', 'anonymous', true)`;
+        await tx`set local role ae_app`;
+        const rows = await tx<{ point_count: number }[]>`
+          select point_count from public.map_features(
+            ${VIEW.minLng}, ${VIEW.minLat}, ${VIEW.maxLng}, ${VIEW.maxLat}, ${zoom}, ${layers}::text[],
+            null, ${openNow}, ${CENTER.lat}, ${CENTER.lng}, 100, null::text[])`;
+        await tx`reset role`;
+        const [stat] = await tx<{ calls: string | null }[]>`
+          select sum(calls)::text as calls from pg_stat_xact_user_functions where funcname = 'is_open_at'`;
+        return {
+          calls: Number(stat?.calls ?? 0),
+          singles: rows.filter((r) => r.point_count === 1).length,
+        };
+      });
+    // Posts have no hours: not one call (0044 made one per post in the box).
+    expect((await openStateCalls(false, ['posts'], 16)).calls).toBe(0);
+    // Clustered: only the single features that come back get a state.
+    const clustered = await openStateCalls(false, ['places', 'info', 'stores'], 10);
+    expect(clustered.calls).toBeLessThanOrEqual(clustered.singles);
+    // open_now has to look at every candidate: that's the filter.
+    expect((await openStateCalls(true, ['places', 'info', 'stores'], 10)).calls).toBeGreaterThan(
+      clustered.calls,
+    );
+  });
+
+  it('drops a live post past expires_at at once, as the feed does, not when the expiry job sweeps it (0048)', async () => {
+    expect(ids(await features({ layers: ['posts'] }))).toContain(POST_B);
+    const [before] = await admin<{ expires_at: Date | null }[]>`
+      select expires_at from posts where id = ${POST_B}`;
+    await admin`update posts set expires_at = now() - interval '1 minute' where id = ${POST_B}`;
+    try {
+      expect(ids(await features({ layers: ['posts'] }))).not.toContain(POST_B);
+    } finally {
+      await admin`update posts set expires_at = ${before!.expires_at} where id = ${POST_B}`;
+    }
+  });
+
   it('caps the rows (the caller asks one more than map_features_max to know it was cut)', async () => {
     const rows = await features({ zoom: 10, layers: ['posts'], limit: 1 });
     expect(rows).toHaveLength(1);

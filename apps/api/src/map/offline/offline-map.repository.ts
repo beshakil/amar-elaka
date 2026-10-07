@@ -62,8 +62,17 @@ export class OfflineMapRepository {
       select st_xmin(b)::float8 as min_lng, st_ymin(b)::float8 as min_lat,
              st_xmax(b)::float8 as max_lng, st_ymax(b)::float8 as max_lat
       from (
-        select st_extent(st_buffer(coalesce(g.boundary, g.boundary_simplified, t.map_center::geography),
-                                   ${bufferKm * METERS_PER_KM}::float8)::geometry) as b
+        -- The tenant's area as nearest_tenants (0021) defines it: a radius-mode
+        -- tenant's circle (centre + service_radius_km), else its polygon (or
+        -- just its centre); then the offline buffer around that.
+        select st_extent(case
+                 when t.boundary_mode = 'radius'
+                   then st_buffer(t.map_center::geography,
+                                  coalesce(t.service_radius_km, 0) * ${METERS_PER_KM}::float8
+                                  + ${bufferKm * METERS_PER_KM}::float8)
+                 else st_buffer(coalesce(g.boundary, g.boundary_simplified, t.map_center::geography),
+                                ${bufferKm * METERS_PER_KM}::float8)
+               end::geometry) as b
         from public.tenants t
         left join public.geo_areas g on g.id = t.geo_area_id
         where t.id = ${tenantId}::uuid

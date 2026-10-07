@@ -57,6 +57,10 @@ describe('Offline map areas (e2e)', () => {
   let app: NestFastifyApplication;
   let admin: Sql;
   let builder: Builder;
+  let boundsOf: (
+    tenantId: string,
+    bufferKm: number,
+  ) => Promise<[number, number, number, number] | undefined>;
   let makeBuilder: (extractor: Extractor) => Builder;
 
   async function cleanUp(): Promise<void> {
@@ -129,6 +133,16 @@ describe('Offline map areas (e2e)', () => {
     await app.init();
     await app.getHttpAdapter().getInstance().ready();
     builder = moduleRef.get(OfflineMapBuilder);
+    boundsOf = (tenantId, bufferKm) =>
+      moduleRef
+        .get(TenantContext)
+        .run({ role: 'system' }, () =>
+          moduleRef
+            .get(TenantDb)
+            .transaction((tx) =>
+              moduleRef.get(OfflineMapRepository).tenantBounds(tx, tenantId, bufferKm),
+            ),
+        );
     const logger = await moduleRef.resolve(PinoLogger);
     makeBuilder = (extractor) =>
       new OfflineMapBuilder(
@@ -270,6 +284,18 @@ describe('Offline map areas (e2e)', () => {
       properties: { level: 'union', name_bn: 'অফলাইন ইউনিয়ন' },
       geometry: { type: 'MultiPolygon' },
     });
+  });
+
+  it("cuts a radius-mode tenant's circle (service radius + buffer), as ownership counts it", async () => {
+    await admin`update tenants set boundary_mode = 'radius', service_radius_km = 10 where id = ${OTHER}`;
+    try {
+      const [, minLat, , maxLat] = (await boundsOf(OTHER, 2))!;
+      // (10 km + 2 km) each way: ~24 km tall, i.e. ~0.216° of latitude.
+      expect(maxLat - minLat).toBeGreaterThan(0.2);
+      expect(maxLat - minLat).toBeLessThan(0.23);
+    } finally {
+      await admin`update tenants set boundary_mode = 'polygon', service_radius_km = null where id = ${OTHER}`;
+    }
   });
 
   it('steps a zoom down to fit offline_map_max_mb, and gives up as too_large below the floor', async () => {

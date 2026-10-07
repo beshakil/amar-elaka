@@ -54,6 +54,8 @@ export const tenantConfigSchema = z.object({
   }),
   /** Optional: a cached/older API may not send it (then 12 h, the seeded default). */
   moderation: z.object({ typicalReviewHours: z.number() }).optional(),
+  /** The photo limits (post_max_media, media_variant_full_px); optional for an older API. */
+  media: z.object({ postMaxPhotos: z.number(), imageMaxLongEdgePx: z.number() }).optional(),
   /**
    * The public pages' cache windows and SEO rules (settings, ADR 039).
    * Optional: an older cached config may not carry it — then nothing is

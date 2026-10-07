@@ -144,6 +144,10 @@ export class TenantsService {
           'moderation_typical_review_hours',
           tenant.id,
         );
+        const [postMaxPhotos, imageMaxLongEdgePx] = await Promise.all([
+          this.settings.get('post_max_media', tenant.id),
+          this.settings.get('media_variant_full_px', tenant.id),
+        ]);
         const [home, category, listing, soldNoindexDays, sitemapUrlsPerFile] = await Promise.all([
           this.settings.get('web_home_revalidate_seconds', tenant.id),
           this.settings.get('web_category_revalidate_seconds', tenant.id),
@@ -169,6 +173,7 @@ export class TenantsService {
             email: settingsRow?.contactEmail ?? null,
             whatsappE164: settingsRow?.whatsappE164 ?? null,
           },
+          media: { postMaxPhotos, imageMaxLongEdgePx },
           moderation: { typicalReviewHours },
           web: {
             homeRevalidateSeconds: home,

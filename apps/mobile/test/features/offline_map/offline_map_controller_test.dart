@@ -15,7 +15,6 @@ import 'package:amar_elaka_app/features/offline_map/application/offline_map_sour
 import 'package:amar_elaka_app/features/offline_map/data/file_downloader.dart';
 import 'package:amar_elaka_app/features/offline_map/data/offline_map_repository.dart';
 import 'package:amar_elaka_app/features/post/application/current_tenant.dart';
-import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -75,7 +74,7 @@ void main() {
             db: db,
             api: api,
             mapApi: FakePointsMapApi(),
-            downloader: FileDownloader(Dio()),
+            downloader: FileDownloader(testDio()),
             supportDir: () async => support,
           ),
         ),

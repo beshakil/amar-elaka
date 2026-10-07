@@ -22,6 +22,7 @@ class TenantConfig {
     required this.emergencyNumbers,
     required this.support,
     this.moderation = TenantModeration.fallback,
+    this.media = TenantMedia.fallback,
   });
 
   factory TenantConfig.fromJson(Map<String, dynamic> json) =>
@@ -43,6 +44,10 @@ class TenantConfig {
   /// Defaults for a response from before the field existed.
   final TenantModeration moderation;
 
+  /// The photo limits the picker and the compressor must match; defaults for
+  /// a config cached before the field existed.
+  final TenantMedia media;
+
   Map<String, dynamic> toJson() => _$TenantConfigToJson(this);
 }
 
@@ -61,6 +66,33 @@ class TenantModeration {
   final int typicalReviewHours;
 
   Map<String, dynamic> toJson() => _$TenantModerationToJson(this);
+}
+
+@JsonSerializable()
+class TenantMedia {
+  const TenantMedia({
+    required this.postMaxPhotos,
+    required this.imageMaxLongEdgePx,
+  });
+
+  /// The seeded defaults (post_max_media 0026, media_variant_full_px 0019),
+  /// for a config cached or served before the field existed.
+  static const fallback = TenantMedia(
+    postMaxPhotos: 10,
+    imageMaxLongEdgePx: 1200,
+  );
+
+  factory TenantMedia.fromJson(Map<String, dynamic> json) =>
+      _$TenantMediaFromJson(json);
+
+  /// post_max_media: the API refuses a post with more.
+  final int postMaxPhotos;
+
+  /// media_variant_full_px: the largest variant the server keeps; uploading
+  /// bigger only wastes the user's data.
+  final int imageMaxLongEdgePx;
+
+  Map<String, dynamic> toJson() => _$TenantMediaToJson(this);
 }
 
 @JsonSerializable()

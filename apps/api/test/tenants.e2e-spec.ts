@@ -200,6 +200,8 @@ describe('Tenant resolution + tenant module (e2e)', () => {
         slug: SLUG_COVERING,
         support: { phoneE164: '+8801911000059', email: 'support@tenants-e2e.example.com' },
         branding: { logoStorageKey: 'logos/covering.png' },
+        // The seeded post_max_media / media_variant_full_px, for the clients' pickers.
+        media: { postMaxPhotos: 10, imageMaxLongEdgePx: 1200 },
         moderation: { typicalReviewHours: 12 },
       });
     });

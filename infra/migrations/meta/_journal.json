@@ -337,6 +337,13 @@
       "when": 1791352129721,
       "tag": "0047_notification_inbox",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1791365293306,
+      "tag": "0048_map_and_heatmap_consistency",
+      "breakpoints": true
     }
   ]
 }
