@@ -54,6 +54,8 @@ export async function SiteHeader({
 
         <Suspense fallback={<div className="order-last min-w-0 flex-1 sm:order-none" />}>
           <SearchBox
+            // The seeded search_suggest_min_chars when no tenant (or an older API) says.
+            minChars={tenant?.search?.suggestMinChars ?? 2}
             labels={{
               placeholder: t('searchPlaceholder'),
               submit: t('searchSubmit'),

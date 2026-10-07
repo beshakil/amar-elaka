@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { Sql, TransactionSql } from 'postgres';
 import {
   resolveTestAppDatabaseUrl,
@@ -337,6 +338,33 @@ describe('Business hours and open now (0044)', () => {
     const onlyOpen = await landmarks(true);
     expect(onlyOpen).toContain(open);
     expect(onlyOpen).not.toContain(unknown);
+  });
+
+  it("is_open_at's lookups by place or store id have an index (0049: they scanned the table)", async () => {
+    // The lookups is_open_at / hours_intervals run: by entity id, no tenant.
+    const lookups = [
+      `select 1 from place_hours h where h.place_id = '${randomUUID()}'`,
+      `select 1 from store_hours h where h.store_id = '${randomUUID()}'`,
+      `select 1 from hours_exceptions e
+       where (e.place_id = '${randomUUID()}' or e.store_id = '${randomUUID()}')
+         and e.on_date between current_date - 1 and current_date + 7`,
+    ];
+    const plans = await admin.begin(async (tx) => {
+      // Too few rows here for the planner to prefer an index on its own:
+      // ask whether one is usable at all.
+      await tx`set local enable_seqscan = off`;
+      return Promise.all(
+        lookups.map(async (q) =>
+          (await tx.unsafe<{ 'QUERY PLAN': string }[]>(`explain ${q}`))
+            .map((r) => r['QUERY PLAN'])
+            .join('\n'),
+        ),
+      );
+    });
+    expect(plans[0]).toContain('place_hours_place_day_idx');
+    expect(plans[1]).toContain('store_hours_store_day_idx');
+    expect(plans[2]).toContain('hours_exceptions_place_on_date_idx');
+    expect(plans[2]).toContain('hours_exceptions_store_on_date_idx');
   });
 
   describe('RLS', () => {

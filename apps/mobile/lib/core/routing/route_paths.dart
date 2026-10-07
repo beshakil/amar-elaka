@@ -40,6 +40,10 @@ abstract final class RoutePaths {
   /// The in-app notification inbox.
   static const String notifications = '/notifications';
 
+  /// A place's own screen.
+  static const String place = '/places';
+  static String placeFor(String placeId) => '$place/$placeId';
+
   /// "তথ্য সংশোধন" for a place (ADR 051).
   static const String placeSuggest = '/place-suggest';
   static String placeSuggestFor(String placeId) => '$placeSuggest/$placeId';

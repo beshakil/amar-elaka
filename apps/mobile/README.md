@@ -71,3 +71,36 @@ builds need HTTPS.
 `/design-system` (every design token and base widget, both themes) only
 exists in debug builds — `kDebugMode` gates its route registration in
 `lib/core/routing/app_router.dart`, so it's tree-shaken out of release.
+
+## Release builds (Android)
+
+Release builds are signed with the Play upload key, which is never committed
+(`android/.gitignore` ignores `key.properties`, `*.jks` and `*.keystore`).
+
+1. Create the upload key once, and keep it (and its passwords) in the team's
+   password manager. Losing it means asking Google for an upload key reset:
+
+   ```sh
+   keytool -genkey -v -keystore ~/amar-elaka-upload.jks -keyalg RSA \
+     -keysize 2048 -validity 10000 -alias upload
+   ```
+
+2. On a developer machine, `android/key.properties`:
+
+   ```properties
+   storeFile=/home/you/amar-elaka-upload.jks
+   storePassword=…
+   keyAlias=upload
+   keyPassword=…
+   ```
+
+   In CI, the same four values as `ANDROID_KEYSTORE_FILE`,
+   `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD`.
+
+3. Build: `flutter build appbundle --release --dart-define=API_BASE_URL=https://…`.
+   Without a key, `bundleRelease` stops with an error instead of producing a
+   debug-signed bundle the Play Store could never update; `flutter run
+--release` on a test phone still works with the debug key.
+
+The application id `com.amarelaka.amar_elaka_app` is the app's Play Store
+identity and can't change after the first upload.

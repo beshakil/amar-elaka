@@ -85,6 +85,8 @@ export class SearchMatcher {
         categoryIds: criteria.categoryIds,
         fieldFilters: criteria.fieldFilters,
         price: options.withPrice === false ? null : criteria.price,
+        // settings-exempt: milliseconds to Unix seconds
+        listedAt: Date.now() / 1000,
       }),
       ...(options.extra ?? []),
     ];

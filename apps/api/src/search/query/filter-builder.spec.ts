@@ -24,6 +24,17 @@ describe('filter builder', () => {
     ).toEqual(['_geoRadius(23.8, 90.4, 2500)', 'category_id IN ["c1", "c2"]']);
   });
 
+  it('leaves out posts past expires_at, keeping documents without one (post_is_listed, 0049)', () => {
+    expect(
+      buildSearchFilter({
+        geo: null,
+        categoryIds: null,
+        fieldFilters: [],
+        listedAt: 1_790_000_000.7,
+      }),
+    ).toEqual(['(expires_at NOT EXISTS OR expires_at IS NULL OR expires_at > 1790000000)']);
+  });
+
   it('an area narrows the radius search, never replaces it (ADR 042)', () => {
     expect(
       buildSearchFilter({

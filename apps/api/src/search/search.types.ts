@@ -60,6 +60,12 @@ export interface SearchDocument {
   is_shippable: boolean;
   /** Unix seconds: last bump or publication (ranking rule `published_at:desc`). */
   published_at: number;
+  /**
+   * Posts: Unix seconds of expires_at (null: no expiry; stores and places).
+   * Searches drop a post once it passes, without waiting for the expiry job
+   * to flip its status: the same rule as post_is_listed (0049).
+   */
+  expires_at: number | null;
 
   /** Filterable custom fields (`filterable_fields` of the pinned schema version). */
   fields: Record<string, IndexedFieldValue>;
@@ -109,6 +115,7 @@ export const FILTERABLE_ATTRIBUTES = [
   'rating_avg',
   'is_verified',
   'is_landmark',
+  'expires_at',
   // Declaring the object makes every nested `fields.<key>` filterable and facetable.
   'fields',
 ] as const;

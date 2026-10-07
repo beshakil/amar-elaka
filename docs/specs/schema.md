@@ -5187,6 +5187,29 @@ Found missing by the month 2 review. All are FORCE RLS; columns as migrated.
 - `heatmap_cells()` owns saved searches by `resolve_owning_tenant()` (as `unmet_demand` does), and supply skips expired
   posts.
 
+**0049 (month 2 review gaps): one rule each, open-now indexes, client settings.**
+
+- **One visibility rule.**
+  - `post_is_listed(status, deleted_at, scrubbed_at, hidden, expires_at, at)`: shown in the feed, the map, the heatmap,
+    nearby discovery and search.
+  - `post_is_viewable(status, deleted_at, hidden)`: the post page anyone may open (live or sold).
+  - Both are `IMMUTABLE` SQL expressions that the planner inlines, so the live-post partial indexes still match.
+  - `feed_posts`, `map_features`, `heatmap_cells` and `discover_nearby` (which now also drops expired posts) use
+    them, as does every API query. `single-visibility-rule.spec.ts` refuses a hand-written copy, and
+    `post-visibility.db-spec.ts` proves the TS page check agrees.
+- **One area geometry.** `tenant_area_distance_m(mode, centre, radius_km, boundary, point)`: `nearest_tenants`,
+  `tenant_distance_m` and `tenant_covers_point` all measure through it.
+- **Hours indexes by entity.** `place_hours (place_id, iso_day_of_week)`, `store_hours (store_id, iso_day_of_week)`,
+  and `hours_exceptions (place_id | store_id, on_date)`. `is_open_at` looks hours up by entity, never by tenant, so
+  it scanned `place_hours` on every call; it is now ~4× cheaper, and the map's `open_now` ~3.6×.
+- **Field filters.** The search fallback's JSON-path ranges call `post_field_filter_matches()` (the feed's matcher);
+  only generated columns and containment are built in TS, for their indexes. `field-filter-parity.db-spec.ts` runs
+  every kind both ways.
+- **Settings.**
+  - Retired `map_style_fallback`: a client loading a Barikoi style bypassed the budget.
+  - Retired `search_suggest_limit`: unused.
+  - Added `client_config_refresh_minutes` (360) and `search_description_max_chars` (2000).
+
 ## 14. Open questions
 
 Each has my recommendation. Items marked **⚠ before first migration** are expensive to change later.

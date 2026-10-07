@@ -5556,6 +5556,21 @@
           "defaultLocale": {
             "type": "string"
           },
+          "timezone": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "utcOffsetMinutes": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "name",
+              "utcOffsetMinutes"
+            ]
+          },
           "mapCenter": {
             "type": "object",
             "properties": {
@@ -5682,11 +5697,48 @@
               },
               "imageMaxLongEdgePx": {
                 "type": "number"
+              },
+              "imageQuality": {
+                "type": "number"
               }
             },
             "required": [
               "postMaxPhotos",
-              "imageMaxLongEdgePx"
+              "imageMaxLongEdgePx",
+              "imageQuality"
+            ]
+          },
+          "search": {
+            "type": "object",
+            "properties": {
+              "suggestMinChars": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "suggestMinChars"
+            ]
+          },
+          "places": {
+            "type": "object",
+            "properties": {
+              "duplicateReportRadiusM": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "duplicateReportRadiusM"
+            ]
+          },
+          "client": {
+            "type": "object",
+            "properties": {
+              "configRefreshMinutes": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "configRefreshMinutes"
             ]
           },
           "moderation": {
@@ -5734,6 +5786,7 @@
           "nameBn",
           "nameEn",
           "defaultLocale",
+          "timezone",
           "mapCenter",
           "radiusKm",
           "branding",
@@ -5742,6 +5795,9 @@
           "emergencyNumbers",
           "support",
           "media",
+          "search",
+          "places",
+          "client",
           "moderation",
           "web"
         ]
@@ -14264,10 +14320,6 @@
               "en"
             ]
           },
-          "fallbackStyleUrl": {
-            "type": "string",
-            "nullable": true
-          },
           "kinds": {
             "type": "array",
             "items": {
@@ -14338,7 +14390,6 @@
           "tiles",
           "assetsBaseUrl",
           "labelLanguage",
-          "fallbackStyleUrl",
           "kinds",
           "client"
         ]

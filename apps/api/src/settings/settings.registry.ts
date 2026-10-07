@@ -221,7 +221,6 @@ export const SETTING_DEFINITIONS = {
   search_page_size_max: wholeNumber,
   search_max_total_hits: wholeNumber,
   search_facet_values_max: wholeNumber,
-  search_suggest_limit: wholeNumber,
   search_suggest_min_chars: wholeNumber,
   search_typo_one_typo_min_chars: wholeNumber,
   search_typo_two_typos_min_chars: wholeNumber,
@@ -302,8 +301,6 @@ export const SETTING_DEFINITIONS = {
   // Self-hosted base map (ADR 043, migration 0038)
   map_tiles_max_zoom: wholeNumber,
   map_label_language: z.enum(['bn', 'en']),
-  // Empty = disabled. A Barikoi style here costs 4 Barikoi API calls per map load.
-  map_style_fallback: z.union([z.literal(''), z.string().url()]),
 
   // Geo provider (Barikoi) and map viewport (ADR 044, migration 0039)
   geo_provider: z.enum(['barikoi', 'null']),
@@ -408,6 +405,10 @@ export const SETTING_DEFINITIONS = {
   // The in-app notification inbox (migration 0047)
   notifications_page_size_default: wholeNumber,
   notifications_page_size_max: wholeNumber,
+
+  // Month 2 review gaps (migration 0049)
+  client_config_refresh_minutes: wholeNumber,
+  search_description_max_chars: wholeNumber,
 } as const satisfies Record<string, z.ZodTypeAny>;
 
 export type SettingKey = keyof typeof SETTING_DEFINITIONS;

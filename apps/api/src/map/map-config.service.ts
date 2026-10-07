@@ -13,8 +13,10 @@ export const TILES_MANIFEST_FILE = 'current.json';
 /**
  * What a client needs to draw the base map (ADR 043): the live versioned
  * archive (from current.json, re-read whenever build-tiles.sh replaces it),
- * where fonts and sprites live, and the label language and fallback style
- * settings. The style itself ships with each client (packages/map-style).
+ * where fonts and sprites live, and the label language setting. There is no
+ * third-party fallback style: without our tiles the map says it is
+ * unavailable (map_style_fallback was retired in 0049). The style itself
+ * ships with each client (packages/map-style).
  */
 @Injectable()
 export class MapConfigService {
@@ -39,7 +41,6 @@ export class MapConfigService {
     const [
       manifest,
       labelLanguage,
-      fallback,
       kinds,
       idleDebounce,
       autocompleteDebounce,
@@ -50,7 +51,6 @@ export class MapConfigService {
     ] = await Promise.all([
       this.manifest(),
       this.settings.get('map_label_language'),
-      this.settings.get('map_style_fallback'),
       this.settings.get('map_kinds'),
       this.settings.get('geo_picker_idle_debounce_ms'),
       this.settings.get('geo_autocomplete_debounce_ms'),
@@ -72,7 +72,6 @@ export class MapConfigService {
             },
       assetsBaseUrl: base,
       labelLanguage,
-      fallbackStyleUrl: fallback === '' ? null : fallback,
       kinds: kinds.map((k) => ({
         code: k.code,
         icon: k.icon,

@@ -28,6 +28,11 @@ export const tenantConfigSchema = z.object({
   nameBn: z.string(),
   nameEn: z.string(),
   defaultLocale: z.string(),
+  /**
+   * tenants.timezone and its UTC offset now: what "today" is for date fields
+   * (the server checks dates in the tenant's zone too).
+   */
+  timezone: z.object({ name: z.string(), utcOffsetMinutes: z.number() }),
   mapCenter: mapCenterSchema,
   radiusKm: z.number().nullable(),
   branding: z.object({ logoStorageKey: z.string().nullable() }),
@@ -56,9 +61,20 @@ export const tenantConfigSchema = z.object({
   }),
   /**
    * What the clients' photo pickers and compressors must match: post_max_media
-   * (the API refuses more) and media_variant_full_px (the largest variant kept).
+   * (the API refuses more), media_variant_full_px (the largest variant kept)
+   * and media_image_quality (0-100, the server's own re-encode quality).
    */
-  media: z.object({ postMaxPhotos: z.number(), imageMaxLongEdgePx: z.number() }),
+  media: z.object({
+    postMaxPhotos: z.number(),
+    imageMaxLongEdgePx: z.number(),
+    imageQuality: z.number(),
+  }),
+  /** search_suggest_min_chars: shorter text asks for no suggestions. */
+  search: z.object({ suggestMinChars: z.number() }),
+  /** duplicate_report_radius_m: how far a "same place" report may reach. */
+  places: z.object({ duplicateReportRadiusM: z.number() }),
+  /** client_config_refresh_minutes: how old a cached copy of this config may get. */
+  client: z.object({ configRefreshMinutes: z.number() }),
   /** What a seller is promised after submitting a post that waits for review. */
   moderation: z.object({ typicalReviewHours: z.number() }),
   /** The public web's cache windows (seconds) and SEO rules (ADR 039). */

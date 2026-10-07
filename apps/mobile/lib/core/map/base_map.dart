@@ -69,11 +69,10 @@ class _BaseMapState extends ConsumerState<BaseMap> {
   Future<String?> _styleFor({
     required String? tilesUrl,
     required String assetsBaseUrl,
-    required String? fallbackStyleUrl,
     required bool dark,
     required String lang,
   }) {
-    final key = (tilesUrl, assetsBaseUrl, fallbackStyleUrl, dark, lang);
+    final key = (tilesUrl, assetsBaseUrl, dark, lang);
     if (key != _styleKey) {
       _styleKey = key;
       _style = tilesUrl != null
@@ -84,9 +83,9 @@ class _BaseMapState extends ConsumerState<BaseMap> {
               assetsBaseUrl: assetsBaseUrl,
               labelLanguage: lang,
             )
-          // map_style_fallback: emergencies only — a Barikoi style costs 4
-          // Barikoi calls per map load.
-          : Future.value(fallbackStyleUrl);
+          // No tiles on the server: the map says it is unavailable, never a
+          // third-party style (CLAUDE.md map rules).
+          : Future.value(null);
     }
     return _style!;
   }
@@ -107,7 +106,6 @@ class _BaseMapState extends ConsumerState<BaseMap> {
         _styleFor(
           tilesUrl: source.tilesUrl,
           assetsBaseUrl: source.assetsBaseUrl,
-          fallbackStyleUrl: null,
           dark: dark,
           lang: widget.labelLanguage ?? source.labelLanguage,
         ),
@@ -136,7 +134,6 @@ class _BaseMapState extends ConsumerState<BaseMap> {
         _styleFor(
           tilesUrl: value.tiles?.url,
           assetsBaseUrl: value.assetsBaseUrl,
-          fallbackStyleUrl: value.fallbackStyleUrl,
           dark: dark,
           lang: widget.labelLanguage ?? value.labelLanguage,
         ),

@@ -43,6 +43,7 @@ const POST_B_DELETED = '0191e3a0-d15c-7000-8000-000000000105';
 const POST_B_HIDDEN = '0191e3a0-d15c-7000-8000-000000000106';
 const POST_B_OTHER_CATEGORY = '0191e3a0-d15c-7000-8000-000000000107';
 const POST_B_FAR = '0191e3a0-d15c-7000-8000-000000000108';
+const POST_B_EXPIRED = '0191e3a0-d15c-7000-8000-000000000109';
 const PLACE_B = '0191e3a0-d15c-7000-8000-000000000201';
 
 const LAT = 24.05;
@@ -200,6 +201,12 @@ describe('Cross-tenant ownership and discovery (0023)', () => {
     await admin`update posts set deleted_at = now(), deletion_reason_code = 'user_deleted' where id = ${POST_B_DELETED}`;
     await post(POST_B_HIDDEN, TENANT_B, MEMBER_B, 90.19);
     await admin`update posts set hidden_by_owner = true where id = ${POST_B_HIDDEN}`;
+    // Live, but past expires_at before the expiry job has run (post_is_listed, 0049).
+    await post(POST_B_EXPIRED, TENANT_B, MEMBER_B, 90.19);
+    await admin`
+      update posts set published_at = now() - interval '2 days', bumped_at = now() - interval '2 days',
+                       expires_at = now() - interval '1 hour'
+      where id = ${POST_B_EXPIRED}`;
     await post(POST_B_OTHER_CATEGORY, TENANT_B, MEMBER_B, 90.19, {
       category: CATEGORY_OTHER,
       schema: SCHEMA_OTHER,
@@ -318,9 +325,15 @@ describe('Cross-tenant ownership and discovery (0023)', () => {
       expect(distances).toEqual([...distances].sort((a, b) => a - b));
     });
 
-    it('never returns drafts, sold, soft-deleted or owner-hidden posts', async () => {
+    it('never returns drafts, sold, soft-deleted, owner-hidden or expired posts', async () => {
       const ids = (await discover()).map((hit) => hit.id);
-      for (const hidden of [POST_B_DRAFT, POST_B_SOLD, POST_B_DELETED, POST_B_HIDDEN]) {
+      for (const hidden of [
+        POST_B_DRAFT,
+        POST_B_SOLD,
+        POST_B_DELETED,
+        POST_B_HIDDEN,
+        POST_B_EXPIRED,
+      ]) {
         expect(ids).not.toContain(hidden);
       }
     });

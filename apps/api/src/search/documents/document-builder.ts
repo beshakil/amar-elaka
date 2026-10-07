@@ -44,6 +44,13 @@ export interface BaseRow {
 export interface PostRow extends BaseRow {
   title: string;
   price: string | null;
+  /** Unix seconds; null when the post never expires. */
+  expires_at: number | null;
+}
+
+export interface DocumentOptions {
+  /** search_description_max_chars: the rest of a description isn't indexed. */
+  descriptionMaxChars: number;
 }
 
 export interface StoreRow extends BaseRow {
@@ -60,8 +67,6 @@ export interface PlaceRow extends BaseRow {
   is_landmark: boolean;
 }
 
-// settings-exempt: keeps each document small (index size); the full text stays in Postgres
-const DESCRIPTION_MAX_CHARS = 2_000;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 /** Custom-field values in the forms Meilisearch filters on. Money never becomes a float. */
@@ -144,8 +149,10 @@ function moneyToPoisha(money: string | null): number | null {
   return money !== null && MONEY_PATTERN.test(money) ? Number(toPoisha(money)) : null;
 }
 
-function base(row: BaseRow, terms: SearchTerms) {
-  const description = cleanDisplayText(row.description)?.slice(0, DESCRIPTION_MAX_CHARS) ?? null;
+function base(row: BaseRow, terms: SearchTerms, options: DocumentOptions) {
+  // Keeps each document small (index size); the full text stays in Postgres.
+  const description =
+    cleanDisplayText(row.description)?.slice(0, options.descriptionMaxChars) ?? null;
   const text = fieldText(row);
   const categoryBn = cleanDisplayText(row.category_name_bn);
   const areaBn = cleanDisplayText(row.area_name_bn);
@@ -168,6 +175,7 @@ function base(row: BaseRow, terms: SearchTerms) {
     is_boosted: row.is_boosted ? (1 as const) : (0 as const),
     is_shippable: row.is_shippable,
     published_at: row.published_at,
+    expires_at: null,
     fields: indexedFields(row),
     card_fields: cardFields(row),
     rating_avg: row.rating_avg === null ? null : Number(row.rating_avg),
@@ -176,9 +184,14 @@ function base(row: BaseRow, terms: SearchTerms) {
   };
 }
 
-export function postDocument(row: PostRow, terms: SearchTerms): SearchDocument {
+export function postDocument(
+  row: PostRow,
+  terms: SearchTerms,
+  options: DocumentOptions,
+): SearchDocument {
   return {
-    ...base(row, terms),
+    ...base(row, terms, options),
+    expires_at: row.expires_at,
     ...terms.nameFields({ title: row.title }),
     price_minor: moneyToPoisha(row.price),
     slug: null,
@@ -187,9 +200,13 @@ export function postDocument(row: PostRow, terms: SearchTerms): SearchDocument {
   };
 }
 
-export function storeDocument(row: StoreRow, terms: SearchTerms): SearchDocument {
+export function storeDocument(
+  row: StoreRow,
+  terms: SearchTerms,
+  options: DocumentOptions,
+): SearchDocument {
   return {
-    ...base(row, terms),
+    ...base(row, terms, options),
     ...terms.nameFields({ bn: row.name_bn, en: row.name_en }),
     price_minor: null,
     slug: row.slug,
@@ -198,9 +215,13 @@ export function storeDocument(row: StoreRow, terms: SearchTerms): SearchDocument
   };
 }
 
-export function placeDocument(row: PlaceRow, terms: SearchTerms): SearchDocument {
+export function placeDocument(
+  row: PlaceRow,
+  terms: SearchTerms,
+  options: DocumentOptions,
+): SearchDocument {
   return {
-    ...base(row, terms),
+    ...base(row, terms, options),
     ...terms.nameFields({ bn: row.name_bn, en: row.name_en }),
     price_minor: null,
     slug: row.slug,

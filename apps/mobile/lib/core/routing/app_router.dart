@@ -29,6 +29,7 @@ import '../../features/tenant_bootstrap/presentation/tenant_confirm_screen.dart'
 import '../../features/tenant_bootstrap/presentation/tenant_picker_screen.dart';
 import '../../features/notifications/presentation/notifications_screen.dart';
 import '../../features/offline_map/presentation/offline_map_screen.dart';
+import '../../features/place_detail/presentation/place_detail_screen.dart';
 import '../../features/place_feedback/presentation/place_suggest_screen.dart';
 import '../../features/saved/presentation/saved_screen.dart';
 import 'app_shell.dart';
@@ -137,6 +138,11 @@ GoRouter appRouter(Ref ref) {
       GoRoute(
         path: RoutePaths.notifications,
         builder: (context, state) => const NotificationsScreen(),
+      ),
+      GoRoute(
+        path: '${RoutePaths.place}/:id',
+        builder: (context, state) =>
+            PlaceDetailScreen(placeId: state.pathParameters['id']!),
       ),
       GoRoute(
         path: '${RoutePaths.placeSuggest}/:id',

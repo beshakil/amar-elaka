@@ -51,6 +51,12 @@ const SETTINGS: Record<string, number> = {
   search_price_bucket_count: 5,
   search_landmarks_max: 3,
 };
+// Date.now() is frozen at this instant, so the expiry filter the matcher adds is fixed (0049).
+const NOW_MS = 1_790_000_000_000;
+const LISTED = '(expires_at NOT EXISTS OR expires_at IS NULL OR expires_at > 1790000000)';
+beforeEach(() => jest.spyOn(Date, 'now').mockReturnValue(NOW_MS));
+afterEach(() => jest.restoreAllMocks());
+
 const SIGNALS = { userId: undefined, installId: undefined, ip: '203.0.113.9', userAgent: 'test' };
 
 const toLet: ResolvedCategory = {
@@ -100,6 +106,7 @@ function doc(over: Partial<SearchDocument> = {}): SearchDocument & { _geoDistanc
     is_boosted: 1,
     is_shippable: false,
     published_at: 1_790_000_000,
+    expires_at: null,
     fields: {},
     card_fields: { fee: '500.00' },
     price_minor: 1_250_050,
@@ -290,7 +297,7 @@ describe('SearchService.search', () => {
       indexUid: 'test_posts',
       q: 'daktar ডাক্তার',
       // §13.26: radius, never a tenant filter.
-      filter: ['_geoRadius(23.81, 90.41, 10000)'],
+      filter: [LISTED, '_geoRadius(23.81, 90.41, 10000)'],
       sort: ['_geoPoint(23.81, 90.41):asc'],
       // Posts: the price bounds come with the page.
       facets: ['category_slug', 'price_minor'],
@@ -321,12 +328,12 @@ describe('SearchService.search', () => {
     await service.search(
       query({ q: 'doctor', lat: 23.8, lng: 90.4, scope: 'nearby', radius_km: 500 }),
     );
-    expect(main()[0]!.filter).toEqual(['_geoRadius(23.8, 90.4, 50000)']);
+    expect(main()[0]!.filter).toEqual([LISTED, '_geoRadius(23.8, 90.4, 50000)']);
     expect(main()[0]!.sort).toEqual(['_geoPoint(23.8, 90.4):asc']);
 
     // The area scope ignores radius_km, exactly like the feed.
     await service.search(query({ q: 'doctor', lat: 23.8, lng: 90.4, radius_km: 3 }));
-    expect(main()[1]!.filter).toEqual(['_geoRadius(23.8, 90.4, 10000)']);
+    expect(main()[1]!.filter).toEqual([LISTED, '_geoRadius(23.8, 90.4, 10000)']);
 
     const located = await service.search(query({ q: 'doctor', lat: 23.8, lng: 90.4 }));
     expect(located.hits[0]!.distanceMeters).toBe(420);
@@ -345,6 +352,7 @@ describe('SearchService.search', () => {
       }),
     );
     expect(engine.requests[0]!.filter).toEqual([
+      LISTED,
       '_geoRadius(23.81, 90.41, 10000)',
       'category_id IN ["c-to-let", "c-sublet"]',
       'fields.bedrooms >= 2',
@@ -420,6 +428,7 @@ describe('SearchService.search', () => {
     );
     expect(response).toMatchObject({ scope: 'country', radiusKm: null });
     expect(engine.requests[0]!.filter).toEqual([
+      LISTED,
       'is_shippable = true',
       'category_id IN ["c-books"]',
     ]);
@@ -438,17 +447,18 @@ describe('SearchService.search', () => {
       query({ q: 'flat', price_min: '20000', price_max: '30000.5' }),
     );
     expect(engine.requests[0]!.filter).toEqual([
+      LISTED,
       '_geoRadius(23.81, 90.41, 10000)',
       'price_minor >= 2000000',
       'price_minor < 3000050',
     ]);
     // The bounds come from a second query without the price filter.
     expect(engine.requests[1]).toMatchObject({
-      filter: ['_geoRadius(23.81, 90.41, 10000)'],
+      filter: [LISTED, '_geoRadius(23.81, 90.41, 10000)'],
       limit: 0,
     });
     const counts = engine.requests.filter((r) => r.countOnly);
-    expect(counts.map((r) => r.filter!.slice(1))).toEqual([
+    expect(counts.map((r) => r.filter!.slice(2))).toEqual([
       ['price_minor >= 1000000', 'price_minor < 2000000'],
       ['price_minor >= 2000000', 'price_minor < 3000000'],
       ['price_minor >= 3000000', 'price_minor < 4000000'],
@@ -476,12 +486,12 @@ describe('SearchService.search', () => {
       matchingStrategy: 'all',
       attributesToRetrieve: ['id'],
       limit: 1000,
-      filter: ['_geoRadius(23.81, 90.41, 10000)'],
+      filter: [LISTED, '_geoRadius(23.81, 90.41, 10000)'],
     });
     // 2: a placeholder search over those ids, sorted by price.
     expect(engine.requests[1]).toMatchObject({
       q: '',
-      filter: ['_geoRadius(23.81, 90.41, 10000)', 'id IN ["a", "b"]'],
+      filter: [LISTED, '_geoRadius(23.81, 90.41, 10000)', 'id IN ["a", "b"]'],
       sort: ['price_minor:asc', '_geoPoint(23.81, 90.41):asc'],
     });
 
@@ -504,7 +514,7 @@ describe('SearchService.search', () => {
     const response = await service.search(query({ q: 'hospital', lat: 23.8, lng: 90.4 }));
     const landmarkQuery = engine.requests.find((r) => r.indexUid === 'test_places');
     expect(landmarkQuery).toMatchObject({
-      filter: ['_geoRadius(23.8, 90.4, 10000)', 'is_landmark = true'],
+      filter: [LISTED, '_geoRadius(23.8, 90.4, 10000)', 'is_landmark = true'],
       limit: 3,
     });
     expect(response.landmarks[0]).toMatchObject({ type: 'places' });
@@ -596,7 +606,7 @@ describe('SearchService.suggest', () => {
     expect(engine.requests[0]).toMatchObject({
       indexUid: 'test_posts',
       limit: 5,
-      filter: ['_geoRadius(23.81, 90.41, 10000)'],
+      filter: [LISTED, '_geoRadius(23.81, 90.41, 10000)'],
     });
     expect(response.listings[0]).toEqual({
       id: 'test_posts-1',

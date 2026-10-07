@@ -187,6 +187,10 @@ function setup(searches: StoredSavedSearch[], pairs: { search_id: string; post_i
 }
 
 describe('SavedSearchMatcherService', () => {
+  // Frozen, so the expiry filter the matcher adds (0049) is a fixed string.
+  beforeEach(() => jest.spyOn(Date, 'now').mockReturnValue(1_790_000_000_000));
+  afterEach(() => jest.restoreAllMocks());
+
   it('decides matches through the shared SearchMatcher, only among each search’s candidates', async () => {
     const { service, engine, matcher, inserted, watermarks } = setup(
       [stored()],
@@ -271,6 +275,7 @@ describe('SavedSearchMatcherService', () => {
     // Same filters, price included: everything but the final `id IN [...]`.
     expect(fromSavedSearch.filter!.slice(0, -1)).toEqual(page.filter!.slice(0, -1));
     expect(fromSavedSearch.filter).toEqual([
+      '(expires_at NOT EXISTS OR expires_at IS NULL OR expires_at > 1790000000)',
       '_geoRadius(23.8, 90.4, 5000)',
       'category_id IN ["c-to-let", "c-sublet"]',
       'fields.bedrooms >= 2',

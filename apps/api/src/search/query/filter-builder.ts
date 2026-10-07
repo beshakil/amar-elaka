@@ -83,8 +83,18 @@ export function buildSearchFilter(input: {
   categoryIds: readonly string[] | null;
   fieldFilters: readonly FieldFilter[];
   price?: PriceRange | null;
+  /**
+   * Unix seconds: leave out posts whose expires_at has passed (post_is_listed,
+   * 0049). Documents without the field (indexed earlier, stores, places) stay.
+   */
+  listedAt?: number;
 }): string[] {
   const filters: string[] = [];
+  if (input.listedAt !== undefined) {
+    filters.push(
+      `(expires_at NOT EXISTS OR expires_at IS NULL OR expires_at > ${Math.floor(input.listedAt)})`,
+    );
+  }
   if (input.geo !== null) {
     const metres = Math.round(input.geo.radiusKm * METRES_PER_KM);
     filters.push(`_geoRadius(${input.geo.lat}, ${input.geo.lng}, ${metres})`);

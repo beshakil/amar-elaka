@@ -1,26 +1,29 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/design/tokens/app_spacing.dart';
 import '../../../../core/design/widgets/app_text_field.dart';
 import '../../../../core/dynamic_form/dynamic_form.dart';
+import '../../../../core/dynamic_form/field_validator.dart';
 import '../../../../l10n/app_localizations.dart';
+import '../../application/current_tenant.dart';
 import '../../application/post_editor.dart';
 import 'step_gate.dart';
 
 /// Step 2: title, description, and the category's own fields (price, rooms,
 /// model…) from its field schema — the Month 1 dynamic form, driven from
 /// the stepper. Every keystroke is saved to the draft as typed.
-class DetailsStep extends StatefulWidget {
+class DetailsStep extends ConsumerStatefulWidget {
   const DetailsStep({required this.editor, required this.gate, super.key});
 
   final PostEditor editor;
   final StepGate gate;
 
   @override
-  State<DetailsStep> createState() => _DetailsStepState();
+  ConsumerState<DetailsStep> createState() => _DetailsStepState();
 }
 
-class _DetailsStepState extends State<DetailsStep> {
+class _DetailsStepState extends ConsumerState<DetailsStep> {
   final _form = DynamicFormController();
   late final TextEditingController _title = TextEditingController(
     text: widget.editor.draft!.title,
@@ -97,6 +100,13 @@ class _DetailsStepState extends State<DetailsStep> {
             key: ValueKey('fields-${draft.category!.id}'),
             schema: schema,
             controller: _form,
+            // "Today" for date fields, in the tenant's zone (as the server checks).
+            validationContext: ValidationContext.now(
+              utcOffset: ref
+                  .watch(currentTenantConfigProvider)
+                  ?.timezone
+                  .utcOffset,
+            ),
             initialState: draft.formState,
             onStateChanged: (state) =>
                 widget.editor.update((d) => d.copyWith(formState: state)),

@@ -11,13 +11,13 @@ import '../../../core/map/location_picker.dart' show GeoPoint;
 import '../../../core/map/map_config_provider.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../map/presentation/map_preview_sheet.dart' show formatDistance;
+import '../../post/application/current_tenant.dart';
 import '../../offline_map/domain/offline_points.dart' show haversineMeters;
 import '../data/place_feedback_api.dart';
 import 'place_feedback_messages.dart';
 
-/// How far around the place to look for its twin: about 500 m each way
-/// (the server refuses past duplicate_report_radius_m anyway).
-const _twinSearchDegrees = 0.005;
+/// Metres in one degree of latitude (and of longitude at the equator).
+const _metersPerDegree = 111320.0;
 
 /// Past the clustering zoom, so every place comes back as itself.
 const _twinSearchZoom = 20.0;
@@ -64,28 +64,42 @@ class _PlaceReportBodyState extends ConsumerState<_PlaceReportBody> {
     super.dispose();
   }
 
-  /// Places around this one, nearest first (once, when "listed twice" is picked).
+  /// Places around this one within duplicate_report_radius_m (what the
+  /// server accepts), nearest first (once, when "listed twice" is picked).
   Future<List<({api.MapFeature place, double meters})>> _loadTwins() async {
     final at = widget.location;
+    final radius =
+        (ref.read(currentTenantConfigProvider)?.places ??
+                api.TenantPlaces.fallback)
+            .duplicateReportRadiusM;
+    final latDegrees = radius / _metersPerDegree;
+    final lngDegrees =
+        radius / (_metersPerDegree * math.cos(at.lat * math.pi / 180));
     final features = await ref
         .read(mapApiProvider)
         .features(
           bbox: (
-            minLng: at.lng - _twinSearchDegrees,
-            minLat: at.lat - _twinSearchDegrees,
-            maxLng: at.lng + _twinSearchDegrees,
-            maxLat: at.lat + _twinSearchDegrees,
+            minLng: at.lng - lngDegrees,
+            minLat: at.lat - latDegrees,
+            maxLng: at.lng + lngDegrees,
+            maxLat: at.lat + latDegrees,
           ),
           zoom: _twinSearchZoom,
           layers: const {'places'},
         );
-    final near = [
-      for (final f in features.features)
-        if (!f.isCluster &&
-            f.properties.id != null &&
-            f.properties.id != widget.placeId)
-          (place: f, meters: haversineMeters(at.lat, at.lng, f.lat, f.lng)),
-    ]..sort((a, b) => a.meters.compareTo(b.meters));
+    final near =
+        [
+            for (final f in features.features)
+              if (!f.isCluster &&
+                  f.properties.id != null &&
+                  f.properties.id != widget.placeId)
+                (
+                  place: f,
+                  meters: haversineMeters(at.lat, at.lng, f.lat, f.lng),
+                ),
+          ]
+          ..removeWhere((t) => t.meters > radius)
+          ..sort((a, b) => a.meters.compareTo(b.meters));
     return near.take(math.min(_twinsShown, near.length)).toList();
   }
 

@@ -104,6 +104,7 @@ function post(id: string, title: string, over: Partial<PostRow> = {}): PostRow {
     lat: MIRPUR.lat,
     lng: MIRPUR.lng,
     published_at: NOW - 30 * DAY,
+    expires_at: null,
     is_boosted: false,
     is_shippable: false,
     cover_thumb_key: null,
@@ -238,6 +239,7 @@ describe('Search against a real Meilisearch', () => {
     MEILI_TIMEOUT_MS: 10_000,
   });
   const terms = new SearchTerms(SYNONYM_LINES);
+  const DOC_OPTIONS = { descriptionMaxChars: 2_000 };
   let service: SearchService;
   let matcher: SearchMatcher;
   let criteria: SearchCriteriaService;
@@ -253,7 +255,7 @@ describe('Search against a real Meilisearch', () => {
     }
     await engine.upsertDocuments(
       indexUid(PREFIX, 'posts'),
-      ROWS.map((row) => postDocument(row, terms)),
+      ROWS.map((row) => postDocument(row, terms, DOC_OPTIONS)),
     );
     await engine.upsertDocuments(indexUid(PREFIX, 'places'), [
       placeDocument(
@@ -266,6 +268,7 @@ describe('Search against a real Meilisearch', () => {
           ...NEAR_MIRPUR,
         },
         terms,
+        DOC_OPTIONS,
       ),
       placeDocument(
         {
@@ -276,6 +279,7 @@ describe('Search against a real Meilisearch', () => {
           is_landmark: false,
         },
         terms,
+        DOC_OPTIONS,
       ),
     ]);
     await engine.upsertDocuments(indexUid(PREFIX, 'stores'), [
@@ -288,6 +292,7 @@ describe('Search against a real Meilisearch', () => {
           is_verified: true,
         },
         terms,
+        DOC_OPTIONS,
       ),
     ]);
 
@@ -320,6 +325,8 @@ describe('Search against a real Meilisearch', () => {
         Promise.resolve([{ slug: 'doctors', name_bn: 'ডাক্তার ও চেম্বার', name_en: 'Doctors' }]),
       // Tenant A's map centre: where search is centred when the query has no location.
       tenantCenter: () => Promise.resolve(MIRPUR),
+      // The fixture's stores and places have no opening hours (open state unknown).
+      openStates: () => Promise.resolve(new Map()),
     } as unknown as SearchQueryRepository;
     const activity = {
       log: () => Promise.resolve('0191e3a0-0000-7000-8000-00000000000f'),
@@ -635,6 +642,7 @@ describe('Search against a real Meilisearch', () => {
           is_shippable: true,
         }),
         terms,
+        DOC_OPTIONS,
       ),
     ]);
     const nationwide = await search({ q: 'গরু', scope: 'country' });
@@ -649,10 +657,31 @@ describe('Search against a real Meilisearch', () => {
   });
 
   it('removes deleted documents', async () => {
-    const extra: SearchDocument = postDocument(post('temp', 'ডাক্তার অস্থায়ী'), terms);
+    const extra: SearchDocument = postDocument(
+      post('temp', 'ডাক্তার অস্থায়ী'),
+      terms,
+      DOC_OPTIONS,
+    );
     await engine.upsertDocuments(indexUid(PREFIX, 'posts'), [extra]);
     expect(ids(await search({ q: 'অস্থায়ী' }))).toEqual(['temp']);
     await engine.deleteDocuments(indexUid(PREFIX, 'posts'), ['temp']);
     expect(ids(await search({ q: 'অস্থায়ী' }))).toEqual([]);
+  });
+
+  it('drops a post once expires_at passes, before the expiry job runs (post_is_listed, 0049)', async () => {
+    await engine.upsertDocuments(indexUid(PREFIX, 'posts'), [
+      postDocument(
+        post('lapsed', 'ডাক্তার মেয়াদোত্তীর্ণ', { expires_at: NOW - DAY }),
+        terms,
+        DOC_OPTIONS,
+      ),
+      postDocument(
+        post('running', 'ডাক্তার মেয়াদোত্তীর্ণ', { expires_at: NOW + DAY }),
+        terms,
+        DOC_OPTIONS,
+      ),
+    ]);
+    expect(ids(await search({ q: 'মেয়াদোত্তীর্ণ' }))).toEqual(['running']);
+    await engine.deleteDocuments(indexUid(PREFIX, 'posts'), ['lapsed', 'running']);
   });
 });

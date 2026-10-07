@@ -138,24 +138,27 @@ describe('postFieldFilterConditions', () => {
     ]);
   });
 
-  it('guards casts on other fields so an older version with another type never errors', () => {
+  it("sends other ranges to the feed's SQL matcher, which guards every cast (one implementation)", () => {
     const query = toSql([
       { field: 'floor', op: 'gt', value: '3' },
       { field: 'service_charge', op: 'lte', value: '500' },
       { field: 'available_from', op: 'gte', value: '2026-10-01' },
     ]);
-    expect(query.sql).toContain(`case when jsonb_typeof("posts"."fields" -> $1) = 'number'`);
-    expect(query.sql).toContain(`case when ("posts"."fields" ->> $4) ~ $5`);
-    expect(query.params).toEqual(
-      expect.arrayContaining([
-        'floor',
-        '3',
-        'service_charge',
-        '500.00',
-        'available_from',
-        '2026-10-01',
-      ]),
+    expect(query.sql).toBe(
+      '(coalesce(public.post_field_filter_matches("posts"."fields", $1::text::jsonb), false)' +
+        ' and coalesce(public.post_field_filter_matches("posts"."fields", $2::text::jsonb), false)' +
+        ' and coalesce(public.post_field_filter_matches("posts"."fields", $3::text::jsonb), false))',
     );
+    expect(query.params.map((p) => JSON.parse(String(p)) as unknown)).toEqual([
+      expect.objectContaining({ field: 'floor', kind: 'number', op: 'gt' }),
+      expect.objectContaining({
+        field: 'service_charge',
+        kind: 'money',
+        op: 'lte',
+        value: '500.00',
+      }),
+      expect.objectContaining({ field: 'available_from', kind: 'date', value: '2026-10-01' }),
+    ]);
   });
 
   it('binds field keys and values as parameters, never SQL text', () => {

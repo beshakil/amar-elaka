@@ -8,7 +8,7 @@ import { Test } from '@nestjs/testing';
 /**
  * The self-hosted base map through the real app (ADR 043): the versioned
  * archive under /tiles answers range requests with 206, and GET /map/config
- * points clients at it with the seeded label language and no fallback.
+ * points clients at it with the seeded label language.
  *
  * src/config/env.ts parses process.env on first import, so the tiles
  * directory is set up before the app is imported (dynamically, below).
@@ -189,7 +189,6 @@ describe('Base map (e2e)', () => {
       },
       assetsBaseUrl: 'https://tiles.amarelaka.test/tiles',
       labelLanguage: 'en',
-      fallbackStyleUrl: null,
       kinds: expect.any(Array) as unknown,
       client: {
         pickerIdleDebounceMs: 600,

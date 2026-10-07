@@ -55,7 +55,8 @@ class DynamicForm extends StatefulWidget {
   /// For a form inside a stepper: validate and read values from outside.
   final DynamicFormController? controller;
 
-  /// "Today" and the current year; defaults to now in Asia/Dhaka.
+  /// "Today" and the current year; defaults to now at UTC+6 (Bangladesh):
+  /// pass the tenant's offset from its config.
   final ValidationContext? validationContext;
   final String? submitLabel;
 

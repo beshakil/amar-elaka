@@ -8,6 +8,7 @@ import {
   QUEUE_SAVED_SEARCHES,
   type ScheduledJobData,
 } from '../queue/queue.types';
+import { SCHEDULE_TIMEZONE } from '../common/schedule-timezone';
 
 // settings-exempt: cron schedules for background jobs (ops tuning); what they act on is settings (saved_search_match_grace_seconds, saved_search_notify_per_day, saved_search_daily_digest_hour, saved_search_auto_pause_days, unmet_demand_*)
 const SCHEDULES = {
@@ -15,7 +16,6 @@ const SCHEDULES = {
   [JOB_PAUSE_IDLE_SAVED_SEARCHES]: '30 3 * * *', // nightly, 03:30 Dhaka time
   [JOB_REFRESH_UNMET_DEMAND]: '15 * * * *', // hourly, at :15
 } as const;
-const SCHEDULE_TIMEZONE = 'Asia/Dhaka';
 
 /** Registers the saved-search and unmet-demand jobs (worker only; idempotent across restarts). */
 @Injectable()

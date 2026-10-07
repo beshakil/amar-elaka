@@ -22,6 +22,44 @@ Measured on the dev laptop (WSL, about 3–4× slower than a server; see `local-
 | No screen listed saved items. Week 6 shipped the API (`GET /saved`) only.                                                                                                              | Users could save but never see what they saved.                                                                                                                                                                                        | mobile `features/saved/`, Profile → "সেভ করা", with tests                                                |
 | 10 Month 2 tables were missing from `schema.md`.                                                                                                                                       | The spec didn't describe the schema.                                                                                                                                                                                                   | `schema.md` §13A                                                                                         |
 
+## Closed after the review (0049)
+
+The review's open items, worked through the same day:
+
+| Gap (section)                                                                   | What changed                                                                                                                                                                                                                                                                                                                                                                                        | Proof                                                                                               |
+| ------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `open_now` on the map still cost ~2.4 ms per candidate (§9 #1)                  | The cause was an index, not the function. `is_open_at` looks hours up by place or store id, but every hours index started with `tenant_id`, so each call scanned all of `place_hours`. Entity-first indexes: one call **1.67 → 0.43 ms**; the map's `open_now` on the same 0.06° box **2,556 → 715 ms**. Still one open/closed implementation.                                                      | `0049`, `hours.db-spec.ts` (index usable for each lookup)                                           |
+| Visibility written out ~15 times (§6)                                           | `post_is_listed()` / `post_is_viewable()`: inlined SQL functions (partial indexes still match, checked with EXPLAIN). `feed_posts`, `map_features`, `heatmap_cells` and `discover_nearby` (which also now drops expired posts) and every API query use them. `listed` also excludes privacy-scrubbed posts: a scrub empties a post without changing its status.                                     | `single-visibility-rule.spec.ts`, `post-visibility.db-spec.ts`, `cross-tenant-discovery.db-spec.ts` |
+| Search kept a post up to 15 min past `expires_at` (§6)                          | Documents carry `expires_at`; every search filters on it. Documents indexed earlier have no field and still match until resynced.                                                                                                                                                                                                                                                                   | `filter-builder.spec.ts`, `search.meili-spec.ts`                                                    |
+| Field filters: two SQL implementations (§6)                                     | The search fallback's JSON-path ranges call the feed's `post_field_filter_matches()`. Only the index-serving shapes (generated columns, containment) are built in TS.                                                                                                                                                                                                                               | `field-filter-parity.db-spec.ts`: 14 cases, wrong-type values included, both paths equal            |
+| Tenant area geometry three times (§6)                                           | `tenant_area_distance_m()`, used by `nearest_tenants`, `tenant_distance_m` and `tenant_covers_point`.                                                                                                                                                                                                                                                                                               | `locations.db-spec.ts`                                                                              |
+| `map_style_fallback` could bypass the Barikoi budget (§7)                       | Retired: setting, DTO field and client code. Without our tiles the map says it is unavailable.                                                                                                                                                                                                                                                                                                      | ADR 043 updated                                                                                     |
+| Client copies of server numbers (§6, §8)                                        | `GET /tenant/config` adds `media.imageQuality`, `timezone` (name + current UTC offset), `search.suggestMinChars`, `places.duplicateReportRadiusM` and `client.configRefreshMinutes`. The app's date validator, compressor, twin picker and config cache use them; the web's compressor and search box too. The app caches them (Drift v4). Its config used to be served from cache without `media`. | `tenants.e2e-spec.ts`, `validation_context_test.dart`, `editor-tenant.test.ts`                      |
+| Schedulers each declared `Asia/Dhaka` (§6)                                      | One `SCHEDULE_TIMEZONE` (`common/schedule-timezone.ts`), the saved-search daily cap included.                                                                                                                                                                                                                                                                                                       | -                                                                                                   |
+| `DESCRIPTION_MAX_CHARS`, `search_suggest_limit` (§8)                            | `search_description_max_chars` setting; the unused `search_suggest_limit` is retired.                                                                                                                                                                                                                                                                                                               | settings parity spec                                                                                |
+| No place screen: saved places, place notifications and claims led nowhere (§12) | `/places/:id` in the app: open state, week, call, directions, save, report, suggest. The saved list, the inbox (`/places/…` deep links) and the map preview open it. The report flow is now shared with the map.                                                                                                                                                                                    | `place_detail_screen_test.dart`, `notifications_test.dart`                                          |
+| Leaked fixtures made other suites time out (§12 risk 5)                         | The DB run fails at teardown when more than 5,000 outbox events are left unprocessed, naming the table.                                                                                                                                                                                                                                                                                             | `test/db/global-teardown.ts`                                                                        |
+| Android release signing (TL;DR)                                                 | `key.properties` or `ANDROID_KEYSTORE_*` in CI; `bundleRelease` refuses to build debug-signed. Steps in `apps/mobile/README.md`. **Not built here** (no Android SDK on this machine): first real release build verifies it.                                                                                                                                                                         | -                                                                                                   |
+
+**Looked at, no change needed:**
+
+- `PERMISSIONS_CACHE_TTL_MS`: every role and matrix change already invalidates the cache (`roles.service.ts`), so
+  the 5 minutes only bound a missed path.
+- `docs/decisions/043/` isn't stray: ADR 043 links its screenshots.
+- **Feed "nearby" candidate cap (§9 #2): not added.** `feed_posts` already skips the trust lookup with an exact bound.
+  A candidate cap would make ranking approximate and drop posts from deep pages. At 30k posts it is ~87 ms here
+  (~25 ms on a server). Revisit with the p95 budgets of risk 3.
+
+**Full run after 0049:**
+
+- API: typecheck and lint clean, unit 877, DB 631, search (Meilisearch) 46, e2e 261.
+- Admin 54, web 87, Flutter 277; all pass.
+- The search suite had been failing since the open-now commit. Its fake repository lacked `openStates`, and the
+  regression script didn't run `test:search`; it does now.
+
+**Still open:** the production SMS gateway (needs a provider choice and sender-ID registration), and real geo usage
+data (needs a deployment).
+
 ## TL;DR
 
 Month 2 delivered every item in the weeks 5–9 plan, and the test suites are real now (API DB + e2e + Flutter run on
@@ -31,7 +69,8 @@ the same rule had drifted between surfaces. All four are fixed above.
 What is left is mostly what Month 1 already flagged and nobody owned:
 
 - **No production SMS gateway.** Phone login can't work outside dev.
-- **The Android app still has the template application ID and debug signing.**
+- **The Android app was still debug-signed.** _Closed (0049 follow-up):_ release signing from `key.properties`, not yet
+  built on a real SDK.
 - **No real usage data exists.** There is no deployment and no pilot, so the geo cost section is a projection, not a
   measurement.
 
@@ -149,7 +188,7 @@ The rule: one implementation each. ✅ = one implementation; ⚠️ = more than 
 - the old Dhaka-only copies in 0039–0041 were replaced;
 - no client computes open state.
 
-### Tenant assignment (which tenant owns a point) ⚠️ → mostly ✅
+### Tenant assignment (which tenant owns a point) ⚠️ → ✅ (0049: `tenant_area_distance_m`)
 
 - **The canonical rule** is `resolve_owning_tenant()` (0023), built on `nearest_tenants()` (0021, which knows radius-mode
   tenants and the buffer). Posts, places and place suggestions use it through `PostOwnershipService.resolve`, and unmet
@@ -163,7 +202,7 @@ The rule: one implementation each. ✅ = one implementation; ⚠️ = more than 
 - **To get to one:** keep `nearest_tenants()` as the only geometry, express `tenant_covers_point()` as
   `nearest_tenants(...).inside`, and record the "query tenant = request tenant" decision in ADR 041.
 
-### Visibility (is this post public?) ⚠️
+### Visibility (is this post public?) ⚠️ → ✅ (0049: `post_is_listed` / `post_is_viewable`)
 
 The predicate `status_code = 'live' AND deleted_at IS NULL AND NOT hidden_by_owner` is written out about **15 times**:
 
@@ -185,7 +224,7 @@ and inlinable, used by every SQL surface. The TS paths would call it through the
 partial indexes: the planner must still match them after inlining. Check with EXPLAIN on `feed_posts` and
 `map_features` before switching.
 
-### Filtering (post field filters) ⚠️
+### Filtering (post field filters) ⚠️ → ✅ (0049: one SQL matcher, parity test)
 
 Three implementations of the same semantics (`eq`/`gte`/`lte`/`in` on a category's fields):
 
@@ -203,7 +242,7 @@ Three implementations of the same semantics (`eq`/`gte`/`lte`/`in` on a category
   make 3 call 2 for non-generated fields;
 - add a table-driven test that runs the same filter cases through all three and compares the ids.
 
-### Timezone / "today" ⚠️
+### Timezone / "today" ⚠️ → ✅ (0049: tenant offset in config, one schedule constant)
 
 - Business hours use `tenants.timezone`; the server's date validation (`x-not-before-today`) uses the tenant's
   timezone.
@@ -214,7 +253,7 @@ Three implementations of the same semantics (`eq`/`gte`/`lte`/`in` on a category
 All Bangladeshi tenants are Asia/Dhaka today, so nothing is wrong yet. To get to one: a single constant for job
 schedules, and the client takes "today" from `tenant/config`.
 
-### Client copies of server limits ⚠️ → partly ✅
+### Client copies of server limits ⚠️ → ✅ (0049)
 
 - _Fixed:_ photos per post and image size now come from `tenant/config`.
 - **Still copied:**
@@ -291,7 +330,7 @@ contracted monthly quota in ADR 044 and size the budget from it.
 - **None found.** Clients only talk to our API. The architecture test `geo-provider-boundary.spec.ts` keeps Barikoi
   behind `GeoProvider`.
 - Tiles, glyphs and sprites come from our own `/tiles`, and OpenStreetMap appears only in attribution text.
-- **One trap:**
+- **One trap** (_closed in 0049: the setting is retired_):
   - The emergency setting `map_style_fallback` (empty by default) would make **clients load a Barikoi style directly**.
     That is 4 billed calls per map load, **not counted** in `geo_provider_calls`, with the key in a client-visible URL.
     This contradicts CLAUDE.md's map rules.
@@ -309,7 +348,8 @@ contracted monthly quota in ADR 044 and size the budget from it.
 - **SQL function bodies (0026–0048):** clean. Tile maths (256, 85.05…), validation ranges, and a 16-hop guard in
   `place_redirect_target`. No hardcoded intervals.
 
-**Flagged:**
+**Flagged** (_0049 closed every row but the cron strings, the job timezone (now one constant) and
+`PERMISSIONS_CACHE_TTL_MS` (invalidated on every change, see above)_):
 
 | Where                                                                | Value                                    | Why                                                                                             |
 | -------------------------------------------------------------------- | ---------------------------------------- | ----------------------------------------------------------------------------------------------- |
@@ -491,7 +531,6 @@ with photos → see it in moderation → approve → see it live on the map → 
 **Smaller things:**
 
 - `search_suggest_limit` is unused.
-- The stray `docs/decisions/043/` directory.
 - Web visitors can't save posts.
-- The app has no place or store screen: saved places, place notifications and claims link nowhere.
+- The app has no store screen (places have one since 0049).
 - `PERMISSIONS_CACHE_TTL_MS` (5 min) is still unreviewed.

@@ -16,12 +16,17 @@ import type { FieldFilter, RangeOperator } from './field-schema';
  *     GIN (fields jsonb_path_ops) index serves.
  *   - Other ranges run on the rows already narrowed by (tenant_id,
  *     category_id), and Meilisearch stays the primary faceted search.
+ *     They call public.post_field_filter_matches() (0030), the feed's matcher,
+ *     so the JSON-path rules (type guards, money and date formats) exist once,
+ *     in SQL. Only the two index-serving shapes are built here: generated
+ *     columns and containment. test/field-filter-parity.db-spec.ts runs every
+ *     kind through both paths and compares the posts they match.
  *   - EAV would need one join per filter, one row per field per post, a value
  *     column per type, and would lose the pinned-schema-version guarantee.
  *
- * Every non-generated comparison is wrapped in CASE on the stored JSON type,
- * so a post written under an older schema version, where the key may have
- * had another type, never makes a cast fail; it just doesn't match.
+ * The SQL matcher guards every cast by the stored JSON type, so a post
+ * written under an older schema version, where the key may have had another
+ * type, never makes a cast fail; it just doesn't match.
  * Field keys and values are always bound parameters, never SQL text.
  */
 
@@ -41,9 +46,6 @@ const COMPARATORS: Readonly<Record<RangeOperator, SQL>> = {
   lt: sql.raw('<'),
 };
 
-const MONEY_SQL_PATTERN = '^[0-9]{1,10}\\.[0-9]{2}$';
-const DATE_SQL_PATTERN = '^[0-9]{4}-[0-9]{2}-[0-9]{2}$';
-
 /**
  * `::text::jsonb`, not `::jsonb`: with a bare jsonb cast postgres-js types the
  * parameter as jsonb and JSON-encodes the (already JSON) string a second
@@ -60,18 +62,8 @@ function rangeCondition(filter: Extract<FieldFilter, { op: RangeOperator }>): SQ
     return sql`${generated} ${comparator} ${String(filter.value)}::numeric`;
   }
 
-  const text = sql`(${posts.fields} ->> ${filter.field})`;
-  switch (filter.kind) {
-    case 'number':
-      return sql`(case when jsonb_typeof(${posts.fields} -> ${filter.field}) = 'number'
-        then ${text}::numeric end) ${comparator} ${String(filter.value)}::numeric`;
-    case 'money':
-      return sql`(case when ${text} ~ ${MONEY_SQL_PATTERN}
-        then ${text}::numeric end) ${comparator} ${filter.value}::numeric`;
-    case 'date':
-      return sql`(case when ${text} ~ ${DATE_SQL_PATTERN}
-        then ${text} end) ${comparator} ${filter.value}::text`;
-  }
+  // The feed's matcher, with the filter in the JSON shape the feed sends it.
+  return sql`coalesce(public.post_field_filter_matches(${posts.fields}, ${JSON.stringify(filter)}::text::jsonb), false)`;
 }
 
 export function postFieldFilterCondition(filter: FieldFilter): SQL {

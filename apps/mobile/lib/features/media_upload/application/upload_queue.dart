@@ -308,14 +308,16 @@ final uploadQueueProvider = Provider.autoDispose.family<UploadQueue, String>((
   ref,
   queueId,
 ) {
-  // The tenant's limits (post_max_media, media_variant_full_px): the picker
-  // offers no more than the API accepts, and nothing bigger than it keeps.
+  // The tenant's limits (post_max_media, media_variant_full_px,
+  // media_image_quality): the picker offers no more than the API accepts,
+  // and nothing bigger or finer than it keeps.
   final media = ref.read(currentTenantConfigProvider)?.media;
   final queue = UploadQueue(
     queueId: queueId,
     maxItems: media?.postMaxPhotos ?? UploadQueue.defaultMaxItems,
     compressor: PluginImageCompressor(
       maxLongEdge: media?.imageMaxLongEdgePx ?? UploadCompression.maxLongEdge,
+      quality: media?.imageQuality ?? UploadCompression.webpQuality,
     ),
     transport: DioMediaUploadTransport(ref.watch(dioClientProvider)),
     store: PersistentUploadQueueStore(),

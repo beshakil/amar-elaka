@@ -11,10 +11,10 @@ import {
   type ScheduledJobData,
 } from '../../queue/queue.types';
 import { OfflineMapBuilder } from './offline-map.builder';
+import { SCHEDULE_TIMEZONE } from '../../common/schedule-timezone';
 
 // settings-exempt: cron schedule (ops tuning). Hourly and cheap when nothing changed: a refreshed national archive reaches every tenant within the hour.
 const BUILD_SCHEDULE = '20 * * * *';
-const SCHEDULE_TIMEZONE = 'Asia/Dhaka';
 
 /** Registers the offline map build (worker only; idempotent across restarts). */
 @Injectable()

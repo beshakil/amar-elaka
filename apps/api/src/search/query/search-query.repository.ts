@@ -460,10 +460,8 @@ export class SearchQueryRepository {
             posts.price::text as price, null::text as slug
           from public.posts
           join public.categories c on c.id = posts.category_id
-          where posts.status_code = 'live'
-            and posts.deleted_at is null and posts.scrubbed_at is null and not posts.hidden_by_owner
+          where public.post_is_listed(posts.status_code, posts.deleted_at, posts.scrubbed_at, posts.hidden_by_owner, posts.expires_at, now())
             and (${!q.shippableOnly}::boolean or c.is_shippable)
-            and (posts.expires_at is null or posts.expires_at > now())
             and ${anyTermMatches([sql`posts.title`, sql`posts.description`], q.terms)}
             and ${categoryFilter(sql`posts.category_id`)}
             and ${geoFilter(location)}

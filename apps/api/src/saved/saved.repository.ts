@@ -68,8 +68,8 @@ export class SavedRepository {
     const query =
       itemType === 'post'
         ? sql`
-            select (status_code in ('live', 'sold') and not hidden_by_owner
-                    and deleted_at is null and scrubbed_at is null) as public,
+            select (public.post_is_viewable(status_code, deleted_at, hidden_by_owner)
+                    and scrubbed_at is null) as public,
                    coalesce(author_member_id = public.current_member_id(), false) as own
             from public.posts where id = ${itemId}::uuid`
         : itemType === 'place'

@@ -12,10 +12,10 @@ import {
 } from '../../queue/queue.types';
 import { SettingsService } from '../../settings/settings.service';
 import { GeoCallLog } from './geo-call-log';
+import { SCHEDULE_TIMEZONE } from '../../common/schedule-timezone';
 
 // settings-exempt: cron schedule for a background job (ops tuning); what it acts on is geo_provider_calls_retention_days
 const PURGE_SCHEDULE = '45 4 * * *'; // nightly, 04:45 Dhaka time
-const SCHEDULE_TIMEZONE = 'Asia/Dhaka';
 
 /** Registers the purge (worker only; idempotent across restarts). */
 @Injectable()

@@ -11,10 +11,10 @@ import {
   type ScheduledJobData,
 } from '../queue/queue.types';
 import { DuplicatesService } from './duplicates.service';
+import { SCHEDULE_TIMEZONE } from '../common/schedule-timezone';
 
 // settings-exempt: cron schedule for a background job (ops tuning); what it checks is duplicate_batch_lookback_hours
 const DETECT_SCHEDULE = '30 3 * * *'; // nightly, 03:30 Dhaka time
-const SCHEDULE_TIMEZONE = 'Asia/Dhaka';
 
 /** Registers the nightly duplicate check (worker only; idempotent across restarts). */
 @Injectable()

@@ -20,9 +20,7 @@ import '../../../core/routing/route_paths.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../core/routing/auth_gate.dart';
 import '../../offline_map/data/offline_map_repository.dart';
-import '../../place_feedback/data/place_feedback_api.dart';
-import '../../place_feedback/presentation/place_feedback_messages.dart';
-import '../../place_feedback/presentation/place_report_sheet.dart';
+import '../../place_feedback/presentation/place_report_flow.dart';
 import '../../offline_map/domain/offline_points.dart';
 import '../../post/application/current_tenant.dart';
 import '../../post_detail/application/contact_actions.dart';
@@ -920,34 +918,13 @@ class _PreviewLoaderState extends ConsumerState<_PreviewLoader> {
     }
   }
 
-  /// "সমস্যা জানান" (ADR 051): sign in first; the answer never says more than "sent".
-  Future<void> _report() async {
-    if (!requireLogin(context, ref)) return;
-    final l10n = AppLocalizations.of(context)!;
-    final locale = Localizations.localeOf(context).languageCode;
-    final messenger = ScaffoldMessenger.of(context);
-    final picked = await PlaceReportSheet.show(
-      context,
-      placeId: _props.id!,
-      location: (lat: widget.feature.lat, lng: widget.feature.lng),
-    );
-    if (picked == null || !mounted) return;
-    try {
-      await ref
-          .read(placeFeedbackApiProvider)
-          .report(
-            _props.id!,
-            picked.reason,
-            picked.text,
-            duplicateOf: picked.duplicateOf,
-          );
-      messenger.showSnackBar(SnackBar(content: Text(l10n.placeReportSent)));
-    } on AppException catch (error) {
-      messenger.showSnackBar(
-        SnackBar(content: Text(placeFeedbackError(error, l10n, locale))),
-      );
-    }
-  }
+  /// "সমস্যা জানান" (ADR 051), the same flow as the place screen's.
+  Future<void> _report() => reportPlace(
+    context,
+    ref,
+    placeId: _props.id!,
+    location: (lat: widget.feature.lat, lng: widget.feature.lng),
+  );
 
   void _suggest() {
     if (!requireLogin(context, ref)) return;
@@ -1006,7 +983,13 @@ class _PreviewLoaderState extends ConsumerState<_PreviewLoader> {
               : null,
           onSuggest: _props.layer == 'places' ? _suggest : null,
         ),
-        if (_props.layer == 'posts')
+        if (switch (_props.layer) {
+              'posts' => RoutePaths.postDetailFor(_props.id!),
+              // Landmarks are places too.
+              'places' || 'landmarks' => RoutePaths.placeFor(_props.id!),
+              _ => null,
+            }
+            case final route?)
           Padding(
             padding: const EdgeInsets.fromLTRB(
               AppSpacing.md,
@@ -1015,9 +998,12 @@ class _PreviewLoaderState extends ConsumerState<_PreviewLoader> {
               AppSpacing.md,
             ),
             child: TextButton(
-              key: const ValueKey('map-preview-open-post'),
-              onPressed: () =>
-                  context.push(RoutePaths.postDetailFor(_props.id!)),
+              key: ValueKey(
+                _props.layer == 'posts'
+                    ? 'map-preview-open-post'
+                    : 'map-preview-open-place',
+              ),
+              onPressed: () => context.push(route),
               child: Text(AppLocalizations.of(context)!.mapOpen),
             ),
           ),

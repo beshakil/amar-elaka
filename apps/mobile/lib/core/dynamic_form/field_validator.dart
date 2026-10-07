@@ -1,3 +1,5 @@
+import 'package:amar_elaka_api/amar_elaka_api.dart' show TenantTimezone;
+
 import 'field_schema.dart';
 
 /// Client-side validation of category fields — a Dart port of the API's zod
@@ -53,14 +55,15 @@ class FieldIssue {
 class ValidationContext {
   const ValidationContext({required this.today, required this.currentYear});
 
-  /// Now in Asia/Dhaka. Bangladesh has a fixed UTC+6 offset and no daylight
-  /// saving, so no timezone database is needed.
-  factory ValidationContext.now([DateTime? at]) {
-    final dhaka = (at ?? DateTime.now()).toUtc().add(_dhakaOffset);
-    return ValidationContext(today: _isoDay(dhaka), currentYear: dhaka.year);
+  /// Now in the tenant's zone: [utcOffset] is `TenantConfig.timezone`'s
+  /// offset, which the server computes (no timezone database in the app).
+  /// Without one, Bangladesh's fixed UTC+6.
+  factory ValidationContext.now({DateTime? at, Duration? utcOffset}) {
+    final local = (at ?? DateTime.now()).toUtc().add(
+      utcOffset ?? TenantTimezone.fallback.utcOffset,
+    );
+    return ValidationContext(today: _isoDay(local), currentYear: local.year);
   }
-
-  static const _dhakaOffset = Duration(hours: 6);
 
   /// `YYYY-MM-DD`.
   final String today;

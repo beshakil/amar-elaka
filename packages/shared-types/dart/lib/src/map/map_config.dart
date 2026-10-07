@@ -11,7 +11,6 @@ class MapConfig {
     required this.tiles,
     required this.assetsBaseUrl,
     required this.labelLanguage,
-    required this.fallbackStyleUrl,
     required this.kinds,
     required this.client,
   });
@@ -27,10 +26,6 @@ class MapConfig {
 
   /// `map_label_language`: bn | en.
   final String labelLanguage;
-
-  /// `map_style_fallback`, null when disabled. Emergency only: a Barikoi
-  /// style costs 4 Barikoi API calls per map load.
-  final String? fallbackStyleUrl;
 
   /// `map_kinds`: the Map tab's toggles, in order (ADR 046).
   final List<MapKind> kinds;

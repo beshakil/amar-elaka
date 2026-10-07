@@ -344,6 +344,13 @@
       "when": 1791365293306,
       "tag": "0048_map_and_heatmap_consistency",
       "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1791368532278,
+      "tag": "0049_open_now_indexes_and_client_settings",
+      "breakpoints": true
     }
   ]
 }

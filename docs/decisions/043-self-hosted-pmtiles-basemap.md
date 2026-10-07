@@ -13,9 +13,11 @@ These points were decided before this ADR and are not reopened here.
 1. **Base map = Protomaps basemap tiles** (built from OpenStreetMap), as **one Bangladesh `.pmtiles`
    file**, served as a **static file from our VPS disk behind Cloudflare**. There is no tile server process.
 2. **Rendering = MapLibre**: `maplibre_gl` in Flutter; `maplibre-gl` plus the `pmtiles` protocol in web and admin.
-3. **Barikoi is not used for tiles.** The disabled emergency entry `map_style_fallback` could point at a
-   Barikoi style URL. **Each Barikoi map load costs 4 Barikoi API calls**, so it is off (empty) and is
-   only for emergencies.
+3. **Barikoi is not used for tiles.** **Each Barikoi map load costs 4 Barikoi API calls.**
+   - The disabled emergency entry `map_style_fallback` could once point at a Barikoi style URL.
+   - _Retired in 0049 (month 2 review §7):_ a client loading that style would bypass the
+     `barikoi_daily_call_budget` count and expose the key in a client-visible URL.
+   - Without our tiles, the map now says it is unavailable.
 
 ## Why PMTiles
 
@@ -91,7 +93,7 @@ own pins (posts, stores, places) carry the fresh data.
     then show a notice instead of failing.
   - `assetsBaseUrl`
   - `labelLanguage`: the `map_label_language` setting.
-  - `fallbackStyleUrl`: the `map_style_fallback` setting, `null` when empty.
+  - (`fallbackStyleUrl` was removed with `map_style_fallback` in 0049.)
 
 ### Notes for week 13 (deploy behind Cloudflare)
 
@@ -213,4 +215,4 @@ Changes from the Protomaps theme:
   - the sprites;
   - the two Bengali fonts.
 - New env: `MAP_TILES_PATH`, `MAP_TILES_PUBLIC_URL`, `MAP_TILES_CORS_ORIGINS`.
-- New settings: `map_tiles_max_zoom`, `map_label_language`, `map_style_fallback`.
+- New settings: `map_tiles_max_zoom`, `map_label_language`, `map_style_fallback` (retired in 0049).

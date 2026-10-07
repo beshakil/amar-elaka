@@ -8,7 +8,9 @@ export function editorTenant(tenant: {
   nameBn: string;
   mapCenter: { lat: number; lng: number };
   moderation?: { typicalReviewHours: number } | undefined;
-  media?: { postMaxPhotos: number; imageMaxLongEdgePx: number } | undefined;
+  media?:
+    | { postMaxPhotos: number; imageMaxLongEdgePx: number; imageQuality?: number | undefined }
+    | undefined;
 }): EditorTenant {
   return {
     id: tenant.id,
@@ -19,5 +21,10 @@ export function editorTenant(tenant: {
     // The seeded defaults (post_max_media, media_variant_full_px) for an older API.
     maxPhotos: tenant.media?.postMaxPhotos ?? DEFAULT_MAX_ITEMS,
     imageMaxLongEdgePx: tenant.media?.imageMaxLongEdgePx ?? UPLOAD_COMPRESSION.maxLongEdge,
+    // media_image_quality is 0-100; the canvas encoder takes 0-1.
+    imageQuality:
+      tenant.media?.imageQuality === undefined
+        ? UPLOAD_COMPRESSION.quality
+        : tenant.media.imageQuality / 100,
   };
 }

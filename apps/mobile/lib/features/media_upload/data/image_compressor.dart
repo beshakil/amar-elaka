@@ -35,10 +35,15 @@ int compressionBound(
 }
 
 class PluginImageCompressor implements ImageCompressor {
-  /// [maxLongEdge]: the tenant's media_variant_full_px (TenantConfig.media).
-  PluginImageCompressor({this.maxLongEdge = UploadCompression.maxLongEdge});
+  /// [maxLongEdge] and [quality]: the tenant's media_variant_full_px and
+  /// media_image_quality (TenantConfig.media).
+  PluginImageCompressor({
+    this.maxLongEdge = UploadCompression.maxLongEdge,
+    this.quality = UploadCompression.webpQuality,
+  });
 
   final int maxLongEdge;
+  final int quality;
 
   /// One compression at a time across the app, whatever the upload
   /// concurrency: decoding a 12–48 MP photo takes tens of MB of native memory,
@@ -62,7 +67,7 @@ class PluginImageCompressor implements ImageCompressor {
       targetPath,
       minWidth: bound,
       minHeight: bound,
-      quality: UploadCompression.webpQuality,
+      quality: quality,
       format: CompressFormat.webp,
       // No location or camera data leaves the phone (the server strips it again).
       keepExif: false,

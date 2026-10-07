@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:amar_elaka_api/amar_elaka_api.dart';
 import 'package:dio/dio.dart';
 import 'package:drift/drift.dart';
@@ -11,11 +13,6 @@ import '../../../core/storage/app_database_provider.dart';
 import '../../../core/storage/secure_session_storage.dart';
 
 part 'tenant_repository.g.dart';
-
-/// A cached `TenantConfig` row is served as-is (no network call) within this
-/// window; past it, it's still served immediately but a background refresh
-/// is kicked off (stale-while-revalidate — see [TenantConfigResult.isStale]).
-const tenantConfigTtl = Duration(hours: 24);
 
 class TenantConfigResult {
   const TenantConfigResult(this.config, {required this.isStale});
@@ -69,8 +66,9 @@ class TenantRepository {
 
   Future<void> selectTenant(String tenantId) => _storage.saveTenantId(tenantId);
 
-  /// Cache-first with a 24h TTL and stale-while-revalidate: fresh cache →
-  /// returned as-is, no network call. Stale cache → returned immediately
+  /// Cache-first with stale-while-revalidate: a cached config younger than
+  /// its own `client.configRefreshMinutes` (client_config_refresh_minutes)
+  /// is returned as-is, no network call. Stale cache → returned immediately
   /// (`isStale: true`); the caller is responsible for triggering
   /// [fetchAndCacheConfig] in the background and re-reading once it lands.
   /// No cache at all → a blocking live fetch, same as [fetchAndCacheConfig].
@@ -83,8 +81,10 @@ class TenantRepository {
       );
     }
 
-    final isStale = DateTime.now().difference(row.cachedAt) > tenantConfigTtl;
-    return TenantConfigResult(await _configFromRow(row), isStale: isStale);
+    final config = await _configFromRow(row);
+    final isStale =
+        DateTime.now().difference(row.cachedAt) > config.client.configRefresh;
+    return TenantConfigResult(config, isStale: isStale);
   }
 
   Future<TenantConfig> fetchAndCacheConfig(String tenantId) async {
@@ -110,6 +110,7 @@ class TenantRepository {
   }
 
   Future<TenantConfig> _configFromRow(TenantConfigCacheRow row) async {
+    final settings = _settingsOf(row);
     final contacts = await (_db.select(
       _db.emergencyContactCache,
     )..where((t) => t.tenantId.equals(row.id))).get();
@@ -146,7 +147,67 @@ class TenantRepository {
         final int hours => TenantModeration(typicalReviewHours: hours),
         null => TenantModeration.fallback,
       },
+      media: _part(
+        settings,
+        'media',
+        TenantMedia.fromJson,
+        TenantMedia.fallback,
+      ),
+      timezone: _part(
+        settings,
+        'timezone',
+        TenantTimezone.fromJson,
+        TenantTimezone.fallback,
+      ),
+      search: _part(
+        settings,
+        'search',
+        TenantSearch.fromJson,
+        TenantSearch.fallback,
+      ),
+      places: _part(
+        settings,
+        'places',
+        TenantPlaces.fromJson,
+        TenantPlaces.fallback,
+      ),
+      client: _part(
+        settings,
+        'client',
+        TenantClient.fromJson,
+        TenantClient.fallback,
+      ),
     );
+  }
+
+  /// One part of the cached settings object, or its default when the row
+  /// predates it (or it doesn't parse: a cache is never worth a crash).
+  static T _part<T>(
+    Map<String, dynamic> settings,
+    String key,
+    T Function(Map<String, dynamic>) fromJson,
+    T fallback,
+  ) {
+    final json = settings[key];
+    if (json is! Map<String, dynamic>) return fallback;
+    try {
+      return fromJson(json);
+    } on Object {
+      return fallback;
+    }
+  }
+
+  static Map<String, dynamic> _settingsOf(TenantConfigCacheRow row) {
+    final raw = row.clientSettings;
+    if (raw == null) return const {};
+    try {
+      return switch (jsonDecode(raw)) {
+        final Map<String, dynamic> map => map,
+        _ => const {},
+      };
+    } on FormatException {
+      return const {};
+    }
   }
 
   Future<void> _cacheConfig(TenantConfig config) async {
@@ -168,6 +229,15 @@ class TenantRepository {
             supportEmail: Value(config.support.email),
             supportWhatsapp: Value(config.support.whatsappE164),
             typicalReviewHours: Value(config.moderation.typicalReviewHours),
+            clientSettings: Value(
+              jsonEncode({
+                'media': config.media.toJson(),
+                'timezone': config.timezone.toJson(),
+                'search': config.search.toJson(),
+                'places': config.places.toJson(),
+                'client': config.client.toJson(),
+              }),
+            ),
             cachedAt: DateTime.now(),
           ),
         );

@@ -28,7 +28,6 @@ interface Option {
 // Long enough to skip the keystrokes of one word, short enough to feel live
 // (the same pause as the app's search bar).
 const DEBOUNCE_MS = 250;
-const MIN_CHARS = 2;
 
 /**
  * The header's search box with as-you-type suggestions (ADR 042).
@@ -39,7 +38,14 @@ const MIN_CHARS = 2;
  * suggestion (or searches the text), Esc closes. Bengali IMEs are left
  * alone: the text is never rewritten while typing.
  */
-export function SearchBox({ labels }: { labels: SearchBoxLabels }) {
+export function SearchBox({
+  labels,
+  minChars,
+}: {
+  labels: SearchBoxLabels;
+  /** The tenant's search_suggest_min_chars (shorter text gets no suggestions). */
+  minChars: number;
+}) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const initial = pathname === '/search' ? (searchParams.get('q') ?? '') : '';
@@ -61,7 +67,7 @@ export function SearchBox({ labels }: { labels: SearchBoxLabels }) {
   useEffect(() => {
     const q = text.trim();
     latest.current = q;
-    if ([...q].length < MIN_CHARS) return;
+    if ([...q].length < minChars) return;
     const controller = new AbortController();
     const load = async () => {
       try {
@@ -81,7 +87,7 @@ export function SearchBox({ labels }: { labels: SearchBoxLabels }) {
       clearTimeout(timer);
       controller.abort();
     };
-  }, [text]);
+  }, [text, minChars]);
 
   useEffect(() => {
     const close = (event: MouseEvent) => {
@@ -92,7 +98,7 @@ export function SearchBox({ labels }: { labels: SearchBoxLabels }) {
   }, []);
 
   // Too short to suggest: nothing, whatever the last answer was.
-  const options = [...text.trim()].length >= MIN_CHARS ? answer.options : [];
+  const options = [...text.trim()].length >= minChars ? answer.options : [];
   const expanded = open && options.length > 0;
   const onKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.nativeEvent.isComposing) return; // an IME's own Enter/arrows

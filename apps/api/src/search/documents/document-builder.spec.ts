@@ -52,6 +52,7 @@ const row: PostRow = {
   lat: 23.8069,
   lng: 90.3687,
   published_at: 1_790_000_000,
+  expires_at: 1_792_000_000,
   is_boosted: true,
   is_shippable: false,
   cover_thumb_key: 't1/image/x.thumb.webp',
@@ -82,6 +83,7 @@ const row: PostRow = {
 
 describe('document builder', () => {
   const terms = new SearchTerms(SYNONYM_LINES);
+  const DOC_OPTIONS = { descriptionMaxChars: 2_000 };
 
   it('indexes custom fields in filterable forms: money in poisha, dates as yyyymmdd', () => {
     expect(indexedFields(row)).toEqual({
@@ -106,7 +108,7 @@ describe('document builder', () => {
   });
 
   it('builds a post document', () => {
-    const doc = postDocument(row, terms);
+    const doc = postDocument(row, terms, DOC_OPTIONS);
     expect(doc).toMatchObject({
       id: 'p1',
       tenant_id: 't1',
@@ -120,6 +122,7 @@ describe('document builder', () => {
       _geo: { lat: 23.8069, lng: 90.3687 },
       is_boosted: 1,
       published_at: 1_790_000_000,
+      expires_at: 1_792_000_000,
       price_minor: 1_500_000,
       slug: null,
     });
@@ -132,6 +135,7 @@ describe('document builder', () => {
     const doc = postDocument(
       { ...row, lat: null, lng: null, price: null, is_boosted: false },
       terms,
+      DOC_OPTIONS,
     );
     expect(doc._geo).toBeNull();
     expect(doc.price_minor).toBeNull();
@@ -154,6 +158,7 @@ describe('document builder', () => {
         fields: {},
       },
       terms,
+      DOC_OPTIONS,
     );
     expect(doc).toMatchObject({
       name_bn: 'রহিম ফার্মেসি',

@@ -49,8 +49,7 @@ export class MapPreviewRepository {
           left join public.localities l on l.tenant_id = p.tenant_id and l.id = p.locality_id
           left join public.geo_areas ga on ga.id = p.geo_area_id
           ${firstImage('post_id', 'p')}
-          where p.id = ${id} and p.status_code = 'live' and p.deleted_at is null
-            and not p.hidden_by_owner and (p.expires_at is null or p.expires_at > now())`,
+          where p.id = ${id} and public.post_is_listed(p.status_code, p.deleted_at, p.scrubbed_at, p.hidden_by_owner, p.expires_at, now())`,
         );
       case 'stores':
         return this.one(

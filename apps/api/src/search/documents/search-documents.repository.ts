@@ -65,7 +65,12 @@ const baseRow = z.object({
   fields: z.record(z.unknown()),
 });
 
-const postRow = baseRow.extend({ title: z.string(), price: nullableText });
+const postRow = baseRow.extend({
+  title: z.string(),
+  price: nullableText,
+  // Not z.coerce: that would turn a NULL (never expires) into 0.
+  expires_at: z.union([z.number().int(), z.string().regex(/^\d+$/).transform(Number)]).nullable(),
+});
 const storeRow = baseRow.extend({
   name_bn: z.string(),
   name_en: nullableText,
@@ -120,7 +125,7 @@ const CAPPED_BOOST = sql.raw(`exists (
               and b.status_code = 'active' and b.post_id is not null
               and b.starts_at <= now() and b.ends_at > now()
               and bt.placement_code = 'category_top'
-              and bp.status_code = 'live' and bp.deleted_at is null and not bp.hidden_by_owner
+              and public.post_is_listed(bp.status_code, bp.deleted_at, bp.scrubbed_at, bp.hidden_by_owner, bp.expires_at, now())
           ) ranked
           where ranked.post_id = p.id
             and ranked.slot <= coalesce(
@@ -155,11 +160,7 @@ export class SearchDocumentsRepository {
     const rows = await tx.execute(sql`
       select
         p.id, p.tenant_id, p.title, p.description, p.fields, p.price::text as price,
-        (p.status_code = 'live'
-          and p.deleted_at is null
-          and p.scrubbed_at is null
-          and not p.hidden_by_owner
-          and (p.expires_at is null or p.expires_at > now())
+        (public.post_is_listed(p.status_code, p.deleted_at, p.scrubbed_at, p.hidden_by_owner, p.expires_at, now())
           and c.deleted_at is null and c.is_active
           and coalesce(tc.is_enabled, false)
           and m.ban_severity_code is distinct from 'banned') as indexable,
@@ -170,6 +171,7 @@ export class SearchDocumentsRepository {
         coalesce(l.name_en, ga.name_en) as area_name_en,
         ${GEO_POINT},
         extract(epoch from coalesce(p.bumped_at, p.published_at, p.created_at))::bigint as published_at,
+        extract(epoch from p.expires_at)::bigint as expires_at,
         ${CAPPED_BOOST} as is_boosted,
         c.is_shippable,
         cover.thumb_key as cover_thumb_key, cover.thumbhash as cover_thumbhash,

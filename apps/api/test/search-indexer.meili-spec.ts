@@ -109,6 +109,7 @@ function row(id: string, title: string): PostRow {
     lat: null,
     lng: null,
     published_at: 1_790_000_000,
+    expires_at: null,
     is_boosted: false,
     is_shippable: false,
     cover_thumb_key: null,
@@ -151,6 +152,7 @@ describe('SearchIndexer against a real Meilisearch', () => {
               search_typo_two_typos_min_chars: 8,
               search_facet_values_max: 100,
               search_max_total_hits: 1000,
+              search_description_max_chars: 2000,
             } as Record<string, number>
           )[key],
         ),

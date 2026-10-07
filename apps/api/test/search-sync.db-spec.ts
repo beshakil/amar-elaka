@@ -292,6 +292,7 @@ describe('Search sync outbox triggers (0020)', () => {
     expect(rows.map((r) => r.key)).toEqual([
       'search_click_window_minutes',
       'search_default_radius_km',
+      'search_description_max_chars',
       'search_facet_fields_max',
       'search_facet_values_max',
       'search_landmarks_max',
@@ -306,7 +307,6 @@ describe('Search sync outbox triggers (0020)', () => {
       'search_popular_window_days',
       'search_price_bucket_count',
       'search_suggest_categories_max',
-      'search_suggest_limit',
       'search_suggest_listings_max',
       'search_suggest_min_chars',
       'search_suggest_queries_max',

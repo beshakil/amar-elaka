@@ -8,6 +8,7 @@
     "^.+\\.(t|j)s$": "ts-jest"
   },
   "globalSetup": "<rootDir>/db/global-setup.ts",
+  "globalTeardown": "<rootDir>/db/global-teardown.ts",
   "maxWorkers": 1,
   "setupFiles": ["<rootDir>/placeholder-env.ts"]
 }

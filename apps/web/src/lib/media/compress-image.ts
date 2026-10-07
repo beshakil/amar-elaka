@@ -1,7 +1,8 @@
 /**
  * Client-side compression before upload, matching the mobile app: the long
- * edge at most 1200px (the API's largest variant, media_variant_full_px, so
- * nothing useful is thrown away), WebP at quality 0.8. Re-encoding through a
+ * edge at most the API's largest variant (media_variant_full_px, so nothing
+ * useful is thrown away), WebP at the API's media_image_quality. These are
+ * the seeded defaults, for an API that doesn't say (TenantConfig.media). Re-encoding through a
  * canvas also drops EXIF — location included — before the file leaves the
  * device; the server strips it again regardless.
  */

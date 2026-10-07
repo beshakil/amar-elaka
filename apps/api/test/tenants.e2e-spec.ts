@@ -200,9 +200,16 @@ describe('Tenant resolution + tenant module (e2e)', () => {
         slug: SLUG_COVERING,
         support: { phoneE164: '+8801911000059', email: 'support@tenants-e2e.example.com' },
         branding: { logoStorageKey: 'logos/covering.png' },
-        // The seeded post_max_media / media_variant_full_px, for the clients' pickers.
-        media: { postMaxPhotos: 10, imageMaxLongEdgePx: 1200 },
+        // The seeded post_max_media / media_variant_full_px / media_image_quality,
+        // for the clients' pickers and compressors.
+        media: { postMaxPhotos: 10, imageMaxLongEdgePx: 1200, imageQuality: 80 },
         moderation: { typicalReviewHours: 12 },
+        // Seeded client settings (0020, 0046, 0049): no copy of them in the apps.
+        search: { suggestMinChars: 2 },
+        places: { duplicateReportRadiusM: 1000 },
+        client: { configRefreshMinutes: 360 },
+        // Asia/Dhaka has no daylight saving: always UTC+6.
+        timezone: { name: 'Asia/Dhaka', utcOffsetMinutes: 360 },
       });
     });
 

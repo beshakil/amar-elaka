@@ -9,6 +9,7 @@ import {
   QUEUE_POSTS,
   type ScheduledJobData,
 } from '../queue/queue.types';
+import { SCHEDULE_TIMEZONE } from '../common/schedule-timezone';
 
 // settings-exempt: cron schedules for background sweeps (ops tuning); what they act on is settings (post_expiry_days_default, post_expiry_reminder_days, draft_retention_days, view_dedupe_hours)
 const SCHEDULES = {
@@ -17,7 +18,6 @@ const SCHEDULES = {
   [JOB_CLEAN_STALE_DRAFTS]: '0 4 * * *', // nightly, 04:00 Dhaka time
   [JOB_FLUSH_POST_VIEWS]: '* * * * *', // every minute: counts lag real views by at most ~1 minute
 } as const;
-const SCHEDULE_TIMEZONE = 'Asia/Dhaka';
 
 /** Registers the repeatable post-lifecycle jobs (worker only; idempotent across restarts). */
 @Injectable()

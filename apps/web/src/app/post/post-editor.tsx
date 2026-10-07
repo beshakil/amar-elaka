@@ -53,6 +53,8 @@ export interface EditorTenant {
   maxPhotos: number;
   /** The API's media_variant_full_px: nothing bigger is uploaded. */
   imageMaxLongEdgePx: number;
+  /** The API's media_image_quality, as the canvas encoder's 0-1. */
+  imageQuality: number;
 }
 
 type Mode = { kind: 'create' } | { kind: 'edit'; post: Post };
@@ -143,7 +145,11 @@ export function PostEditor({
         transport: createWebUploadTransport(),
         maxItems: tenant.maxPhotos,
         compress: (file) =>
-          compressImage(file, { ...UPLOAD_COMPRESSION, maxLongEdge: tenant.imageMaxLongEdgePx }),
+          compressImage(file, {
+            ...UPLOAD_COMPRESSION,
+            maxLongEdge: tenant.imageMaxLongEdgePx,
+            quality: tenant.imageQuality,
+          }),
       }),
   );
   useEffect(() => () => queue.dispose(), [queue]);

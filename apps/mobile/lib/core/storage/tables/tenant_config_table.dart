@@ -45,6 +45,11 @@ class TenantConfigCache extends Table {
 
   /// "Under review, usually within X hours" (schema v2).
   IntColumn get typicalReviewHours => integer().nullable()();
+
+  /// The config's settings for the app — `media`, `timezone`, `search`,
+  /// `places`, `client` — as one JSON object (schema v4), so a new setting
+  /// needs no new column. Null for a row cached before v4: defaults apply.
+  TextColumn get clientSettings => text().nullable()();
   DateTimeColumn get cachedAt => dateTime()();
 
   @override

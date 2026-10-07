@@ -69,12 +69,13 @@ const CATEGORY_TREE_ROW = z.object({
 });
 export type CategoryTreeRow = z.infer<typeof CATEGORY_TREE_ROW>;
 
-/** The tenant's posts a sitemap lists: live, and sold ones still inside the index window. */
+/** The tenant's posts a sitemap lists: listed ones, and sold ones still inside the index window. */
 const sitemapPostsWhere = (soldNoindexDays: number) => sql`
   p.tenant_id = public.current_tenant_id()
-  and p.deleted_at is null and p.scrubbed_at is null and not p.hidden_by_owner
-  and (p.status_code = 'live'
-       or (p.status_code = 'sold' and p.sold_at > now() - make_interval(days => ${soldNoindexDays})))`;
+  and (public.post_is_listed(p.status_code, p.deleted_at, p.scrubbed_at, p.hidden_by_owner, p.expires_at, now())
+       or (p.status_code = 'sold' and p.scrubbed_at is null
+           and public.post_is_viewable(p.status_code, p.deleted_at, p.hidden_by_owner)
+           and p.sold_at > now() - make_interval(days => ${soldNoindexDays})))`;
 
 /**
  * SQL for the public web pages (ADR 039). Everything but the status runs in
@@ -110,8 +111,8 @@ export class SeoRepository {
           and m.status_code = 'ready' and m.visibility_code = 'public'
         order by a.sort_order limit 1
       ) cover on true
-      where p.id = ${postId}::uuid and p.status_code in ('live', 'sold')
-        and p.deleted_at is null and p.scrubbed_at is null and not p.hidden_by_owner`);
+      where p.id = ${postId}::uuid and p.scrubbed_at is null
+        and public.post_is_viewable(p.status_code, p.deleted_at, p.hidden_by_owner)`);
     return z
       .array(OG_ROW)
       .max(1)
@@ -205,7 +206,7 @@ export class SeoRepository {
     const rows = await tx.execute(sql`
       select p.id, p.tenant_id from public.posts p
       where p.tenant_id = public.current_tenant_id() and p.store_id = ${storeId}::uuid
-        and p.status_code = 'live' and p.deleted_at is null and not p.hidden_by_owner
+        and public.post_is_listed(p.status_code, p.deleted_at, p.scrubbed_at, p.hidden_by_owner, p.expires_at, now())
         and (${before}::uuid is null or p.id < ${before}::uuid)
       order by p.id desc
       limit ${limit}`);

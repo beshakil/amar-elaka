@@ -37,11 +37,6 @@ export const mapConfigSchema = z.object({
   assetsBaseUrl: z.string(),
   /** `map_label_language`: 'en' until the Bengali shaping spike passes (ADR 043). */
   labelLanguage: z.enum(['bn', 'en']),
-  /**
-   * `map_style_fallback`, null when disabled. An emergency replacement style:
-   * if it is a Barikoi style, every map load costs 4 Barikoi API calls.
-   */
-  fallbackStyleUrl: z.string().nullable(),
   /** `map_kinds`: the Map tab's toggles, in order (ADR 046). */
   kinds: z.array(
     z.object({

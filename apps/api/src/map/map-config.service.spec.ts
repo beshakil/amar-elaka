@@ -20,7 +20,6 @@ describe('MapConfigService', () => {
   let root: string;
   const values: Record<string, unknown> = {
     map_label_language: 'bn',
-    map_style_fallback: 'https://maps.example/style.json',
     map_kinds: [
       {
         code: 'bank',
@@ -69,7 +68,6 @@ describe('MapConfigService', () => {
       tiles: null,
       assetsBaseUrl: 'http://api.test/tiles',
       labelLanguage: 'bn',
-      fallbackStyleUrl: 'https://maps.example/style.json',
       ...shared,
     });
   });

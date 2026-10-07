@@ -23,6 +23,10 @@ class TenantConfig {
     required this.support,
     this.moderation = TenantModeration.fallback,
     this.media = TenantMedia.fallback,
+    this.timezone = TenantTimezone.fallback,
+    this.search = TenantSearch.fallback,
+    this.places = TenantPlaces.fallback,
+    this.client = TenantClient.fallback,
   });
 
   factory TenantConfig.fromJson(Map<String, dynamic> json) =>
@@ -47,6 +51,18 @@ class TenantConfig {
   /// The photo limits the picker and the compressor must match; defaults for
   /// a config cached before the field existed.
   final TenantMedia media;
+
+  /// The tenant's zone: what "today" is for date fields.
+  final TenantTimezone timezone;
+
+  /// search_suggest_min_chars.
+  final TenantSearch search;
+
+  /// duplicate_report_radius_m.
+  final TenantPlaces places;
+
+  /// How long this config may be served from the phone's cache.
+  final TenantClient client;
 
   Map<String, dynamic> toJson() => _$TenantConfigToJson(this);
 }
@@ -73,10 +89,12 @@ class TenantMedia {
   const TenantMedia({
     required this.postMaxPhotos,
     required this.imageMaxLongEdgePx,
+    this.imageQuality = 80,
   });
 
-  /// The seeded defaults (post_max_media 0026, media_variant_full_px 0019),
-  /// for a config cached or served before the field existed.
+  /// The seeded defaults (post_max_media 0026, media_variant_full_px and
+  /// media_image_quality 0019), for a config cached or served before the
+  /// field existed.
   static const fallback = TenantMedia(
     postMaxPhotos: 10,
     imageMaxLongEdgePx: 1200,
@@ -92,7 +110,86 @@ class TenantMedia {
   /// bigger only wastes the user's data.
   final int imageMaxLongEdgePx;
 
+  /// media_image_quality (0-100): the quality the server re-encodes at, so a
+  /// higher one on the phone only costs the user's data.
+  final int imageQuality;
+
   Map<String, dynamic> toJson() => _$TenantMediaToJson(this);
+}
+
+@JsonSerializable()
+class TenantTimezone {
+  const TenantTimezone({required this.name, required this.utcOffsetMinutes});
+
+  /// Every tenant so far is in Bangladesh: Asia/Dhaka, UTC+6, no daylight
+  /// saving. For a config cached or served before the field existed.
+  static const fallback = TenantTimezone(
+    name: 'Asia/Dhaka',
+    utcOffsetMinutes: 360,
+  );
+
+  factory TenantTimezone.fromJson(Map<String, dynamic> json) =>
+      _$TenantTimezoneFromJson(json);
+
+  /// tenants.timezone (IANA).
+  final String name;
+
+  /// The zone's offset from UTC when the config was served.
+  final int utcOffsetMinutes;
+
+  Duration get utcOffset => Duration(minutes: utcOffsetMinutes);
+
+  Map<String, dynamic> toJson() => _$TenantTimezoneToJson(this);
+}
+
+@JsonSerializable()
+class TenantSearch {
+  const TenantSearch({required this.suggestMinChars});
+
+  /// The seeded search_suggest_min_chars (0020).
+  static const fallback = TenantSearch(suggestMinChars: 2);
+
+  factory TenantSearch.fromJson(Map<String, dynamic> json) =>
+      _$TenantSearchFromJson(json);
+
+  /// Shorter text asks the server for no suggestions.
+  final int suggestMinChars;
+
+  Map<String, dynamic> toJson() => _$TenantSearchToJson(this);
+}
+
+@JsonSerializable()
+class TenantPlaces {
+  const TenantPlaces({required this.duplicateReportRadiusM});
+
+  /// The seeded duplicate_report_radius_m (0046).
+  static const fallback = TenantPlaces(duplicateReportRadiusM: 1000);
+
+  factory TenantPlaces.fromJson(Map<String, dynamic> json) =>
+      _$TenantPlacesFromJson(json);
+
+  /// How far the other place in a "same place" report may be.
+  final int duplicateReportRadiusM;
+
+  Map<String, dynamic> toJson() => _$TenantPlacesToJson(this);
+}
+
+@JsonSerializable()
+class TenantClient {
+  const TenantClient({required this.configRefreshMinutes});
+
+  /// The seeded client_config_refresh_minutes (0049).
+  static const fallback = TenantClient(configRefreshMinutes: 360);
+
+  factory TenantClient.fromJson(Map<String, dynamic> json) =>
+      _$TenantClientFromJson(json);
+
+  /// A cached config older than this is refreshed in the background.
+  final int configRefreshMinutes;
+
+  Duration get configRefresh => Duration(minutes: configRefreshMinutes);
+
+  Map<String, dynamic> toJson() => _$TenantClientToJson(this);
 }
 
 @JsonSerializable()

@@ -15,8 +15,8 @@ import '../data/saved_api.dart';
 const _thumbSize = 56.0;
 
 /// "সেভ করা" (ADR 037): what the user saved, newest first, across areas.
-/// An item that sold, expired or closed stays, marked; a post opens its
-/// detail. The filter chips narrow to listings, places or shops.
+/// An item that sold, expired or closed stays, marked; a post or a place
+/// opens its screen. The filter chips narrow to listings, places or shops.
 class SavedScreen extends ConsumerStatefulWidget {
   const SavedScreen({super.key});
 
@@ -142,11 +142,20 @@ class _SavedTile extends StatelessWidget {
   final SavedItem item;
   final void Function(SavedItem) onUnsave;
 
-  /// A post that can still be looked at (not deleted or removed). Places and
-  /// stores have no screen in the app yet: they only show.
-  bool get _opens =>
-      item.itemType == 'post' &&
-      const {'available', 'sold', 'expired'}.contains(item.state);
+  /// What can still be looked at: a post that isn't deleted or removed, a
+  /// place that still exists. Stores have no screen in the app yet.
+  String? get _route => switch (item.itemType) {
+    'post' when const {'available', 'sold', 'expired'}.contains(item.state) =>
+      RoutePaths.postDetailFor(item.itemId),
+    'place'
+        when const {
+          'available',
+          'temporarily_closed',
+          'closed',
+        }.contains(item.state) =>
+      RoutePaths.placeFor(item.itemId),
+    _ => null,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -209,9 +218,10 @@ class _SavedTile extends StatelessWidget {
         icon: const Icon(Icons.bookmark_remove_outlined),
         onPressed: () => onUnsave(item),
       ),
-      onTap: _opens
-          ? () => context.push(RoutePaths.postDetailFor(item.itemId))
-          : null,
+      onTap: switch (_route) {
+        final route? => () => context.push(route),
+        null => null,
+      },
     );
   }
 }

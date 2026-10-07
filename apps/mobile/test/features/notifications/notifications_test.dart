@@ -64,6 +64,10 @@ Future<GoRouter> _pumpInbox(
         path: '/posts/:id',
         builder: (_, state) => Text('post ${state.pathParameters['id']}'),
       ),
+      GoRoute(
+        path: '/places/:id',
+        builder: (_, state) => Text('place ${state.pathParameters['id']}'),
+      ),
     ],
   );
   await tester.pumpWidget(
@@ -147,7 +151,8 @@ void main() {
     test('only links the app has a screen for are followed', () {
       expect(canOpenDeepLink('/posts/abc'), isTrue);
       expect(canOpenDeepLink('/saved-searches/abc'), isTrue);
-      expect(canOpenDeepLink('/places/abc'), isFalse);
+      expect(canOpenDeepLink('/places/abc'), isTrue);
+      expect(canOpenDeepLink('/stores/abc'), isFalse);
       expect(canOpenDeepLink(null), isFalse);
     });
   });
@@ -183,7 +188,7 @@ void main() {
   });
 
   testWidgets(
-    'a place notification only marks read; read-all clears the rest',
+    'read-all clears every unread; a place notification opens the place',
     (tester) async {
       final api = FakeNotificationsApi({
         null: InboxPage(
@@ -205,11 +210,6 @@ void main() {
         ),
       });
       await _pumpInbox(tester, api);
-      await tester.tap(find.byKey(const ValueKey('notification-n1')));
-      await tester.pumpAndSettle();
-      expect(api.read, ['n1']);
-      // Still on the inbox: the app has no place screen to open.
-      expect(find.byKey(const ValueKey('notifications-list')), findsOneWidget);
       expect(
         find.text('গাড়ি — ${_l10n.noteSavedSearchIdle('৩০')}'),
         findsOneWidget,
@@ -221,6 +221,11 @@ void main() {
         find.byKey(const ValueKey('notifications-read-all')),
         findsNothing,
       );
+
+      await tester.tap(find.byKey(const ValueKey('notification-n1')));
+      await tester.pumpAndSettle();
+      // The place screen (/places/:id) opens.
+      expect(find.text('place x'), findsOneWidget);
     },
   );
 

@@ -1,3 +1,5 @@
+import { SCHEDULE_TIMEZONE } from '../../common/schedule-timezone';
+
 /**
  * When a saved search with new matches may notify (ADR 041). Pure, so every
  * rule is unit-tested:
@@ -11,8 +13,6 @@
  *    (saved_search_daily_digest_hour).
  */
 
-const DHAKA = 'Asia/Dhaka';
-
 export interface DhakaTime {
   /** YYYY-MM-DD */
   day: string;
@@ -21,7 +21,7 @@ export interface DhakaTime {
 
 export function dhakaTime(at: Date): DhakaTime {
   const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: DHAKA,
+    timeZone: SCHEDULE_TIMEZONE,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',

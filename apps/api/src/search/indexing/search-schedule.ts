@@ -9,6 +9,7 @@ import {
   QUEUE_SEARCH,
   type SearchJob,
 } from '../../queue/queue.types';
+import { SCHEDULE_TIMEZONE } from '../../common/schedule-timezone';
 
 // settings-exempt: polling cadence of the outbox relay (how fresh search is, ops tuning); a change waits at most this long plus one batch
 const RELAY_EVERY_MS = 2_000;
@@ -16,7 +17,6 @@ const RELAY_EVERY_MS = 2_000;
 const SWEEP_SCHEDULE = '*/15 * * * *';
 // settings-exempt: see above; retention itself is the outbox_processed_retention_days setting
 const PURGE_SCHEDULE = '45 3 * * *';
-const SCHEDULE_TIMEZONE = 'Asia/Dhaka';
 
 /**
  * Registers the search upkeep jobs (worker only; idempotent across restarts)

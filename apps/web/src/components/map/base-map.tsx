@@ -35,21 +35,21 @@ export function usePageTheme(): MapTheme {
   return useSyncExternalStore(subscribePageTheme, readPageTheme, () => 'light');
 }
 
-/** The style to load: ours over the self-hosted archive, else the emergency fallback, else none. */
+/**
+ * The style to load: ours over the self-hosted archive, else none (the map
+ * says it is unavailable). Never a third-party style: CLAUDE.md map rules.
+ */
 function styleFor(
   config: MapConfig,
   theme: MapTheme,
   lang: MapLabelLanguage,
-): StyleSpecification | string | null {
-  if (config.tiles) {
-    return resolveStyle(theme, {
-      tilesUrl: config.tiles.url,
-      assetsBaseUrl: config.assetsBaseUrl,
-      lang,
-    });
-  }
-  // map_style_fallback: emergencies only — a Barikoi style costs 4 Barikoi calls per load.
-  return config.fallbackStyleUrl;
+): StyleSpecification | null {
+  if (!config.tiles) return null;
+  return resolveStyle(theme, {
+    tilesUrl: config.tiles.url,
+    assetsBaseUrl: config.assetsBaseUrl,
+    lang,
+  });
 }
 
 export interface BaseMapProps {

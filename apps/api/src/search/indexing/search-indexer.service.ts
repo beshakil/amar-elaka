@@ -210,25 +210,28 @@ export class SearchIndexer {
     type: SearchType,
     ids: readonly string[],
   ): Promise<{ documents: SearchDocument[]; removedIds: string[] }> {
+    const options = {
+      descriptionMaxChars: await this.settings.get('search_description_max_chars'),
+    };
     switch (type) {
       case 'posts': {
         const { indexable, removed } = await this.repo.loadPosts(tx, ids);
         return {
-          documents: indexable.map((r) => postDocument(r, this.terms)),
+          documents: indexable.map((r) => postDocument(r, this.terms, options)),
           removedIds: removed,
         };
       }
       case 'stores': {
         const { indexable, removed } = await this.repo.loadStores(tx, ids);
         return {
-          documents: indexable.map((r) => storeDocument(r, this.terms)),
+          documents: indexable.map((r) => storeDocument(r, this.terms, options)),
           removedIds: removed,
         };
       }
       case 'places': {
         const { indexable, removed } = await this.repo.loadPlaces(tx, ids);
         return {
-          documents: indexable.map((r) => placeDocument(r, this.terms)),
+          documents: indexable.map((r) => placeDocument(r, this.terms, options)),
           removedIds: removed,
         };
       }

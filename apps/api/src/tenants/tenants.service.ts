@@ -86,6 +86,11 @@ export class TenantsService {
             nameBn: tenants.nameBn,
             nameEn: tenants.nameEn,
             defaultLocale: tenants.defaultLocale,
+            timezone: tenants.timezone,
+            // The zone's offset right now, so a client can tell "today" without
+            // a time zone database (Asia/Dhaka has no daylight saving).
+            utcOffsetMinutes: sql<number>`(extract(epoch from (now() at time zone ${tenants.timezone})
+              - (now() at time zone 'UTC')) / 60)::int`,
             geoAreaId: tenants.geoAreaId,
             lng: sql<number>`st_x(${tenants.mapCenter}::geometry)`,
             lat: sql<number>`st_y(${tenants.mapCenter}::geometry)`,
@@ -144,9 +149,15 @@ export class TenantsService {
           'moderation_typical_review_hours',
           tenant.id,
         );
-        const [postMaxPhotos, imageMaxLongEdgePx] = await Promise.all([
+        const [postMaxPhotos, imageMaxLongEdgePx, imageQuality] = await Promise.all([
           this.settings.get('post_max_media', tenant.id),
           this.settings.get('media_variant_full_px', tenant.id),
+          this.settings.get('media_image_quality', tenant.id),
+        ]);
+        const [suggestMinChars, duplicateReportRadiusM, configRefreshMinutes] = await Promise.all([
+          this.settings.get('search_suggest_min_chars', tenant.id),
+          this.settings.get('duplicate_report_radius_m', tenant.id),
+          this.settings.get('client_config_refresh_minutes', tenant.id),
         ]);
         const [home, category, listing, soldNoindexDays, sitemapUrlsPerFile] = await Promise.all([
           this.settings.get('web_home_revalidate_seconds', tenant.id),
@@ -162,6 +173,7 @@ export class TenantsService {
           nameBn: tenant.nameBn,
           nameEn: tenant.nameEn,
           defaultLocale: tenant.defaultLocale,
+          timezone: { name: tenant.timezone, utcOffsetMinutes: Number(tenant.utcOffsetMinutes) },
           mapCenter: { lat, lng },
           radiusKm,
           branding: { logoStorageKey: settingsRow?.logoStorageKey ?? null },
@@ -173,7 +185,10 @@ export class TenantsService {
             email: settingsRow?.contactEmail ?? null,
             whatsappE164: settingsRow?.whatsappE164 ?? null,
           },
-          media: { postMaxPhotos, imageMaxLongEdgePx },
+          media: { postMaxPhotos, imageMaxLongEdgePx, imageQuality },
+          search: { suggestMinChars },
+          places: { duplicateReportRadiusM },
+          client: { configRefreshMinutes },
           moderation: { typicalReviewHours },
           web: {
             homeRevalidateSeconds: home,

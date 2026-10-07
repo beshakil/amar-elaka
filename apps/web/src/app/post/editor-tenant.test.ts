@@ -8,9 +8,14 @@ describe('editorTenant', () => {
     const tenant = editorTenant({
       ...base,
       moderation: { typicalReviewHours: 6 },
-      media: { postMaxPhotos: 6, imageMaxLongEdgePx: 1600 },
+      media: { postMaxPhotos: 6, imageMaxLongEdgePx: 1600, imageQuality: 70 },
     });
-    expect(tenant).toMatchObject({ typicalReviewHours: 6, maxPhotos: 6, imageMaxLongEdgePx: 1600 });
+    expect(tenant).toMatchObject({
+      typicalReviewHours: 6,
+      maxPhotos: 6,
+      imageMaxLongEdgePx: 1600,
+      imageQuality: 0.7,
+    });
   });
 
   it('falls back to the seeded defaults for a config from an older API', () => {
@@ -18,6 +23,7 @@ describe('editorTenant', () => {
       typicalReviewHours: 12,
       maxPhotos: 10,
       imageMaxLongEdgePx: 1200,
+      imageQuality: 0.8,
     });
   });
 });

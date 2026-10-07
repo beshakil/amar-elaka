@@ -7,12 +7,12 @@ import {
   QUEUE_MEDIA,
   type MediaSweepJob,
 } from '../queue/queue.types';
+import { SCHEDULE_TIMEZONE } from '../common/schedule-timezone';
 
 // settings-exempt: cron schedules for background sweeps (ops tuning); the 24h orphan age itself is the orphan_media_hours setting
 const ORPHAN_SWEEP_SCHEDULE = '15 * * * *'; // hourly, at :15
 // settings-exempt: see above
 const PURGE_SCHEDULE = '30 3 * * *'; // nightly, 03:30 Dhaka time
-const SCHEDULE_TIMEZONE = 'Asia/Dhaka';
 
 /** Registers the repeatable media sweeps (worker only; idempotent across restarts). */
 @Injectable()

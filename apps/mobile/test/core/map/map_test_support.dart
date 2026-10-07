@@ -8,7 +8,6 @@ const testMapConfig = MapConfig(
   tiles: null,
   assetsBaseUrl: 'http://tiles.test/tiles',
   labelLanguage: 'en',
-  fallbackStyleUrl: null,
   kinds: [
     MapKind(
       code: 'hospital',
