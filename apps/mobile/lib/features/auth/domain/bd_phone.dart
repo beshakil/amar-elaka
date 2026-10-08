@@ -1,3 +1,5 @@
+import '../../../core/dynamic_form/bn_numerals.dart';
+
 // Mirrors apps/api/src/auth/phone/phone-normalizer.ts's BD_MOBILE_PATTERN
 // exactly, so client-side validation never disagrees with the server:
 // 01XXXXXXXXX / 8801XXXXXXXXX / +8801XXXXXXXXX, operator prefixes 013–019.
@@ -22,3 +24,8 @@ String? normalizeBdPhone(String input) {
   if (match == null) return null;
   return '+880${match.group(1)}';
 }
+
+/// A stored number (+8801711000099) as people here read it: 01711000099, in
+/// the reader's digits (০১৭১১০০০০৯৯ in Bengali).
+String displayBdPhone(String e164, String locale) =>
+    localizeDigits(e164.replaceFirst(RegExp(r'^\+88'), ''), locale);

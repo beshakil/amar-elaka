@@ -41,4 +41,9 @@ void main() {
       expect(normalizeBdPhone('not a phone'), isNull);
     });
   });
+
+  test('displayBdPhone: the local number, in the reader\u2019s digits', () {
+    expect(displayBdPhone('+8801711000099', 'bn'), '০১৭১১০০০০৯৯');
+    expect(displayBdPhone('+8801711000099', 'en'), '01711000099');
+  });
 }

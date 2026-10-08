@@ -12,6 +12,7 @@ import '../../../core/network/auth_error_messages.dart';
 import '../../../core/routing/route_paths.dart';
 import '../../../l10n/app_localizations.dart';
 import '../application/auth_controller.dart';
+import '../domain/bd_phone.dart';
 
 const _codeLength = 6;
 
@@ -126,7 +127,12 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                l10n.otpVerifyDescription(widget.args.phone),
+                l10n.otpVerifyDescription(
+                  displayBdPhone(
+                    widget.args.phone,
+                    Localizations.localeOf(context).languageCode,
+                  ),
+                ),
                 style: Theme.of(context).textTheme.bodyLarge,
               ),
               const SizedBox(height: AppSpacing.lg),
