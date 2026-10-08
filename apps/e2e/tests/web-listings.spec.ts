@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 import { STORE_SLUG } from '../stub-api/fixtures';
-import { expect, serverResponse, test, tenantUrl } from './support';
+import { expect, serverResponse, signInSeller, test, tenantUrl } from './support';
 
 /**
  * The public listing pages (ADR 039): statuses decided before rendering,
@@ -119,6 +119,30 @@ test.describe('listing page', () => {
       'tel:+8801711111111',
     );
     expect(await stub.hits('POST /api/v1/posts/:id/contact')).toBe(1);
+  });
+
+  test('save: a guest goes to login first; signed in, it saves, then says it already was', async ({
+    page,
+    stub,
+  }) => {
+    const { posts } = await stub.control({ seedPosts: [{ title: TITLE, status: 'live' }] });
+    const id = posts[0]!.id;
+
+    await page.goto(tenantUrl('mirpur', canonicalPath(id)));
+    await page.getByTestId('listing-save').click();
+    await expect(page).toHaveURL(/\/login\?next=/);
+    expect(await stub.hits('POST /api/v1/saved/post/:id')).toBe(0);
+
+    await signInSeller(page);
+    await page.goto(tenantUrl('mirpur', canonicalPath(id)));
+    await page.getByTestId('listing-save').click();
+    await expect(page.getByRole('status').filter({ hasText: 'সেভ করা' })).toBeVisible();
+    await expect(page.getByTestId('listing-save')).toBeDisabled();
+    expect(await stub.hits('POST /api/v1/saved/post/:id')).toBe(1);
+
+    await page.reload();
+    await page.getByTestId('listing-save').click();
+    await expect(page.getByRole('status').filter({ hasText: 'আগেই সেভ করা আছে' })).toBeVisible();
   });
 
   test('expired and removed listings answer 410 Gone, in Bengali, noindex', async ({

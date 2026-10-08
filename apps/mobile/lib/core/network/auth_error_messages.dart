@@ -29,6 +29,7 @@ String _describeApiError(
     'OTP_RATE_LIMITED_COOLDOWN' => l10n.errorOtpCooldownMessage,
     'OTP_RATE_LIMITED_PHONE_DAILY' => l10n.errorOtpPhoneDailyLimitMessage,
     'OTP_RATE_LIMITED_IP_DAILY' => l10n.errorOtpIpDailyLimitMessage,
+    'SMS_DELIVERY_FAILED' => l10n.errorSmsDeliveryFailedMessage,
     'OTP_EXPIRED' => l10n.errorOtpExpiredMessage,
     'OTP_INCORRECT' => l10n.errorOtpIncorrectMessage,
     'OTP_TOO_MANY_ATTEMPTS' => l10n.errorOtpTooManyAttemptsMessage,

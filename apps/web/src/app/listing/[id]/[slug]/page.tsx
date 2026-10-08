@@ -8,6 +8,7 @@ import { NoCoverage } from '@/components/no-coverage';
 import { Breadcrumbs } from '@/components/listings/breadcrumbs';
 import { ContactActions } from '@/components/listings/contact-actions';
 import { ListingGrid } from '@/components/listings/listing-grid';
+import { SaveButton } from '@/components/listings/save-button';
 import { ViewBeacon } from '@/components/listings/view-beacon';
 import type { PostDetail, TenantConfig } from '@/lib/api/schemas';
 import { pickMessages } from '@/lib/i18n-messages';
@@ -179,6 +180,7 @@ export default async function ListingPage({ params }: Props) {
               sold={post.isSold}
               loginPath={loginPath}
             />
+            <SaveButton postId={post.id} loginPath={loginPath} />
           </NextIntlClientProvider>
 
           <Seller post={post} tenant={tenant} />

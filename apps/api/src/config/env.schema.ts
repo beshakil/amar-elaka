@@ -132,12 +132,15 @@ export const EnvSchema = z
     SMTP_PORT: z.coerce.number().int().positive().max(65535),
     SMTP_FROM: z.string().email(),
 
-    // SMS — local stub provider by default; real provider fields are optional
-    // until a provider module is built.
-    SMS_PROVIDER: z.string().min(1).default('local'),
+    // SMS (ADR 053): `local` logs the message (dev, tests); `bulksmsbd` sends
+    // through BulkSMSBD and needs its API key and approved sender ID (checked
+    // below). SMS_API_URL overrides the gateway's endpoint (a sandbox).
+    SMS_PROVIDER: z.enum(['local', 'bulksmsbd']).default('local'),
     SMS_API_URL: z.string().optional().default(''),
     SMS_API_KEY: z.string().optional().default(''),
     SMS_SENDER_ID: z.string().optional().default(''),
+    // Infra tuning, like GEOCODING_TIMEOUT_MS: one gateway request's limit.
+    SMS_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
 
     // Google OAuth — audience check only; ID tokens are verified locally via
     // google-auth-library, so no client secret is needed.
@@ -164,6 +167,25 @@ export const EnvSchema = z
     PERMISSIONS_CACHE_TTL_MS: z.coerce.number().int().positive().default(300_000),
   })
   .superRefine((env, ctx) => {
+    if (env.SMS_PROVIDER === 'bulksmsbd') {
+      for (const key of ['SMS_API_KEY', 'SMS_SENDER_ID'] as const) {
+        if (!env[key]) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: [key],
+            message: `${key} is required when SMS_PROVIDER=bulksmsbd`,
+          });
+        }
+      }
+    }
+    // The local provider only logs the code: in production nobody could log in.
+    if (env.NODE_ENV === 'production' && env.SMS_PROVIDER === 'local') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['SMS_PROVIDER'],
+        message: 'SMS_PROVIDER=local only logs OTPs; production needs a real gateway (bulksmsbd)',
+      });
+    }
     if (env.STORAGE_DRIVER === 'local' && !env.API_PUBLIC_URL) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

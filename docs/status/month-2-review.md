@@ -57,8 +57,19 @@ The review's open items, worked through the same day:
 - The search suite had been failing since the open-now commit. Its fake repository lacked `openStates`, and the
   regression script didn't run `test:search`; it does now.
 
-**Still open:** the production SMS gateway (needs a provider choice and sender-ID registration), and real geo usage
-data (needs a deployment).
+**Then (same day):**
+
+- **SMS gateway: BulkSMSBD** (ADR 053), chosen by the product owner.
+  - `SMS_PROVIDER=bulksmsbd` sends OTPs through it, with a timeout, one retry and typed failures
+    (`SMS_DELIVERY_FAILED`, worded in Bengali in the app and on the web).
+  - The API refuses to start in production on the logging-only provider.
+  - What is left is operations: open the account, get a sender ID, whitelist the server IP.
+- **Web visitors can save a post** ("সেভ করুন" on the listing page, Playwright-tested).
+- **The e2e stub's types were stale since the open-now change** (`openState`, `open_state`, `fallbackStyleUrl`).
+  Fixed.
+
+**Still open:** real geo usage data (needs a deployment), and the BulkSMSBD account itself (ADR 053, "Setting it
+up").
 
 ## TL;DR
 
@@ -68,7 +79,8 @@ the same rule had drifted between surfaces. All four are fixed above.
 
 What is left is mostly what Month 1 already flagged and nobody owned:
 
-- **No production SMS gateway.** Phone login can't work outside dev.
+- **No production SMS gateway.** Phone login can't work outside dev. _Closed: BulkSMSBD (ADR 053); the account is
+  still to open._
 - **The Android app was still debug-signed.** _Closed (0049 follow-up):_ release signing from `key.properties`, not yet
   built on a real SDK.
 - **No real usage data exists.** There is no deployment and no pilot, so the geo cost section is a projection, not a
@@ -131,8 +143,8 @@ a column.
 - **TODO:** only the two Android ones from Month 1 (`build.gradle.kts:18` application ID, `:31` release signing). Other
   `XXX` hits are phone-number hints (`01XXXXXXXXX`).
 - **Skipped tests:** none (no `.skip`, `.only`, `.todo`, `xit`).
-- **Stubs:** `BdGatewaySmsProvider` still throws `SMS_PROVIDER_NOT_CONFIGURED`; dev uses `LocalSmsProvider`, which logs the
-  OTP. The Playwright suite still runs against the stub API.
+- **Stubs:** `BdGatewaySmsProvider` still throws `SMS_PROVIDER_NOT_CONFIGURED` (_replaced by BulkSMSBD, ADR 053_); dev
+  uses `LocalSmsProvider`, which logs the OTP. The Playwright suite still runs against the stub API.
 - **Docs:** a stray `docs/decisions/043` directory sits beside `043-self-hosted-pmtiles-basemap.md`.
 
 ---
@@ -531,6 +543,5 @@ with photos → see it in moderation → approve → see it live on the map → 
 **Smaller things:**
 
 - `search_suggest_limit` is unused.
-- Web visitors can't save posts.
 - The app has no store screen (places have one since 0049).
 - `PERMISSIONS_CACHE_TTL_MS` (5 min) is still unreviewed.

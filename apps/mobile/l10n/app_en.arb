@@ -90,6 +90,7 @@
   "otpResendIn": "Resend available in {seconds}s",
 
   "errorOtpCooldownMessage": "A code was just sent. Please wait a bit before trying again.",
+  "errorSmsDeliveryFailedMessage": "We couldn't send the code right now. Please try again in a moment.",
   "errorOtpPhoneDailyLimitMessage": "Too many codes requested for this number today. Try again tomorrow.",
   "errorOtpIpDailyLimitMessage": "Too many requests from this network today. Try again later.",
   "errorOtpExpiredMessage": "This code has expired. Request a new one.",

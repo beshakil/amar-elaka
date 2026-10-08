@@ -94,9 +94,12 @@ describe('Business hours and open now (e2e)', () => {
       values (${TENANT}, ${PARTNER}, ${AREA}, 'hours-e2e', 'সময়', 'Hours', ${at(92.45)}, 'active', 'Asia/Dhaka')`;
     await admin.begin(async (tx) => {
       // A store card after every post, so a handful of posts show the stores.
+      // No "opens soon" window: these tests run at any hour, and in the half
+      // hour before midnight "closed today" would read as opens_soon (the
+      // window is unit-tested in hours.db-spec.ts).
       await tx`select set_config('app.role', 'platform_admin', true)`;
       await tx`insert into tenant_settings (tenant_id, setting_overrides)
-               values (${TENANT}, ${tx.json({ feed_store_card_interval: 1 })})`;
+               values (${TENANT}, ${tx.json({ feed_store_card_interval: 1, hours_opens_soon_minutes: 0 })})`;
     });
     await admin`
       insert into tenant_members (id, tenant_id, user_id, role_code) values

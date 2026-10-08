@@ -68,6 +68,7 @@ function tenantConfig(tenant: Schemas['TenantSummaryDto']): Schemas['TenantConfi
     nameBn: tenant.nameBn,
     nameEn: tenant.nameEn,
     defaultLocale: 'bn',
+    timezone: { name: 'Asia/Dhaka', utcOffsetMinutes: 360 },
     mapCenter: tenant.mapCenter,
     radiusKm: 6.5,
     branding: { logoStorageKey: null },
@@ -91,6 +92,11 @@ function tenantConfig(tenant: Schemas['TenantSummaryDto']): Schemas['TenantConfi
         : [],
     support: { phoneE164: '+8801700000000', email: `help@${tenant.slug}.test`, whatsappE164: null },
     moderation: { typicalReviewHours: 12 },
+    // The seeded settings (0019, 0020, 0026, 0046, 0049).
+    media: { postMaxPhotos: 10, imageMaxLongEdgePx: 1200, imageQuality: 80 },
+    search: { suggestMinChars: 2 },
+    places: { duplicateReportRadiusM: 1000 },
+    client: { configRefreshMinutes: 360 },
     // The shortest cache windows, so tests see their own changes after one
     // stale response (Next serves stale while it refreshes).
     web: {
@@ -207,6 +213,8 @@ interface State {
   savedSearches: Schemas['CreateSavedSearchDto'][];
   /** Answer the next saves with the active-search limit. */
   savedSearchLimit: boolean;
+  /** POST /saved/post/:id: "<viewer email> <post id>" pairs already saved. */
+  savedPosts: Set<string>;
 }
 
 function freshState(): State {
@@ -232,6 +240,7 @@ function freshState(): State {
     areaMinListings: 1,
     savedSearches: [],
     savedSearchLimit: false,
+    savedPosts: new Set(),
   };
 }
 let state = freshState();
@@ -482,6 +491,8 @@ function hitOf(post: Schemas['PostDto']): Schemas['SearchResponseDto']['hits'][n
     cover: media?.thumbUrl ? { thumbUrl: media.thumbUrl, thumbhash: null } : null,
     isVerified: false,
     isLandmark: false,
+    // Posts have no opening hours.
+    openState: null,
   };
 }
 
@@ -892,6 +903,8 @@ function mapPoint(
       slug: null,
       info_kind: null,
       open_now: null,
+      open_state: null,
+      open_changes_at: null,
       ...more,
     },
   };
@@ -975,7 +988,6 @@ function mapConfig(): Schemas['MapConfigDto'] {
     },
     assetsBaseUrl: `${STUB_URL}/tiles`,
     labelLanguage: 'en',
-    fallbackStyleUrl: null,
     kinds: [
       { code: 'hospital', icon: 'hospital', label: { bn: 'হাসপাতাল', en: 'Hospitals' } },
       { code: 'pharmacy', icon: 'pharmacy', label: { bn: 'ফার্মেসি', en: 'Pharmacies' } },
@@ -1525,6 +1537,22 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
           return touch({ status: 'pending', moderationReason: null, moderationNote: null });
       }
     }
+  }
+
+  const saveMatch = /^\/saved\/post\/([^/]+)$/.exec(path);
+  if (req.method === 'POST' && saveMatch) {
+    const viewer = viewerOf(req);
+    if (!viewer) return fail(res, 401, 'UNAUTHORIZED');
+    const id = saveMatch[1] ?? '';
+    const key = `${viewer.email} ${id}`;
+    const created = !state.savedPosts.has(key);
+    state.savedPosts.add(key);
+    return send(res, created ? 201 : 200, {
+      itemType: 'post',
+      itemId: id,
+      savedAt: new Date().toISOString(),
+      created,
+    });
   }
 
   if (req.method === 'POST' && path === '/saved-searches') {

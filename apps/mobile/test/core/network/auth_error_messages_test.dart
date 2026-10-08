@@ -36,6 +36,7 @@ void main() {
           'OTP_RATE_LIMITED_COOLDOWN',
           'OTP_RATE_LIMITED_PHONE_DAILY',
           'OTP_RATE_LIMITED_IP_DAILY',
+          'SMS_DELIVERY_FAILED',
           'OTP_EXPIRED',
           'OTP_INCORRECT',
           'OTP_TOO_MANY_ATTEMPTS',

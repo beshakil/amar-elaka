@@ -97,7 +97,8 @@ Release builds are signed with the Play upload key, which is never committed
    In CI, the same four values as `ANDROID_KEYSTORE_FILE`,
    `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD`.
 
-3. Build: `flutter build appbundle --release --dart-define=API_BASE_URL=https://…`.
+3. Build with **JDK 21** (Android Studio's bundled JDK; `maplibre_gl` compiles for Java 21, so JDK 17 fails with
+   "invalid source release: 21"): `flutter build appbundle --release --dart-define=API_BASE_URL=https://…`.
    Without a key, `bundleRelease` stops with an error instead of producing a
    debug-signed bundle the Play Store could never update; `flutter run
 --release` on a test phone still works with the debug key.

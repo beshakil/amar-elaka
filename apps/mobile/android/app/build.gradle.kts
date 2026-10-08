@@ -64,7 +64,9 @@ android {
 
 // A debug-signed bundle can never be updated on the Play Store: refuse it.
 gradle.taskGraph.whenReady {
-    if (!hasReleaseKey && allTasks.any { it.name.startsWith("bundleRelease") }) {
+    // Exactly the Play bundle task: assembleRelease also runs internal tasks
+    // named bundleRelease… (bundleReleaseResources), which must not trip this.
+    if (!hasReleaseKey && allTasks.any { it.name == "bundleRelease" }) {
         throw GradleException(
             "bundleRelease needs the upload key: add android/key.properties or the " +
                 "ANDROID_KEYSTORE_* environment variables (apps/mobile/README.md, Release builds)."

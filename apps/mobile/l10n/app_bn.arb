@@ -103,6 +103,7 @@
   },
 
   "errorOtpCooldownMessage": "একটু আগেই কোড পাঠানো হয়েছে। কিছুক্ষণ পর আবার চেষ্টা করুন।",
+  "errorSmsDeliveryFailedMessage": "কোডটি এখন পাঠানো গেল না। একটু পরে আবার চেষ্টা করুন।",
   "errorOtpPhoneDailyLimitMessage": "এই নম্বরে আজ অনেকবার কোড পাঠানো হয়েছে। কাল আবার চেষ্টা করুন।",
   "errorOtpIpDailyLimitMessage": "এই নেটওয়ার্ক থেকে আজ অনেকবার চেষ্টা করা হয়েছে। কিছুক্ষণ পর আবার চেষ্টা করুন।",
   "errorOtpExpiredMessage": "কোডের মেয়াদ শেষ হয়ে গেছে। নতুন কোড চান।",

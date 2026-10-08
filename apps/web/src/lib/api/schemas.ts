@@ -543,6 +543,9 @@ export type CategoryAreas = z.infer<typeof categoryAreasSchema>;
 /** POST /saved-searches' answer: only what the page confirms with. */
 export const savedSearchCreatedSchema = z.object({ id: z.string(), name: z.string() });
 
+/** POST /saved/:type/:id: `created` false when it was already saved. */
+export const saveResultSchema = z.object({ created: z.boolean() }).passthrough();
+
 export type _PublicPagesContract = [
   Assert<Accepts<ListingStatus, Api['ListingStatusDto']>>,
   Assert<Accepts<z.infer<typeof sitemapSummarySchema>, Api['SitemapSummaryDto']>>,
