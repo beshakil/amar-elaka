@@ -24,6 +24,7 @@ import '../../features/search/presentation/saved_searches_screen.dart';
 import '../../features/search/presentation/search_screen.dart';
 import '../../features/splash/presentation/splash_screen.dart';
 import '../../features/tenant_bootstrap/application/tenant_bootstrap_controller.dart';
+import '../../features/tenant_bootstrap/domain/tenant_bootstrap_state.dart';
 import '../../features/tenant_bootstrap/presentation/location_permission_screen.dart';
 import '../../features/tenant_bootstrap/presentation/tenant_confirm_screen.dart';
 import '../../features/tenant_bootstrap/presentation/tenant_picker_screen.dart';
@@ -72,8 +73,19 @@ GoRouter appRouter(Ref ref) {
       ),
       GoRoute(
         path: RoutePaths.tenantConfirm,
-        builder: (context, state) =>
-            TenantConfirmScreen(candidate: state.extra! as TenantSummary),
+        // Reached by redirect (TenantBootstrapConfirmNearby), which carries
+        // no `extra`: the candidate comes from that state (state.extra! crashed
+        // the first time location found an area, found on a device).
+        builder: (context, state) => switch (state.extra) {
+          final TenantSummary candidate => TenantConfirmScreen(
+            candidate: candidate,
+          ),
+          _ => switch (ref.read(tenantBootstrapControllerProvider).value) {
+            TenantBootstrapConfirmNearby(:final candidate) =>
+              TenantConfirmScreen(candidate: candidate),
+            _ => const TenantPickerScreen(),
+          },
+        },
       ),
       GoRoute(
         path: RoutePaths.tenantPicker,
@@ -108,8 +120,12 @@ GoRouter appRouter(Ref ref) {
       ),
       GoRoute(
         path: RoutePaths.postResult,
-        builder: (context, state) =>
-            PostResultScreen(args: state.extra! as PostResultArgs),
+        // A rebuild without `extra` (an auth refresh, a restored stack) shows
+        // the seller's posts rather than crashing.
+        builder: (context, state) => switch (state.extra) {
+          final PostResultArgs args => PostResultScreen(args: args),
+          _ => const MyPostsScreen(),
+        },
       ),
       GoRoute(
         path: RoutePaths.myPosts,

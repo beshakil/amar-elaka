@@ -492,8 +492,37 @@ with photos → see it in moderation → approve → see it live on the map → 
 **Known on a real phone:**
 
 - Not yet verified on a device: MapLibre reading `pmtiles://file://` and `file://` glyphs for the offline area.
-- Google sign-in needs client IDs; use phone OTP.
-- A release build needs an application ID and signing (§3).
+- Google sign-in needs client IDs; use phone OTP. Without them the button now says it failed instead of doing nothing.
+- Release signing is set up and verified (`apps/mobile/README.md`, "Release builds").
+
+### Walked on a device (2026-10-08)
+
+- **Setup:** an Android 9 emulator (BlueStacks, x86_64, 720×1280, phone language English).
+- **App:** a profile build against a local API: seeded `ae_device` DB, the API and worker, `adb reverse tcp:3000`,
+  `SMS_PROVIDER=local` (codes read from the API log).
+- **Not on this setup:** no base-map tiles, so the map showed its "unavailable" notice; steps 10–11 ran through
+  the moderation API as the seeded moderator, not the admin UI.
+
+**Steps 1–13 all pass after the fixes below:** location → "is this your area?" → Bengali home; feed, Banglish search
+(`basa vara` → to-let results); detail → call → dialer; save (guest → sign-in → back); a post with a photo → queue →
+approved (`moderation_actions` row) → "প্রকাশিত হয়েছে" notification → live → sold at 24,000 (moved to "বিক্রি হয়েছে").
+
+**Bugs the device found, all fixed with tests** (none could show in the suites, which fake the HTTP client, the clock,
+the router extras or the location service):
+
+| Bug                                                                             | Cause                                                                                                    |
+| ------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Phone login failed for everyone (VALIDATION_FAILED)                             | The app sent unknown device fields as `null`; the API took a string or nothing                           |
+| Save, follow, mark-read all failed (400)                                        | Dio sends `content-type: application/json` with no body; Fastify refuses that before any guard           |
+| Every session ended after 15 minutes                                            | The token refresh went without `X-Tenant-Id` (TENANT_REQUIRED), and the replay sent the old token        |
+| The app was in English                                                          | It followed the phone's language; most phones here are English. Bengali now, English opt-in in Profile   |
+| Finding the area spun for ever; the map list stayed empty                       | `getCurrentPosition()` had no time limit; now 15 s, then the last known position                         |
+| A crash the first time location found an area                                   | The confirm route read `state.extra!`; a redirect carries no extra                                       |
+| A crash after "not now"; "save" stayed on the profile page                      | Popping into the code page; a router refresh undid the pops. `leaveAuthFlow()` after the refresh settles |
+| A burst of verify requests used up the code's attempts                          | Each refill of the boxes submitted again; one at a time now                                              |
+| New users were offered "0077" as their name                                     | The phone-digits placeholder was prefilled as a real name                                                |
+| "Used ৬ months" in a seller's description; "33 সেকেন্ড" in the resend countdown | Free text had its digits rewritten; a count in a Bengali sentence wasn't                                 |
+| Google sign-in did nothing                                                      | A failure was returned as "cancelled"                                                                    |
 
 ---
 

@@ -20,6 +20,7 @@ String describePostError(
       return l10n.postErrorNetwork;
     case TimeoutException():
       return l10n.postErrorTimeout;
+    case GoogleSignInFailedException():
     case UnknownApiException():
       return l10n.postErrorUnknown('APP');
     case ApiException():

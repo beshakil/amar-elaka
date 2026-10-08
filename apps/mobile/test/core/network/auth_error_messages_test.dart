@@ -27,6 +27,11 @@ void main() {
         describeAuthError(const UnknownApiException(), bn),
         bn.errorGenericMessage,
       );
+      // A failed Google sign-in says so (it used to do nothing at all).
+      expect(
+        describeAuthError(const GoogleSignInFailedException(), bn),
+        bn.errorGoogleSignInFailedMessage,
+      );
     });
 
     test(

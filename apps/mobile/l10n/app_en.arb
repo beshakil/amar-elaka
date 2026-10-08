@@ -17,6 +17,7 @@
   "errorTimeoutMessage": "The server is taking too long to respond. Try again.",
   "errorGenericTitle": "Something went wrong",
   "errorGenericMessage": "Please try again in a moment.",
+  "errorGoogleSignInFailedMessage": "Couldn't sign in with Google. Try your mobile number instead.",
 
   "tenantPickerTitle": "Choose your area",
   "tenantPickerSearchHint": "Search thana or upazila",

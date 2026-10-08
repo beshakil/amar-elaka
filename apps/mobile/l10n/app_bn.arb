@@ -18,6 +18,7 @@
   "errorTimeoutMessage": "সার্ভার থেকে সাড়া পেতে দেরি হচ্ছে। আবার চেষ্টা করুন।",
   "errorGenericTitle": "কিছু একটা ভুল হয়েছে",
   "errorGenericMessage": "একটু পর আবার চেষ্টা করুন।",
+  "errorGoogleSignInFailedMessage": "Google দিয়ে সাইন ইন করা গেল না। মোবাইল নম্বর দিয়ে চেষ্টা করুন।",
 
   "tenantPickerTitle": "আপনার এলাকা বেছে নিন",
   "tenantPickerSearchHint": "থানা বা উপজেলা খুঁজুন",
@@ -100,7 +101,7 @@
   "otpResendIn": "{seconds} সেকেন্ড পর আবার পাঠাতে পারবেন",
   "@otpResendIn": {
     "description": "Shown in place of the resend button while the cooldown is counting down.",
-    "placeholders": { "seconds": { "type": "int" } }
+    "placeholders": { "seconds": { "type": "int", "format": "decimalPattern" } }
   },
 
   "errorOtpCooldownMessage": "একটু আগেই কোড পাঠানো হয়েছে। কিছুক্ষণ পর আবার চেষ্টা করুন।",

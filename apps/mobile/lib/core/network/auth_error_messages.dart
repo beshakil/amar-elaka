@@ -15,6 +15,8 @@ String describeAuthError(AppException error, AppLocalizations l10n) {
       return l10n.errorTimeoutMessage;
     case ApiException(:final code):
       return _describeApiError(code, error, l10n);
+    case GoogleSignInFailedException():
+      return l10n.errorGoogleSignInFailedMessage;
     case UnknownApiException():
       return l10n.errorGenericMessage;
   }

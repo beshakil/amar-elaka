@@ -20,6 +20,13 @@ final class TimeoutException extends AppException {
   const TimeoutException([super.message = 'Request timed out']);
 }
 
+/// Google sign-in failed on the phone (misconfigured client, Play services
+/// trouble), as opposed to the user cancelling it, which is no error at all.
+/// It used to be silent: the button just did nothing (found on a device).
+final class GoogleSignInFailedException extends AppException {
+  const GoogleSignInFailedException([super.message = 'Google sign-in failed']);
+}
+
 /// A real HTTP error response, with the parsed body from
 /// `apps/api/src/common/filters/global-exception.filter.ts`.
 final class ApiException extends AppException {
