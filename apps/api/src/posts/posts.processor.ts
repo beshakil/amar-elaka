@@ -9,15 +9,17 @@ import {
   JOB_EXPIRE_POSTS,
   JOB_FLUSH_POST_VIEWS,
   JOB_REMIND_EXPIRING_POSTS,
+  JOB_ROLLUP_ANALYTICS,
   QUEUE_POSTS,
   type ScheduledJobData,
 } from '../queue/queue.types';
+import { AnalyticsRollupService } from '../analytics/seller/analytics-rollup.service';
 import { PostViewsFlushService } from '../engagement/post-views-flush.service';
 import { DraftCleanupService } from './draft-cleanup.service';
 import { PostExpiryReminderService } from './post-expiry-reminder.service';
 import { PostExpiryService } from './post-expiry.service';
 
-/** The only processor on the `posts` queue; every job is a scheduled lifecycle job run through JobRunner (ADR 031). */
+/** The only processor on the `posts` queue (also the nightly analytics rollup, ADR 055); every job is a scheduled lifecycle job run through JobRunner (ADR 031). */
 @Processor(QUEUE_POSTS)
 export class PostsProcessor extends WorkerHost {
   constructor(
@@ -26,6 +28,7 @@ export class PostsProcessor extends WorkerHost {
     private readonly reminders: PostExpiryReminderService,
     private readonly drafts: DraftCleanupService,
     private readonly views: PostViewsFlushService,
+    private readonly analytics: AnalyticsRollupService,
     @InjectQueue(deadLetterQueueName(QUEUE_POSTS)) private readonly dlq: Queue,
     private readonly logger: PinoLogger,
   ) {
@@ -51,6 +54,10 @@ export class PostsProcessor extends WorkerHost {
       case JOB_FLUSH_POST_VIEWS:
         return this.runner.run(JOB_FLUSH_POST_VIEWS, job.data, queueJobId, (budget) =>
           this.views.flush(budget),
+        );
+      case JOB_ROLLUP_ANALYTICS:
+        return this.runner.run(JOB_ROLLUP_ANALYTICS, job.data, queueJobId, (budget) =>
+          this.analytics.rollup(budget),
         );
       default:
         throw new Error(`posts queue: unknown job ${job.name}`);

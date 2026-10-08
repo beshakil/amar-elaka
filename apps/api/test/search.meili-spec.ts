@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import type { AnalyticsTracker } from '../src/analytics/seller/analytics-tracker.service';
 import { join } from 'node:path';
 import type { PinoLogger } from 'nestjs-pino';
 import {
@@ -355,6 +356,7 @@ describe('Search against a real Meilisearch', () => {
         getPublicUrl: (_b: string, key: string) => `https://cdn.test/${key}`,
       } as unknown as StorageService,
       { setContext: () => undefined, warn: () => undefined } as unknown as PinoLogger,
+      { searchAppearances: () => undefined } as unknown as AnalyticsTracker,
     );
   }, 120_000);
 

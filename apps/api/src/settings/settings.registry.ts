@@ -419,6 +419,15 @@ export const SETTING_DEFINITIONS = {
   store_catalog_max_pro: wholeNumber,
   store_catalog_max_premium: wholeNumber,
   store_description_max_length: wholeNumber,
+
+  // Seller analytics (ADR 055, migration 0051)
+  analytics_periods_days: z.array(wholeNumber.nullable()).nonempty(),
+  analytics_top_posts: wholeNumber,
+  analytics_top_queries: wholeNumber,
+  analytics_query_min_searchers: wholeNumber,
+  analytics_counter_retention_days: wholeNumber,
+  analytics_unique_retention_days: wholeNumber,
+  analytics_rollup_days_back: wholeNumber,
 } as const satisfies Record<string, z.ZodTypeAny>;
 
 export type SettingKey = keyof typeof SETTING_DEFINITIONS;

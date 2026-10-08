@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { AnalyticsTracker } from '../analytics/seller/analytics-tracker.service';
 import { randomInt } from 'node:crypto';
 import { APP_CONFIG } from '../config/config.module';
 import type { Env } from '../config/env.schema';
@@ -33,6 +34,7 @@ export class ShareService {
     private readonly tenantDb: TenantDb,
     private readonly repo: EngagementRepository,
     private readonly settings: SettingsService,
+    private readonly tracker: AnalyticsTracker,
     @Inject(APP_CONFIG) env: Pick<Env, 'APP_ROOT_DOMAIN' | 'SHARE_BASE_URL_TEMPLATE'>,
   ) {
     this.baseTemplate = env.SHARE_BASE_URL_TEMPLATE ?? `https://{slug}.${env.APP_ROOT_DOMAIN}`;
@@ -73,6 +75,7 @@ export class ShareService {
       { accessMode: 'read only' },
     );
     if (!found) throw new ShortLinkNotFoundException();
+    this.tracker.shareOpen(found.tenantId, found.postId);
     return {
       code,
       postId: found.postId,

@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { AnalyticsTracker } from '../analytics/seller/analytics-tracker.service';
 import { APP_CONFIG } from '../config/config.module';
 import type { Env } from '../config/env.schema';
 import { TenantDb } from '../database/tenant-db';
@@ -29,6 +30,7 @@ export class PostViewsService {
     private readonly posts: PostsRepository,
     private readonly settings: SettingsService,
     @Inject(ENGAGEMENT_STORE) private readonly store: EngagementStore,
+    private readonly tracker: AnalyticsTracker,
     @Inject(APP_CONFIG) env: Pick<Env, 'JWT_SECRET'>,
   ) {
     this.secret = env.JWT_SECRET;
@@ -43,7 +45,7 @@ export class PostViewsService {
         async (tx) => {
           const row = await this.posts.findById(tx, postId);
           if (!row) throw new PostNotFoundException();
-          if (memberId !== undefined && row.author_member_id === memberId) return false;
+          if (memberId !== undefined && row.author_member_id === memberId) return null;
           // Only what the public can see is "viewed"; anything else is 404 to them.
           const facts = {
             status: row.status_code,
@@ -52,7 +54,7 @@ export class PostViewsService {
             scrubbed: row.scrubbed_at !== null,
           };
           if (visibilityOf(facts, 'public') !== 'full') throw new PostNotFoundException();
-          return true;
+          return { storeId: row.store_id, authorMemberId: row.author_member_id };
         },
         { accessMode: 'read only' },
       ),
@@ -63,6 +65,8 @@ export class PostViewsService {
     const key = viewerKey(this.secret, signals);
     if (await this.store.claimOnce(`view:${postId}:${key}`, hours * SECONDS_PER_HOUR)) {
       await this.store.addPendingView(postId);
+      // The seller's dashboard (ADR 055): today's views and distinct viewers.
+      this.tracker.view({ tenantId, postId, ...countable, visitor: key });
     }
   }
 }

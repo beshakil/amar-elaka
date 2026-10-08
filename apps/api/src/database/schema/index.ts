@@ -1,3 +1,4 @@
+export * from './analytics';
 export * from './audit';
 export * from './catalog';
 export * from './commerce';

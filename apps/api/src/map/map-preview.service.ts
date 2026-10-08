@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { AnalyticsTracker } from '../analytics/seller/analytics-tracker.service';
 import { TenantContext } from '../database/tenant-context';
 import { TenantDb } from '../database/tenant-db';
 import { parseVariants } from '../media/media.types';
@@ -23,6 +24,7 @@ export class MapPreviewService {
     private readonly tenantDb: TenantDb,
     private readonly context: TenantContext,
     @Inject(STORAGE_SERVICE) private readonly storage: StorageService,
+    private readonly tracker: AnalyticsTracker,
   ) {}
 
   async preview(params: MapPreviewParams, query: MapPreviewQuery): Promise<MapPreview> {
@@ -32,6 +34,14 @@ export class MapPreviewService {
       }),
     );
     if (!row) throw new MapFeatureNotFoundException();
+    // A tapped listing or store pin counts for its seller (ADR 055).
+    if (params.layer === 'posts' || params.layer === 'stores') {
+      this.tracker.mapTap({
+        tenantId: query.tenant,
+        type: params.layer === 'posts' ? 'post' : 'store',
+        id: params.id,
+      });
+    }
     const variants = parseVariants(row.cover_variants);
     const title = row.title;
     return {

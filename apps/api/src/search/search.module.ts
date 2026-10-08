@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AnalyticsCountersModule } from '../analytics/seller/analytics-counters.module';
 import { AuthModule } from '../auth/auth.module';
 import { CacheModule } from '../cache/cache.module';
 import { SettingsModule } from '../settings/settings.module';
@@ -15,7 +16,14 @@ import { SearchCoreModule } from './search-core.module';
  * request never waits on — or fails because of — a Meilisearch write (ADR 025).
  */
 @Module({
-  imports: [AuthModule, SettingsModule, StorageModule, CacheModule, SearchCoreModule],
+  imports: [
+    AuthModule,
+    SettingsModule,
+    StorageModule,
+    CacheModule,
+    SearchCoreModule,
+    AnalyticsCountersModule,
+  ],
   controllers: [SearchController],
   providers: [SearchService, SearchActivityService],
 })

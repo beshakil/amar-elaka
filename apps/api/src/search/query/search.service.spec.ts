@@ -1,4 +1,5 @@
 import type { PinoLogger } from 'nestjs-pino';
+import type { AnalyticsTracker } from '../../analytics/seller/analytics-tracker.service';
 import type { FieldSchema, UiSchema } from '../../categories/field-schema';
 import { InvalidFieldFilterException } from '../../categories/field-schema';
 import type { DatabaseTransaction } from '../../database/database.client';
@@ -282,6 +283,7 @@ function setup() {
     context,
     storage,
     logger,
+    { searchAppearances: () => undefined } as unknown as AnalyticsTracker,
   );
   return { service, engine, repo, logged };
 }

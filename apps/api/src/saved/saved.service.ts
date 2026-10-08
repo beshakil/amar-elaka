@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { AnalyticsTracker } from '../analytics/seller/analytics-tracker.service';
 import { UnauthenticatedException } from '../auth/exceptions/auth.exceptions';
 import type { DatabaseTransaction } from '../database/database.client';
 import { TenantContext } from '../database/tenant-context';
@@ -42,6 +43,7 @@ export class SavedService {
     private readonly repo: SavedRepository,
     private readonly settings: SettingsService,
     @Inject(STORAGE_SERVICE) private readonly storage: StorageService,
+    private readonly tracker: AnalyticsTracker,
   ) {}
 
   /** Saves what the public can see; your own post or store is refused. Idempotent. */
@@ -57,6 +59,9 @@ export class SavedService {
         return this.repo.save(tx, itemType, itemId);
       }),
     );
+    if (saved.created && (itemType === 'post' || itemType === 'store')) {
+      this.tracker.save({ tenantId, type: itemType, id: itemId });
+    }
     return { itemType, itemId, savedAt: saved.savedAt.toISOString(), created: saved.created };
   }
 

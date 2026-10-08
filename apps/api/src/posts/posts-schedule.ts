@@ -5,18 +5,20 @@ import {
   JOB_CLEAN_STALE_DRAFTS,
   JOB_EXPIRE_POSTS,
   JOB_FLUSH_POST_VIEWS,
+  JOB_ROLLUP_ANALYTICS,
   JOB_REMIND_EXPIRING_POSTS,
   QUEUE_POSTS,
   type ScheduledJobData,
 } from '../queue/queue.types';
 import { SCHEDULE_TIMEZONE } from '../common/schedule-timezone';
 
-// settings-exempt: cron schedules for background sweeps (ops tuning); what they act on is settings (post_expiry_days_default, post_expiry_reminder_days, draft_retention_days, view_dedupe_hours)
+// settings-exempt: cron schedules for background sweeps (ops tuning); what they act on is settings (post_expiry_days_default, post_expiry_reminder_days, draft_retention_days, view_dedupe_hours, analytics_rollup_days_back)
 const SCHEDULES = {
   [JOB_EXPIRE_POSTS]: '*/15 * * * *', // every 15 minutes
   [JOB_REMIND_EXPIRING_POSTS]: '5 * * * *', // hourly, at :05
   [JOB_CLEAN_STALE_DRAFTS]: '0 4 * * *', // nightly, 04:00 Dhaka time
   [JOB_FLUSH_POST_VIEWS]: '* * * * *', // every minute: counts lag real views by at most ~1 minute
+  [JOB_ROLLUP_ANALYTICS]: '30 0 * * *', // nightly, 00:30 Dhaka time: yesterday becomes analytics history (ADR 055)
 } as const;
 
 /** Registers the repeatable post-lifecycle jobs (worker only; idempotent across restarts). */

@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { AnalyticsTracker } from '../../analytics/seller/analytics-tracker.service';
 import { PinoLogger } from 'nestjs-pino';
 import type { CategoryFieldDefinition } from '../../categories/field-schema';
 import type { DatabaseTransaction } from '../../database/database.client';
@@ -130,6 +131,7 @@ export class SearchService {
     private readonly tenantContext: TenantContext,
     @Inject(STORAGE_SERVICE) private readonly storage: StorageService,
     private readonly logger: PinoLogger,
+    private readonly tracker: AnalyticsTracker,
   ) {
     this.logger.setContext(SearchService.name);
   }
@@ -160,6 +162,8 @@ export class SearchService {
         signals,
       });
     }
+    // A results page a person saw: each listed post and store appeared once (ADR 055).
+    if (signals) this.tracker.searchAppearances(response.hits);
     return response;
   }
 

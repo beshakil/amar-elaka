@@ -5109,6 +5109,7 @@
                 "remind-expiring-posts",
                 "clean-stale-drafts",
                 "flush-post-views",
+                "rollup-analytics",
                 "clean-orphan-media",
                 "purge-deleted-media",
                 "match-saved-searches",
@@ -5156,6 +5157,7 @@
                 "remind-expiring-posts",
                 "clean-stale-drafts",
                 "flush-post-views",
+                "rollup-analytics",
                 "clean-orphan-media",
                 "purge-deleted-media",
                 "match-saved-searches",
@@ -5542,6 +5544,76 @@
         },
         "tags": [
           "Stores"
+        ]
+      }
+    },
+    "/stores/{id}/analytics": {
+      "get": {
+        "operationId": "StoreAnalyticsController_store",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "period",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "pattern": "^\\d{1,3}d$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SellerAnalyticsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "StoreAnalytics"
+        ]
+      }
+    },
+    "/posts/me/analytics": {
+      "get": {
+        "operationId": "MyPostsAnalyticsController_mine",
+        "parameters": [
+          {
+            "name": "period",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "pattern": "^\\d{1,3}d$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SellerAnalyticsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "MyPostsAnalytics"
         ]
       }
     }
@@ -15113,6 +15185,7 @@
               "remind-expiring-posts",
               "clean-stale-drafts",
               "flush-post-views",
+              "rollup-analytics",
               "clean-orphan-media",
               "purge-deleted-media",
               "match-saved-searches",
@@ -15380,6 +15453,7 @@
               "remind-expiring-posts",
               "clean-stale-drafts",
               "flush-post-views",
+              "rollup-analytics",
               "clean-orphan-media",
               "purge-deleted-media",
               "match-saved-searches",
@@ -16689,6 +16763,406 @@
         "required": [
           "storeId",
           "status"
+        ]
+      },
+      "SellerAnalyticsDto": {
+        "type": "object",
+        "properties": {
+          "scope": {
+            "type": "string",
+            "enum": [
+              "store",
+              "posts"
+            ]
+          },
+          "period": {
+            "type": "object",
+            "properties": {
+              "days": {
+                "type": "number"
+              },
+              "from": {
+                "type": "string"
+              },
+              "to": {
+                "type": "string"
+              },
+              "previousFrom": {
+                "type": "string"
+              },
+              "previousTo": {
+                "type": "string"
+              },
+              "available": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                }
+              }
+            },
+            "required": [
+              "days",
+              "from",
+              "to",
+              "previousFrom",
+              "previousTo",
+              "available"
+            ]
+          },
+          "summary": {
+            "type": "object",
+            "properties": {
+              "bn": {
+                "type": "string"
+              },
+              "en": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "bn",
+              "en"
+            ]
+          },
+          "totals": {
+            "type": "object",
+            "properties": {
+              "views": {
+                "type": "number"
+              },
+              "uniqueViewers": {
+                "type": "number"
+              },
+              "contacts": {
+                "type": "object",
+                "properties": {
+                  "total": {
+                    "type": "number"
+                  },
+                  "call": {
+                    "type": "number"
+                  },
+                  "whatsapp": {
+                    "type": "number"
+                  },
+                  "sms": {
+                    "type": "number"
+                  },
+                  "chat": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "total",
+                  "call",
+                  "whatsapp",
+                  "sms",
+                  "chat"
+                ]
+              },
+              "uniqueContacters": {
+                "type": "number"
+              },
+              "saves": {
+                "type": "number"
+              },
+              "shares": {
+                "type": "number"
+              },
+              "searchAppearances": {
+                "type": "number"
+              },
+              "mapTaps": {
+                "type": "number"
+              },
+              "conversionRate": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "views",
+              "uniqueViewers",
+              "contacts",
+              "uniqueContacters",
+              "saves",
+              "shares",
+              "searchAppearances",
+              "mapTaps",
+              "conversionRate"
+            ]
+          },
+          "previous": {
+            "type": "object",
+            "properties": {
+              "views": {
+                "type": "number"
+              },
+              "uniqueViewers": {
+                "type": "number"
+              },
+              "contacts": {
+                "type": "object",
+                "properties": {
+                  "total": {
+                    "type": "number"
+                  },
+                  "call": {
+                    "type": "number"
+                  },
+                  "whatsapp": {
+                    "type": "number"
+                  },
+                  "sms": {
+                    "type": "number"
+                  },
+                  "chat": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "total",
+                  "call",
+                  "whatsapp",
+                  "sms",
+                  "chat"
+                ]
+              },
+              "uniqueContacters": {
+                "type": "number"
+              },
+              "saves": {
+                "type": "number"
+              },
+              "shares": {
+                "type": "number"
+              },
+              "searchAppearances": {
+                "type": "number"
+              },
+              "mapTaps": {
+                "type": "number"
+              },
+              "conversionRate": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "views",
+              "uniqueViewers",
+              "contacts",
+              "uniqueContacters",
+              "saves",
+              "shares",
+              "searchAppearances",
+              "mapTaps",
+              "conversionRate"
+            ]
+          },
+          "trend": {
+            "type": "object",
+            "properties": {
+              "views": {
+                "type": "number",
+                "nullable": true
+              },
+              "uniqueViewers": {
+                "type": "number",
+                "nullable": true
+              },
+              "contacts": {
+                "type": "number",
+                "nullable": true
+              },
+              "uniqueContacters": {
+                "type": "number",
+                "nullable": true
+              },
+              "saves": {
+                "type": "number",
+                "nullable": true
+              },
+              "shares": {
+                "type": "number",
+                "nullable": true
+              },
+              "searchAppearances": {
+                "type": "number",
+                "nullable": true
+              },
+              "mapTaps": {
+                "type": "number",
+                "nullable": true
+              },
+              "conversionRate": {
+                "type": "number",
+                "nullable": true
+              }
+            },
+            "required": [
+              "views",
+              "uniqueViewers",
+              "contacts",
+              "uniqueContacters",
+              "saves",
+              "shares",
+              "searchAppearances",
+              "mapTaps",
+              "conversionRate"
+            ]
+          },
+          "daily": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "date": {
+                  "type": "string"
+                },
+                "views": {
+                  "type": "number"
+                },
+                "contacts": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "date",
+                "views",
+                "contacts"
+              ]
+            }
+          },
+          "topPosts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "postId": {
+                  "type": "string"
+                },
+                "tenantId": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "metrics": {
+                  "type": "object",
+                  "properties": {
+                    "views": {
+                      "type": "number"
+                    },
+                    "uniqueViewers": {
+                      "type": "number"
+                    },
+                    "contacts": {
+                      "type": "object",
+                      "properties": {
+                        "total": {
+                          "type": "number"
+                        },
+                        "call": {
+                          "type": "number"
+                        },
+                        "whatsapp": {
+                          "type": "number"
+                        },
+                        "sms": {
+                          "type": "number"
+                        },
+                        "chat": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "total",
+                        "call",
+                        "whatsapp",
+                        "sms",
+                        "chat"
+                      ]
+                    },
+                    "uniqueContacters": {
+                      "type": "number"
+                    },
+                    "saves": {
+                      "type": "number"
+                    },
+                    "shares": {
+                      "type": "number"
+                    },
+                    "searchAppearances": {
+                      "type": "number"
+                    },
+                    "mapTaps": {
+                      "type": "number"
+                    },
+                    "conversionRate": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "views",
+                    "uniqueViewers",
+                    "contacts",
+                    "uniqueContacters",
+                    "saves",
+                    "shares",
+                    "searchAppearances",
+                    "mapTaps",
+                    "conversionRate"
+                  ]
+                }
+              },
+              "required": [
+                "postId",
+                "tenantId",
+                "title",
+                "status",
+                "metrics"
+              ]
+            }
+          },
+          "topQueries": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                },
+                "searchers": {
+                  "type": "number"
+                },
+                "clicks": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "query",
+                "searchers",
+                "clicks"
+              ]
+            }
+          },
+          "generatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "scope",
+          "period",
+          "summary",
+          "totals",
+          "previous",
+          "trend",
+          "daily",
+          "topPosts",
+          "topQueries",
+          "generatedAt"
         ]
       }
     }

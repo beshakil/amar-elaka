@@ -9,11 +9,14 @@ import {
   Patch,
   Post,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
+import type { FastifyRequest } from 'fastify';
 import { ApiCreatedResponse, ApiNoContentResponse, ApiOkResponse } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
+import { TenantContext } from '../database/tenant-context';
 import { RequirePermission } from '../rbac/require-permission.decorator';
 import {
   CreateStoreDto,
@@ -53,6 +56,7 @@ export class StoresController {
   constructor(
     private readonly stores: StoresService,
     private readonly pages: StorePageService,
+    private readonly context: TenantContext,
   ) {}
 
   /** The caller becomes the owner; the store's area is the one its location falls in. */
@@ -83,8 +87,18 @@ export class StoresController {
   @Get(':slug')
   @UseGuards(OptionalJwtAuthGuard)
   @ApiOkResponse({ type: StorePageDto })
-  page(@Param() params: StoreSlugParamDto, @Query() query: StorePageQueryDto): Promise<StorePage> {
-    return this.pages.page(params.slug, query);
+  page(
+    @Param() params: StoreSlugParamDto,
+    @Query() query: StorePageQueryDto,
+    @Req() request: FastifyRequest,
+  ): Promise<StorePage> {
+    const installId = request.headers['x-install-id'];
+    return this.pages.page(params.slug, query, {
+      userId: this.context.current()?.userId,
+      installId: typeof installId === 'string' ? installId : undefined,
+      ip: request.ip,
+      userAgent: request.headers['user-agent'],
+    });
   }
 
   /** The store as its owner and staff see it (limits, numbers, staff). */

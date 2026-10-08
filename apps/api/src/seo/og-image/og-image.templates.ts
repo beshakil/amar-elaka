@@ -1,3 +1,5 @@
+import { bengaliDigits, groupSouthAsian } from '../../common/text/bengali-numerals';
+
 /**
  * rule 6: no hardcoded user-facing strings in application code — this is the
  * one place the text on a listing's share image is worded (Bengali, the
@@ -12,20 +14,12 @@ export const OG_TEXT = {
   perMonth: '/মাস',
 } as const;
 
-const BENGALI_DIGITS = '০১২৩৪৫৬৭৮৯';
-// settings-exempt: South Asian digit grouping (thousands, then pairs) is a fact of the notation
-const THOUSANDS = 3;
-
 /** "65000.00" → "৳ ৬৫,০০০": South Asian grouping, Bengali digits, paisa only when non-zero. */
 export function bengaliTaka(money: string): string {
   const [whole = '0', fraction = ''] = money.split('.');
-  const digits = whole.replace(/^0+(?=\d)/, '');
-  const grouped =
-    digits.length <= THOUSANDS
-      ? digits
-      : `${digits.slice(0, -THOUSANDS).replace(/\B(?=(\d{2})+(?!\d))/g, ',')},${digits.slice(-THOUSANDS)}`;
+  const grouped = groupSouthAsian(whole);
   const text = /^0*$/.test(fraction) ? grouped : `${grouped}.${fraction}`;
-  return `৳ ${text.replace(/\d/g, (d) => BENGALI_DIGITS[Number(d)]!)}`;
+  return `৳ ${bengaliDigits(text)}`;
 }
 
 /** The price line as a listing card says it. */

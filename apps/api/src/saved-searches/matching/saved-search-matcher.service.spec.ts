@@ -1,4 +1,5 @@
 import type { PinoLogger } from 'nestjs-pino';
+import type { AnalyticsTracker } from '../../analytics/seller/analytics-tracker.service';
 import type { FieldSchema, UiSchema } from '../../categories/field-schema';
 import type { DatabaseTransaction } from '../../database/database.client';
 import { TenantContext } from '../../database/tenant-context';
@@ -181,6 +182,7 @@ function setup(searches: StoredSavedSearch[], pairs: { search_id: string; post_i
     context,
     {} as StorageService,
     logger,
+    { searchAppearances: () => undefined } as unknown as AnalyticsTracker,
   );
   jest.spyOn(context, 'require').mockReturnValue({ tenantId: TENANT, role: 'anon' } as never);
   return { service, search, engine, matcher, inserted, watermarks, warn, repo };

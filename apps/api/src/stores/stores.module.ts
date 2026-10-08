@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AnalyticsCountersModule } from '../analytics/seller/analytics-counters.module';
 import { AuthModule } from '../auth/auth.module';
 import { FeedModule } from '../feed/feed.module';
 import { HoursModule } from '../hours/hours.module';
@@ -34,6 +35,7 @@ import { StoresService } from './stores.service';
     HoursModule,
     FeedModule,
     TrustModule,
+    AnalyticsCountersModule,
   ],
   controllers: [StoresController],
   providers: [StoresService, StorePageService, StoresRepository],

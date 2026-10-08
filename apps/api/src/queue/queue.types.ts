@@ -33,6 +33,7 @@ export const JOB_EXPIRE_POSTS = 'expire-posts';
 export const JOB_REMIND_EXPIRING_POSTS = 'remind-expiring-posts';
 export const JOB_CLEAN_STALE_DRAFTS = 'clean-stale-drafts';
 export const JOB_FLUSH_POST_VIEWS = 'flush-post-views';
+export const JOB_ROLLUP_ANALYTICS = 'rollup-analytics';
 export const JOB_MATCH_SAVED_SEARCHES = 'match-saved-searches';
 export const JOB_PAUSE_IDLE_SAVED_SEARCHES = 'pause-idle-saved-searches';
 export const JOB_REFRESH_UNMET_DEMAND = 'refresh-unmet-demand';
@@ -88,6 +89,7 @@ export interface QueueJobs {
     [JOB_REMIND_EXPIRING_POSTS]: ScheduledJobData;
     [JOB_CLEAN_STALE_DRAFTS]: ScheduledJobData;
     [JOB_FLUSH_POST_VIEWS]: ScheduledJobData;
+    [JOB_ROLLUP_ANALYTICS]: ScheduledJobData;
   };
   [QUEUE_SAVED_SEARCHES]: {
     [JOB_MATCH_SAVED_SEARCHES]: ScheduledJobData;

@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AnalyticsCountersModule } from '../analytics/seller/analytics-counters.module';
 import { AuthModule } from '../auth/auth.module';
 import { FeedModule } from '../feed/feed.module';
 import { PostsModule } from '../posts/posts.module';
@@ -20,7 +21,14 @@ import { ShareService } from './share.service';
  * flush runs in the worker (EngagementWorkerModule).
  */
 @Module({
-  imports: [AuthModule, SettingsModule, StorageModule, PostsModule, FeedModule],
+  imports: [
+    AuthModule,
+    SettingsModule,
+    StorageModule,
+    PostsModule,
+    FeedModule,
+    AnalyticsCountersModule,
+  ],
   controllers: [EngagementController, StoreContactController, ShareController],
   providers: [
     EngagementRepository,

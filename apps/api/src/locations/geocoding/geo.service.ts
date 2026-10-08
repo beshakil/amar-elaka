@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { SCHEDULE_TIMEZONE } from '../../common/schedule-timezone';
 import { Inject, Injectable } from '@nestjs/common';
 import { PinoLogger } from 'nestjs-pino';
 import type { KeyValueCache } from '../../cache/cache.service';
@@ -67,9 +68,9 @@ export function roundPoint(point: GeoPoint, decimals: number): GeoPoint {
   };
 }
 
-/** Today in Bangladesh (YYYY-MM-DD): the day the budget is counted over. */
+/** Today in Bangladesh (YYYY-MM-DD): the day the budget is counted over (the schedule zone, as every daily window). */
 export function dhakaDay(now: Date): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Dhaka' }).format(now);
+  return new Intl.DateTimeFormat('en-CA', { timeZone: SCHEDULE_TIMEZONE }).format(now);
 }
 
 function statusOf(error: GeoProviderError): GeoCallStatus {

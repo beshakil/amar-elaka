@@ -1,4 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { AnalyticsTracker } from '../analytics/seller/analytics-tracker.service';
+import { APP_CONFIG } from '../config/config.module';
+import type { Env } from '../config/env.schema';
 import type { DatabaseTransaction } from '../database/database.client';
 import { TenantContext } from '../database/tenant-context';
 import { TenantDb } from '../database/tenant-db';
@@ -6,6 +9,7 @@ import { TenantRequiredException } from '../database/tenant.exceptions';
 import { FeedRepository } from '../feed/feed.repository';
 import { FeedService } from '../feed/feed.service';
 import { HoursService } from '../hours/hours.service';
+import { viewerKey, type ViewerSignals } from '../engagement/viewer-key';
 import { parseVariants } from '../media/media.types';
 import { SettingsService } from '../settings/settings.service';
 import { STORAGE_SERVICE, type StorageService } from '../storage/storage.ports';
@@ -41,9 +45,11 @@ export class StorePageService {
     private readonly hours: HoursService,
     private readonly settings: SettingsService,
     @Inject(STORAGE_SERVICE) private readonly storage: StorageService,
+    private readonly tracker: AnalyticsTracker,
+    @Inject(APP_CONFIG) private readonly env: Pick<Env, 'JWT_SECRET'>,
   ) {}
 
-  async page(slug: string, query: StorePageQuery): Promise<StorePage> {
+  async page(slug: string, query: StorePageQuery, viewer?: ViewerSignals): Promise<StorePage> {
     if (!this.context.current()?.tenantId) throw new TenantRequiredException();
     const [pageDefault, pageMax] = await Promise.all([
       this.settings.get('feed_page_size_default'),
@@ -67,6 +73,14 @@ export class StorePageService {
     if (!found) throw new StoreNotFoundException();
     const { row, refs, categories } = found;
     const page = refs.slice(0, limit);
+    // The store's own page views for its dashboard (ADR 055), once per visitor per view_dedupe_hours.
+    if (viewer) {
+      this.tracker.storePageView({
+        tenantId: row.tenant_id,
+        storeId: row.id,
+        visitor: viewerKey(this.env.JWT_SECRET, viewer),
+      });
+    }
     const [hours, posts] = await Promise.all([
       this.hours.storeHours(row.id),
       this.feed.cardsFor(page),

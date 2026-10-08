@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { AnalyticsTracker } from '../analytics/seller/analytics-tracker.service';
 import { APP_CONFIG } from '../config/config.module';
 import type { Env } from '../config/env.schema';
 import { TenantContext } from '../database/tenant-context';
@@ -54,6 +55,7 @@ export class ContactService {
     private readonly share: ShareService,
     private readonly settings: SettingsService,
     @Inject(ENGAGEMENT_STORE) private readonly store: EngagementStore,
+    private readonly tracker: AnalyticsTracker,
     @Inject(APP_CONFIG) env: Pick<Env, 'JWT_SECRET'>,
   ) {
     this.secret = env.JWT_SECRET;
@@ -113,6 +115,14 @@ export class ContactService {
             viewerKey: key,
           }),
         );
+        this.tracker.contact({
+          tenantId,
+          postId,
+          storeId: row.store_id,
+          authorMemberId: row.author_member_id,
+          channel: input.channel,
+          visitor: key,
+        });
       });
 
       const url = await this.shareUrl(tenantId, postId);
@@ -174,6 +184,14 @@ export class ContactService {
             viewerKey: key,
           }),
         );
+        this.tracker.contact({
+          tenantId,
+          postId: null,
+          storeId,
+          authorMemberId: store.owner_member_id,
+          channel: input.channel,
+          visitor: key,
+        });
       });
 
       const message = contactMessage(store.name_bn, null, locale);

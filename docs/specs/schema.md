@@ -5223,6 +5223,16 @@ Lookup: `basic`, `pro`, `premium` (code, label_key, sort_order, is_active, times
 read by all, written by platform admins. Limits per tier are settings (`store_staff_max_<tier>`,
 `store_catalog_max_<tier>`), not columns.
 
+### `analytics_daily` (0051, ADR 055)
+
+One row per post or store per local day (Asia/Dhaka): `entity_type` (post | store), `entity_id` (no FK: history
+outlives its subject), `stat_date`, `metrics` jsonb of whole numbers (views, unique_viewers, contacts_<channel>,
+unique_contacters, saves, share_opens, search_appearances, map_taps), `subject_scrubbed`. **Scope:** TENANT-SCOPED.
+**Keys:** unique (tenant_id, entity_type, entity_id, stat_date); (entity_id, stat_date) where not scrubbed. **RLS:**
+staff of the tenant read (never scrubbed rows); the system role writes (the nightly rollup); sellers read through
+`seller_scope_posts()` / `seller_daily_metrics()` / `seller_top_queries()`. A post's scrub flags its rows
+(`posts_scrub_analytics`). `analytics_rollup_leads()` now fills `lead_daily_stats` (§8.9).
+
 ## 14. Open questions
 
 Each has my recommendation. Items marked **⚠ before first migration** are expensive to change later.

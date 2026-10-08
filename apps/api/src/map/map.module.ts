@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AnalyticsCountersModule } from '../analytics/seller/analytics-counters.module';
 import { CacheModule } from '../cache/cache.module';
 import { CacheService } from '../cache/cache.service';
 import { LocationsModule } from '../locations/locations.module';
@@ -24,7 +25,7 @@ import { OfflineMapService } from './offline/offline-map.service';
  * own data only: this module never reaches a geo provider.
  */
 @Module({
-  imports: [SettingsModule, CacheModule, LocationsModule, StorageModule],
+  imports: [SettingsModule, CacheModule, LocationsModule, StorageModule, AnalyticsCountersModule],
   controllers: [MapController, OfflineMapController],
   providers: [
     MapConfigService,

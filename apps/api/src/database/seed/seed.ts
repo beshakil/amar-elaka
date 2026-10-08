@@ -79,11 +79,47 @@ async function main(): Promise<void> {
         bazarMarketIds,
         userIds.get('tenant-admin')!,
       );
+      await seedAnalyticsHistory(tx, tenantIds);
     });
     console.log('Seed complete.');
   } finally {
     await sql.end();
   }
+}
+
+// ---------------------------------------------------------------------------
+// Seller analytics history (ADR 055)
+// ---------------------------------------------------------------------------
+
+// settings-exempt: how much demo history the dev seed writes (the screen's longest default period)
+const ANALYTICS_SEED_DAYS = 30;
+
+/**
+ * Thirty finished days of analytics_daily for every live seeded post, so the
+ * seller screen has a history and a trend in dev. Numbers are a stable hash
+ * of post and day (the same seed, the same screen); today stays live (Redis).
+ */
+async function seedAnalyticsHistory(
+  tx: TransactionSql,
+  tenantIds: Map<string, string>,
+): Promise<void> {
+  const tenants = [...tenantIds.values()];
+  const rows = await tx`
+    insert into analytics_daily (tenant_id, entity_type, entity_id, stat_date, metrics)
+    select p.tenant_id, 'post', p.id, d::date,
+           jsonb_strip_nulls(jsonb_build_object(
+             'views', 5 + abs(hashtext(p.id::text || d::text)) % 40,
+             'unique_viewers', 4 + abs(hashtext(p.id::text || d::text)) % 30,
+             'search_appearances', 10 + abs(hashtext(d::text || p.id::text)) % 60,
+             'map_taps', nullif(abs(hashtext(p.id::text || 'm' || d::text)) % 4, 0),
+             'saves', nullif(abs(hashtext(p.id::text || 's' || d::text)) % 3, 0),
+             'contacts_call', nullif(abs(hashtext(p.id::text || 'c' || d::text)) % 3, 0),
+             'contacts_whatsapp', nullif(abs(hashtext(p.id::text || 'w' || d::text)) % 2, 0)))
+    from posts p
+    cross join generate_series(current_date - ${ANALYTICS_SEED_DAYS}::int, current_date - 1, interval '1 day') d
+    where p.tenant_id in ${tx(tenants)} and p.status_code = 'live' and p.scrubbed_at is null
+    on conflict (tenant_id, entity_type, entity_id, stat_date) do nothing`;
+  console.log(`analytics history: ${rows.count} post-days`);
 }
 
 // ---------------------------------------------------------------------------
