@@ -8,7 +8,6 @@ import '../../../core/design/tokens/app_spacing.dart';
 import '../../../core/design/widgets/empty_state.dart';
 import '../../../core/design/widgets/error_state.dart';
 import '../../../core/design/widgets/loading_shimmer.dart';
-import '../../../core/dynamic_form/bn_numerals.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/platform/external_apps.dart';
 import '../../../core/routing/auth_gate.dart';
@@ -270,7 +269,9 @@ class _DetailBody extends StatelessWidget {
                   style: theme.textTheme.titleMedium,
                 ),
                 const SizedBox(height: AppSpacing.xs),
-                Text(localizeDigits(description, locale)),
+                // The seller's own words, as written: digits in free text are
+                // not ours to rewrite ("Used 6 months" read "Used ৬ months").
+                Text(description),
                 const SizedBox(height: AppSpacing.md),
               ],
               SellerCardView(seller: detail.seller),

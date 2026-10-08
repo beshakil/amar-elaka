@@ -45,6 +45,7 @@
   "profileTitle": "Profile",
   "profileLogout": "Log out",
   "profileThemeLabel": "Theme",
+  "profileLanguageLabel": "Language",
   "themeLight": "Light",
   "themeDark": "Dark",
   "themeSystem": "System",

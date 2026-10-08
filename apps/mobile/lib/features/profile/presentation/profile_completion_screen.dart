@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:amar_elaka_api/amar_elaka_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/design/tokens/app_spacing.dart';
@@ -12,9 +11,11 @@ import '../../../core/design/widgets/app_text_field.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/network/auth_error_messages.dart';
 import '../../../core/network/media_upload_service.dart';
+import '../../../core/routing/leave_auth_flow.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../auth/domain/auth_session_state.dart';
+import '../../auth/domain/display_name.dart';
 
 /// Name + optional photo, reached right after every OTP verification
 /// (pre-filled with whatever's already on the account, so a returning user
@@ -44,7 +45,9 @@ class _ProfileCompletionScreenState
     super.initState();
     final session = ref.read(authControllerProvider);
     final initialName = switch (session) {
-      AuthSessionAuthenticated(:final me) => me.displayName,
+      // Empty while it is still the phone-digits placeholder: the user types
+      // a real name rather than saving "0077".
+      AuthSessionAuthenticated(:final me) => editableDisplayName(me),
       _ => '',
     };
     _nameController = TextEditingController(text: initialName);
@@ -97,7 +100,7 @@ class _ProfileCompletionScreenState
             .registerEmailPassword(email: email, password: password);
       }
 
-      if (mounted) context.pop();
+      if (mounted) leaveAuthFlow(context);
     } on AppException catch (e) {
       if (mounted) {
         setState(
@@ -188,7 +191,7 @@ class _ProfileCompletionScreenState
               AppButton(
                 label: l10n.profileCompletionSkipButton,
                 variant: AppButtonVariant.text,
-                onPressed: () => context.pop(),
+                onPressed: () => leaveAuthFlow(context),
               ),
             ],
           ),

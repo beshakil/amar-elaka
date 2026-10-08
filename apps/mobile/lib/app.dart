@@ -5,6 +5,7 @@ import 'core/design/app_theme.dart';
 import 'core/design/theme_mode_controller.dart';
 import 'core/design/tokens/app_typography.dart';
 import 'core/design/widgets/offline_banner.dart';
+import 'core/l10n/locale_controller.dart';
 import 'core/routing/app_router.dart';
 import 'features/offline_map/application/offline_map_controller.dart';
 import 'features/post/application/draft_sync.dart';
@@ -17,6 +18,8 @@ class App extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(appRouterProvider);
     final themeMode = ref.watch(themeModeControllerProvider);
+    // Bengali unless the user chose English (Profile), whatever the phone's language.
+    final locale = ref.watch(localeControllerProvider);
     // Posts submitted offline go out when the connection returns, whatever
     // screen is open (a provider nobody listens to is paused).
     ref.listen(draftSyncProvider, (_, _) {});
@@ -28,6 +31,7 @@ class App extends ConsumerWidget {
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
       themeMode: themeMode,
+      locale: locale,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       routerConfig: router,

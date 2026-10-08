@@ -49,7 +49,14 @@ class RefreshInterceptor extends QueuedInterceptor {
     }
 
     try {
-      final response = await _refreshDio.fetch<dynamic>(err.requestOptions);
+      // The replay must carry the new token: the original headers still hold
+      // the expired one (found on a device, with the missing tenant below).
+      final retry = err.requestOptions;
+      final accessToken = await _storage.readAccessToken();
+      if (accessToken != null) {
+        retry.headers['Authorization'] = 'Bearer $accessToken';
+      }
+      final response = await _refreshDio.fetch<dynamic>(retry);
       handler.resolve(response);
     } on DioException catch (retryError) {
       handler.next(retryError);
@@ -64,10 +71,17 @@ class RefreshInterceptor extends QueuedInterceptor {
         return false;
       }
 
+      // The refresh Dio has no interceptors, so the tenant goes on by hand:
+      // without it the API answers TENANT_REQUIRED and every session ended
+      // when its first access token expired (found on a device).
+      final tenantId = await _storage.readTenantId();
       final response = await _refreshDio.post<Map<String, dynamic>>(
         '/auth/refresh',
         data: RefreshRequestBody(refreshToken: refreshToken).toJson(),
-        options: Options(extra: {skipAuthKey: true}),
+        options: Options(
+          extra: {skipAuthKey: true},
+          headers: {'X-Tenant-Id': ?tenantId},
+        ),
       );
       final tokens = SessionTokens.fromJson(response.data!);
       await _storage.saveSession(

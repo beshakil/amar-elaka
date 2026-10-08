@@ -2,8 +2,10 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'device.g.dart';
 
-/// Mirrors `deviceSchema` (apps/api/src/auth/dto/device.schema.ts).
-@JsonSerializable()
+/// Mirrors `deviceSchema` (apps/api/src/auth/dto/device.schema.ts). Unknown
+/// fields are left out, never sent as null: the API takes a string or
+/// nothing, and a null failed every phone login (found on a device, 0049).
+@JsonSerializable(includeIfNull: false)
 class Device {
   const Device({
     required this.platformCode,

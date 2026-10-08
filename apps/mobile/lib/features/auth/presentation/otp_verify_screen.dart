@@ -67,6 +67,10 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
   }
 
   Future<void> _verify(String code) async {
+    // One check at a time: the boxes report "complete" again on every edit
+    // that refills them, and each extra request spends one of the code's
+    // attempts (found on a device: a burst of requests used them all up).
+    if (_isSubmitting) return;
     setState(() {
       _isSubmitting = true;
       _errorText = null;

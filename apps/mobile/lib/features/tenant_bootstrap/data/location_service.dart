@@ -63,14 +63,30 @@ class LocationService {
       final position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.medium,
+          // Without a limit this waits for ever when no fresh fix comes
+          // (indoors, an emulator): the screen just spun (found on a device).
+          timeLimit: locationFixTimeLimit,
         ),
       );
       return LocationGranted(position.latitude, position.longitude);
     } catch (_) {
+      // No fresh fix in time: the phone's last known position finds the
+      // area just as well (an area is kilometres wide).
+      try {
+        final last = await Geolocator.getLastKnownPosition();
+        if (last != null) return LocationGranted(last.latitude, last.longitude);
+      } catch (_) {
+        // Fall through.
+      }
       return const LocationError();
     }
   }
 }
+
+/// How long the area finder waits for a fresh location before using the last
+/// known one. Before an area is picked there is no tenant config to read a
+/// setting from, so this one lives here.
+const locationFixTimeLimit = Duration(seconds: 15);
 
 /// The phone's position only if location is already allowed and on — never
 /// asks (the bootstrap flow owns the rationale and the prompt). Null
@@ -89,6 +105,7 @@ extension QuietPosition on LocationService {
           await Geolocator.getCurrentPosition(
             locationSettings: const LocationSettings(
               accuracy: LocationAccuracy.medium,
+              timeLimit: locationFixTimeLimit,
             ),
           );
       return LocationGranted(position.latitude, position.longitude);

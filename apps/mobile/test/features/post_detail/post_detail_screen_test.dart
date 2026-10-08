@@ -55,6 +55,27 @@ void main() {
     expect(app.engagement.views, ['p1']);
   });
 
+  testWidgets("the description is the seller's text as written, digits too", (
+    tester,
+  ) async {
+    final engagement = FakeEngagementApi()
+      ..details['p1'] = postDetail(
+        description: 'Used 6 months, battery 90%. ৩ মাস ওয়ারেন্টি বাকি।',
+      );
+    await openDetail(tester, engagement: engagement);
+    await tester.scrollUntilVisible(
+      find.textContaining('Used 6 months'),
+      300,
+      scrollable: find.byWidgetPredicate(
+        (w) => w is Scrollable && w.axisDirection == AxisDirection.down,
+      ),
+    );
+    expect(
+      find.text('Used 6 months, battery 90%. ৩ মাস ওয়ারেন্টি বাকি।'),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('the gallery swipes; a tap opens full-size photos with zoom', (
     tester,
   ) async {

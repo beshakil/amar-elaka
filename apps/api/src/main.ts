@@ -5,6 +5,7 @@ import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fa
 import { SwaggerModule } from '@nestjs/swagger';
 import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module';
+import { allowEmptyJsonBody } from './common/http/empty-json-body';
 import { env } from './config/env';
 import { buildOpenApiDocument } from './openapi/openapi-document';
 
@@ -16,6 +17,7 @@ async function bootstrap(): Promise<void> {
   );
 
   app.useLogger(app.get(Logger));
+  allowEmptyJsonBody(app);
 
   app.setGlobalPrefix('api', {
     exclude: [

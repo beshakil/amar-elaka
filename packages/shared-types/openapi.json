@@ -5257,16 +5257,20 @@
                 ]
               },
               "appVersion": {
-                "type": "string"
+                "type": "string",
+                "nullable": true
               },
               "deviceModel": {
-                "type": "string"
+                "type": "string",
+                "nullable": true
               },
               "fingerprintHash": {
-                "type": "string"
+                "type": "string",
+                "nullable": true
               },
               "pushToken": {
-                "type": "string"
+                "type": "string",
+                "nullable": true
               }
             },
             "required": [
@@ -5328,16 +5332,20 @@
                 ]
               },
               "appVersion": {
-                "type": "string"
+                "type": "string",
+                "nullable": true
               },
               "deviceModel": {
-                "type": "string"
+                "type": "string",
+                "nullable": true
               },
               "fingerprintHash": {
-                "type": "string"
+                "type": "string",
+                "nullable": true
               },
               "pushToken": {
-                "type": "string"
+                "type": "string",
+                "nullable": true
               }
             },
             "required": [
@@ -5404,16 +5412,20 @@
                 ]
               },
               "appVersion": {
-                "type": "string"
+                "type": "string",
+                "nullable": true
               },
               "deviceModel": {
-                "type": "string"
+                "type": "string",
+                "nullable": true
               },
               "fingerprintHash": {
-                "type": "string"
+                "type": "string",
+                "nullable": true
               },
               "pushToken": {
-                "type": "string"
+                "type": "string",
+                "nullable": true
               }
             },
             "required": [

@@ -85,8 +85,12 @@ GoRouter appRouter(Ref ref) {
       ),
       GoRoute(
         path: RoutePaths.otpVerify,
-        builder: (context, state) =>
-            OtpVerifyScreen(args: state.extra! as OtpVerifyArgs),
+        // The phone travels in `extra`; a rebuild without it (a deep link, a
+        // restored stack) goes back to the phone step instead of crashing.
+        builder: (context, state) => switch (state.extra) {
+          final OtpVerifyArgs args => OtpVerifyScreen(args: args),
+          _ => const LoginScreen(),
+        },
       ),
       GoRoute(
         path: RoutePaths.emailLogin,

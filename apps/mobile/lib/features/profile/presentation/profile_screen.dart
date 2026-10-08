@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/design/theme_mode_controller.dart';
+import '../../../core/l10n/locale_controller.dart';
 import '../../../core/design/tokens/app_spacing.dart';
 import '../../../core/dynamic_form/bn_numerals.dart';
 import '../../../core/design/widgets/app_button.dart';
@@ -90,6 +91,24 @@ class ProfileScreen extends ConsumerWidget {
         },
         const SizedBox(height: AppSpacing.md),
         const _OfflineMapTile(),
+        const SizedBox(height: AppSpacing.md),
+        Text(
+          l10n.profileLanguageLabel,
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        SegmentedButton<String>(
+          key: const ValueKey('profile-language'),
+          segments: const [
+            // Each language named in itself, so either reader finds theirs.
+            ButtonSegment(value: 'bn', label: Text('বাংলা')),
+            ButtonSegment(value: 'en', label: Text('English')),
+          ],
+          selected: {ref.watch(localeControllerProvider).languageCode},
+          onSelectionChanged: (selection) => ref
+              .read(localeControllerProvider.notifier)
+              .setLocale(Locale(selection.first)),
+        ),
         const SizedBox(height: AppSpacing.md),
         Text(
           l10n.profileThemeLabel,

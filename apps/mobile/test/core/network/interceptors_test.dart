@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:amar_elaka_app/core/network/interceptors/auth_interceptor.dart';
+import 'package:amar_elaka_app/core/network/interceptors/refresh_interceptor.dart';
 import 'package:amar_elaka_app/core/network/interceptors/tenant_interceptor.dart';
 import 'package:amar_elaka_app/core/storage/secure_session_storage.dart';
 import 'package:dio/dio.dart';
@@ -45,7 +46,87 @@ class _CapturingAdapter implements HttpClientAdapter {
   void close({bool force = false}) {}
 }
 
+/// A tiny API: `/x` wants a fresh token, `/auth/refresh` issues one, and
+/// every request is recorded with its headers.
+class _ExpiringApi implements HttpClientAdapter {
+  final requests = <RequestOptions>[];
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    requests.add(options);
+    final json = {
+      Headers.contentTypeHeader: [Headers.jsonContentType],
+    };
+    if (options.path.endsWith('/auth/refresh')) {
+      if (options.headers['X-Tenant-Id'] == null) {
+        return ResponseBody.fromString(
+          '{"statusCode":400,"error":"TENANT_REQUIRED","message":"x"}',
+          400,
+          headers: json,
+        );
+      }
+      return ResponseBody.fromString(
+        '{"accessToken":"fresh","refreshToken":"r2"}',
+        200,
+        headers: json,
+      );
+    }
+    final fresh = options.headers['Authorization'] == 'Bearer fresh';
+    return ResponseBody.fromString(
+      fresh ? '{"ok":true}' : '{"statusCode":401,"error":"UNAUTHENTICATED"}',
+      fresh ? 200 : 401,
+      headers: json,
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
 void main() {
+  group('RefreshInterceptor', () {
+    test(
+      'an expired token is refreshed in the tenant and the request replayed '
+      'with the new one (both were missing: every session ended at 15 min)',
+      () async {
+        final storage = SecureSessionStorage(backend: _InMemoryBackend());
+        await storage.saveTenantId('tenant-123');
+        await storage.saveSession(accessToken: 'stale', refreshToken: 'r1');
+        final api = _ExpiringApi();
+        final refreshDio = Dio(BaseOptions(baseUrl: 'https://api.test'))
+          ..httpClientAdapter = api;
+        var expired = false;
+        final dio = Dio(BaseOptions(baseUrl: 'https://api.test'))
+          ..httpClientAdapter = api
+          ..interceptors.addAll([
+            TenantInterceptor(storage),
+            AuthInterceptor(storage),
+            RefreshInterceptor(
+              refreshDio: refreshDio,
+              storage: storage,
+              onSessionExpired: () => expired = true,
+            ),
+          ]);
+
+        final response = await dio.get<Map<String, dynamic>>('/x');
+
+        expect(response.data, {'ok': true});
+        expect(expired, isFalse);
+        final refresh = api.requests.firstWhere(
+          (r) => r.path.endsWith('/auth/refresh'),
+        );
+        expect(refresh.headers['X-Tenant-Id'], 'tenant-123');
+        expect(api.requests.last.headers['Authorization'], 'Bearer fresh');
+        expect(await storage.readAccessToken(), 'fresh');
+        expect(await storage.readRefreshToken(), 'r2');
+      },
+    );
+  });
+
   group('TenantInterceptor', () {
     test('adds X-Tenant-Id when a tenant id is stored', () async {
       final storage = SecureSessionStorage(backend: _InMemoryBackend());

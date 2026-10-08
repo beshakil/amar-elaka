@@ -4,6 +4,7 @@ import { Test } from '@nestjs/testing';
 import type { Sql } from 'postgres';
 import { AppModule } from '../src/app.module';
 import { TokenService } from '../src/auth/tokens/token.service';
+import { allowEmptyJsonBody } from '../src/common/http/empty-json-body';
 import { resolveTestDatabaseUrl, testSqlClient } from './db/test-database';
 
 /**
@@ -167,6 +168,8 @@ describe('Saved items and follows (e2e)', () => {
       ],
     });
     app.enableVersioning({ type: VersioningType.URI, defaultVersion: '1' });
+    // As main.ts: the app's HTTP client sends a JSON content type on bodiless POSTs.
+    allowEmptyJsonBody(app);
     await app.init();
     await app.getHttpAdapter().getInstance().ready();
 
@@ -262,6 +265,35 @@ describe('Saved items and follows (e2e)', () => {
       expect(
         (await call('GET', `/posts/${id}/detail`, 'saver')).json<{ isSaved: boolean }>().isSaved,
       ).toBe(false);
+    });
+
+    it('saves the way the phone app asks: a JSON content type with no body (found on a device)', async () => {
+      const id = await post();
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/v1/saved/post/${id}`,
+        headers: {
+          'x-tenant-id': TENANT_A,
+          authorization: `Bearer ${tokens.saver}`,
+          'content-type': 'application/json',
+          'content-length': '0',
+        },
+      });
+      expect(response.statusCode).toBe(201);
+      expect(await savedCount(id)).toBe(1);
+      // A body that is there but isn't JSON is still refused.
+      const broken = await app.inject({
+        method: 'POST',
+        url: `/api/v1/saved/post/${id}`,
+        headers: {
+          'x-tenant-id': TENANT_A,
+          authorization: `Bearer ${tokens.saver}`,
+          'content-type': 'application/json',
+        },
+        payload: '{',
+      });
+      expect(broken.statusCode).toBe(400);
+      expect((await call('DELETE', `/saved/post/${id}`, 'saver')).statusCode).toBe(204);
     });
 
     it('saves a post in another tenant, a place and a store: one list', async () => {
