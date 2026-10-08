@@ -413,6 +413,41 @@ export const storePageSchema = z.object({
 });
 export type StorePage = z.infer<typeof storePageSchema>;
 
+/**
+ * GET /stores/:slug/catalog (ADR 056): the WhatsApp catalog. No phone number
+ * anywhere in it: ordering goes through the order route, which records the lead.
+ */
+export const storeCatalogSchema = z.object({
+  store: z.object({
+    id: z.string(),
+    tenantId: z.string(),
+    slug: z.string(),
+    name: localizedText,
+    description: z.string().nullable(),
+    logo: z.object({ url: z.string() }).nullable(),
+    cover: z.object({ url: z.string() }).nullable(),
+    orderable: z.boolean(),
+  }),
+  products: z.array(
+    z.object({
+      postId: z.string(),
+      title: z.string(),
+      price: z.string().nullable(),
+      priceType: z.string().nullable(),
+      photo: z
+        .object({
+          url: z.string(),
+          width: z.number(),
+          height: z.number(),
+          thumbhash: z.string().nullable(),
+        })
+        .nullable(),
+    }),
+  ),
+  shareImagePath: z.string(),
+});
+export type StoreCatalog = z.infer<typeof storeCatalogSchema>;
+
 /** GET /search (posts), as the category page and "recent" read it. */
 export const searchHitSchema = z.object({
   id: z.string(),
@@ -552,6 +587,7 @@ export type _PublicPagesContract = [
   Assert<Accepts<z.infer<typeof sitemapPostsSchema>, Api['SitemapPostsDto']>>,
   Assert<Accepts<z.infer<typeof sitemapStoresSchema>, Api['SitemapStoresDto']>>,
   Assert<Accepts<StorePage, Api['StorePageDto']>>,
+  Assert<Accepts<StoreCatalog, Api['StoreCatalogDto']>>,
   Assert<Accepts<SearchResponse, Api['SearchResponseDto']>>,
   Assert<Accepts<SuggestResponse, Api['SuggestResponseDto']>>,
   Assert<Accepts<CategoryAreas, Api['CategoryAreasDto']>>,

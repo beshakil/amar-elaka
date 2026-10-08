@@ -168,6 +168,47 @@ export class EngagementRepository {
       .parse([...rows])[0]?.slug;
   }
 
+  /**
+   * A catalog order's target (ADR 056): the host tenant's active store by
+   * slug and its listed post, with the numbers to order on (WhatsApp, else
+   * the store's phone). Nothing when either isn't public.
+   */
+  async catalogOrderTarget(
+    tx: DatabaseTransaction,
+    slug: string,
+    postId: string,
+  ): Promise<
+    | {
+        store_id: string;
+        owner_member_id: string;
+        number: string | null;
+        title: string;
+        tenant_id: string;
+      }
+    | undefined
+  > {
+    const rows = await tx.execute(sql`
+      select s.id as store_id, s.owner_member_id, coalesce(s.whatsapp_e164, s.phone_e164) as number,
+             p.title, p.tenant_id
+      from public.stores s
+      join public.posts p on p.tenant_id = s.tenant_id and p.store_id = s.id and p.id = ${postId}::uuid
+      where s.tenant_id = public.current_tenant_id() and s.slug = ${slug}
+        and s.status_code = 'active' and s.deleted_at is null
+        and public.post_is_listed(p.status_code, p.deleted_at, p.scrubbed_at, p.hidden_by_owner, p.store_hidden, p.expires_at, now())`);
+    return z
+      .array(
+        z.object({
+          store_id: z.string(),
+          owner_member_id: z.string(),
+          number: z.string().nullable(),
+          title: z.string(),
+          tenant_id: z.string(),
+        }),
+      )
+      .max(1)
+      .parse([...rows])[0];
+  }
+
   /** The store's tenant (item_tenant_of, 0032). */
   async storeTenantOf(tx: DatabaseTransaction, storeId: string): Promise<string | undefined> {
     const rows = await tx.execute(

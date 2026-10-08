@@ -21,3 +21,21 @@ export function contactMessage(
 ): string {
   return TEMPLATES[locale](title, url);
 }
+
+const ORDER_TEMPLATES: Record<'bn' | 'en', (product: string, url: string | null) => string> = {
+  bn: (product, url) =>
+    `আসসালামু আলাইকুম। "আমার এলাকা"-য় আপনার দোকানের ক্যাটালগ থেকে "${product}" অর্ডার করতে চাই।` +
+    (url ? `\n${url}` : ''),
+  en: (product, url) =>
+    `Hello! I'd like to order "${product}" from your store's catalog on Amar Elaka.` +
+    (url ? `\n${url}` : ''),
+};
+
+/** The WhatsApp catalog's order message (ADR 056): the product named, so the seller knows what. */
+export function catalogOrderMessage(
+  product: string,
+  url: string | null,
+  locale: 'bn' | 'en' = 'bn',
+): string {
+  return ORDER_TEMPLATES[locale](product, url);
+}

@@ -5233,6 +5233,27 @@ staff of the tenant read (never scrubbed rows); the system role writes (the nigh
 `seller_scope_posts()` / `seller_daily_metrics()` / `seller_top_queries()`. A post's scrub flags its rows
 (`posts_scrub_analytics`). `analytics_rollup_leads()` now fills `lead_daily_stats` (§8.9).
 
+### `store_imports` (0052, ADR 056)
+
+One bulk import into a store: `store_id`, `category_id`, `created_by_member_id`, `sheet_media_id` and
+`images_media_id` (media kind `import`, private; set null when the orphan sweep removes them), `sheet_format` (csv |
+xlsx), `dry_run`, `status_code` (queued | running | succeeded | failed), `error_code` (why a whole import failed),
+`total_rows`, `processed_rows`, `created_count` (dry run: valid rows), `skipped_count`, `failed_count`, `started_at`,
+`finished_at`. **Scope:** TENANT-SCOPED. **Keys:** unique (tenant_id, id); (tenant_id, store_id, id desc). **RLS:**
+insert by a member who may post as the store, as themselves (`member_may_post_as_store`); read by its creator, the
+store's owner and managers (`can_manage_store`) and staff; the system role (the worker) writes progress.
+
+### `store_import_rows` (0052, ADR 056)
+
+One outcome per sheet row: `import_id`, `row_number` (as the spreadsheet numbers it), `outcome` (created | valid |
+skipped | failed), `reason_code` (required unless created or valid), `reason` (the exact Bengali reason), `post_id`.
+**Scope:** TENANT-SCOPED. **Keys:** unique (tenant_id, import_id, row_number). **RLS:** readable wherever its import
+is; written by the system role only. The downloadable report is these rows.
+
+`my_post_stats()` (0052) counts personal posts only: a store's posts are bounded by its catalog limit
+(`store_catalog_max_<tier>`), not by its staff's personal limits. Lookups: media kind `import`, lead source
+`store_catalog`.
+
 ## 14. Open questions
 
 Each has my recommendation. Items marked **⚠ before first migration** are expensive to change later.

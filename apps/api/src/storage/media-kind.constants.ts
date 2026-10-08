@@ -1,6 +1,7 @@
 import type { StorageBucket } from './storage.ports';
 
-export type MediaKind = 'image' | 'video' | 'document';
+export const MEDIA_KINDS = ['image', 'video', 'document', 'import'] as const;
+export type MediaKind = (typeof MEDIA_KINDS)[number];
 
 interface MediaKindPolicy {
   bucket: StorageBucket;
@@ -24,5 +25,16 @@ export const MEDIA_KIND_POLICIES: Record<MediaKind, MediaKindPolicy> = {
     bucket: 'documents',
     visibilityCode: 'private',
     allowedContentTypes: ['application/pdf', 'image/jpeg', 'image/png'],
+  },
+  // A bulk-import sheet or image ZIP (ADR 056): never shown, only read by the import job.
+  import: {
+    bucket: 'documents',
+    visibilityCode: 'private',
+    allowedContentTypes: [
+      'text/csv',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/zip',
+      'application/x-zip-compressed',
+    ],
   },
 };

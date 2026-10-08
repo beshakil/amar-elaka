@@ -35,7 +35,13 @@ export function sniffImageType(bytes: Uint8Array): SniffedImageType | undefined 
   return undefined;
 }
 
-export type SniffedMediaType = SniffedImageType | 'application/pdf' | 'video/mp4' | 'video/webm';
+export type SniffedMediaType =
+  | SniffedImageType
+  | 'application/pdf'
+  | 'video/mp4'
+  | 'video/webm'
+  | 'application/zip'
+  | 'text/csv';
 
 // settings-exempt: file-format signatures ("%PDF-", ISO-BMFF "ftyp" at offset 4, EBML header)
 const PDF = ascii('%PDF-');
@@ -44,13 +50,26 @@ const FTYP = ascii('ftyp');
 const FTYP_OFFSET = 4;
 // settings-exempt: see above
 const EBML = [0x1a, 0x45, 0xdf, 0xa3];
+// settings-exempt: the ZIP local file header signature "PK\x03\x04"
+const ZIP_LOCAL = [0x50, 0x4b, 0x03, 0x04];
+
+/** No NUL bytes and valid UTF-8 (a cut multi-byte character at the end is fine): a CSV, not a binary. */
+function looksLikeText(bytes: Uint8Array): boolean {
+  if (bytes.length === 0 || bytes.includes(0)) return false;
+  try {
+    new TextDecoder('utf-8', { fatal: true }).decode(bytes, { stream: true });
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 /**
  * The type a media kind's bytes really are, or undefined when they aren't
  * something that kind accepts (media-kind.constants.ts).
  */
 export function sniffMediaType(
-  kind: 'image' | 'video' | 'document',
+  kind: 'image' | 'video' | 'document' | 'import',
   bytes: Uint8Array,
 ): SniffedMediaType | undefined {
   const image = sniffImageType(bytes);
@@ -64,5 +83,9 @@ export function sniffMediaType(
       if (startsWith(bytes, FTYP, FTYP_OFFSET)) return 'video/mp4';
       if (startsWith(bytes, EBML)) return 'video/webm';
       return undefined;
+    case 'import':
+      // An XLSX workbook is a ZIP too; the import job tells them apart by content.
+      if (startsWith(bytes, ZIP_LOCAL)) return 'application/zip';
+      return looksLikeText(bytes) ? 'text/csv' : undefined;
   }
 }

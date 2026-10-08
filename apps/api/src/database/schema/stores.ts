@@ -151,3 +151,51 @@ export const storeHours = pgTable('store_hours', {
   closesNextDay: boolean('closes_next_day').notNull().default(false),
   ...auditColumns(),
 });
+
+/** 0052 One bulk upload into a store (ADR 056): its file, its progress, its counts. */
+export const storeImports = pgTable('store_imports', {
+  id: id(),
+  tenantId: uuid('tenant_id')
+    .notNull()
+    .references(() => tenants.id, { onDelete: 'restrict' }),
+  // Composite FK (tenant_id, store_id) -> stores, CASCADE.
+  storeId: uuid('store_id').notNull(),
+  categoryId: uuid('category_id')
+    .notNull()
+    .references(() => categories.id, { onDelete: 'restrict' }),
+  // Composite FK (tenant_id, created_by_member_id) -> tenant_members, RESTRICT.
+  createdByMemberId: uuid('created_by_member_id').notNull(),
+  // Composite FKs (tenant_id, *_media_id) -> media_assets, SET NULL (the files are swept later).
+  sheetMediaId: uuid('sheet_media_id'),
+  imagesMediaId: uuid('images_media_id'),
+  sheetFormat: text('sheet_format').notNull(),
+  dryRun: boolean('dry_run').notNull().default(false),
+  // queued | running | succeeded | failed (CHECK)
+  statusCode: text('status_code').notNull().default('queued'),
+  errorCode: text('error_code'),
+  totalRows: integer('total_rows'),
+  processedRows: integer('processed_rows').notNull().default(0),
+  createdCount: integer('created_count').notNull().default(0),
+  skippedCount: integer('skipped_count').notNull().default(0),
+  failedCount: integer('failed_count').notNull().default(0),
+  startedAt: timestamptz('started_at'),
+  finishedAt: timestamptz('finished_at'),
+  ...auditColumns(),
+});
+
+/** 0052 One sheet row's outcome: created / valid (dry run) / skipped / failed, with the exact reason. */
+export const storeImportRows = pgTable('store_import_rows', {
+  id: id(),
+  tenantId: uuid('tenant_id')
+    .notNull()
+    .references(() => tenants.id, { onDelete: 'restrict' }),
+  // Composite FK (tenant_id, import_id) -> store_imports, CASCADE.
+  importId: uuid('import_id').notNull(),
+  rowNumber: integer('row_number').notNull(),
+  outcome: text('outcome').notNull(),
+  reasonCode: text('reason_code'),
+  reason: text('reason'),
+  // Composite FK (tenant_id, post_id) -> posts, SET NULL.
+  postId: uuid('post_id'),
+  ...auditColumns(),
+});

@@ -16,7 +16,14 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { TenantContext } from '../database/tenant-context';
 import { PostIdParamDto } from '../posts/dto/posts.dto';
-import { StoreIdParamDto } from '../stores/dto/stores.dto';
+import { StoreIdParamDto, STORE_SLUG_PATTERN_DTO } from '../stores/dto/stores.dto';
+import { z } from 'zod';
+import { createZodDto } from '../common/pipes/zod-dto';
+
+const catalogOrderParamSchema = z
+  .object({ slug: STORE_SLUG_PATTERN_DTO, postId: z.string().uuid() })
+  .strict();
+class CatalogOrderParamDto extends createZodDto(catalogOrderParamSchema) {}
 import { ContactService } from './contact.service';
 import {
   ContactDto,
@@ -109,6 +116,33 @@ export class StoreContactController {
     private readonly contacts: ContactService,
     private readonly context: TenantContext,
   ) {}
+
+  /**
+   * An order from the WhatsApp catalog (ADR 056): the wa.me link with the
+   * product prefilled, and a lead. The web's catalog page calls it on a tap
+   * and redirects; the number is never in a page's HTML.
+   */
+  @Post(':slug/catalog/order/:postId')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(OptionalJwtAuthGuard)
+  @ApiOkResponse({ type: ContactRevealDto })
+  catalogOrder(
+    @Param() params: CatalogOrderParamDto,
+    @Req() request: FastifyRequest,
+  ): Promise<ContactReveal> {
+    const installId = request.headers['x-install-id'];
+    return this.contacts.catalogOrder(
+      params.slug,
+      params.postId,
+      {
+        userId: this.context.current()?.userId,
+        installId: typeof installId === 'string' ? installId : undefined,
+        ip: request.ip,
+        userAgent: request.headers['user-agent'],
+      },
+      localeOf(request),
+    );
+  }
 
   @Post(':id/contact')
   @HttpCode(HttpStatus.OK)

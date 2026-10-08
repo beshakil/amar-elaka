@@ -1,8 +1,9 @@
 import { z } from 'zod';
+import { MEDIA_KINDS } from '../media-kind.constants';
 import { createZodDto } from '../../common/pipes/zod-dto';
 
 export const createUploadSchema = z.object({
-  kind: z.enum(['image', 'video', 'document']),
+  kind: z.enum(MEDIA_KINDS),
   contentType: z.string().min(1),
   byteSize: z.coerce.number().int().positive(),
   // settings-exempt: a sha256 hex digest is always 64 characters — a protocol constant, not a business threshold.

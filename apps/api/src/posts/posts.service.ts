@@ -135,6 +135,29 @@ export class PostsService {
     }
   }
 
+  /**
+   * Everything create() would check, writing nothing (a bulk import's dry
+   * run, ADR 056): text lengths, the owning tenant, the category's fields,
+   * the caller's limits, posting as the store. Media aren't checked (a dry
+   * run uploads none). Throws what create() would throw.
+   */
+  async validateCreate(input: CreatePostInput): Promise<void> {
+    this.requireUserId();
+    await this.checkTextLengths(input.title, input.description);
+    const owner = await this.ownership.resolve(input.location.lat, input.location.lng);
+    await this.ownership.inTenant(owner.tenantId, 'lookup', async ({ memberId }) => {
+      if (!memberId) throw new UnauthenticatedException();
+      await this.fieldValidation.validate(input.categoryId, input.fields);
+      await this.tenantDb.transaction(
+        async (tx) => {
+          await this.checkLimits(tx, { creating: true, activating: input.submit }, input.storeId);
+          if (input.storeId) await this.checkStorePosting(tx, input.storeId, owner.tenantId);
+        },
+        { accessMode: 'read only' },
+      );
+    });
+  }
+
   private async createPost(userId: string, input: CreatePostInput): Promise<string> {
     const requestTenantId = this.context.require().tenantId!;
     await this.checkTextLengths(input.title, input.description);
@@ -150,7 +173,7 @@ export class PostsService {
 
       return this.tenantDb.transaction(async (tx) => {
         await this.repo.lockUser(tx, userId);
-        await this.checkLimits(tx, { creating: true, activating: input.submit });
+        await this.checkLimits(tx, { creating: true, activating: input.submit }, input.storeId);
         const mediaIds = await this.checkMedia(tx, input.mediaIds, userId, null, {
           owningTenantId: owner.tenantId,
           requestTenantId,
@@ -473,7 +496,7 @@ export class PostsService {
     return this.asOwner(id, async (post, tx) => {
       assertTransition(post.status_code, 'pending', 'owner');
       await this.repo.lockUser(tx, userId);
-      await this.checkLimits(tx, { creating: false, activating: true });
+      await this.checkLimits(tx, { creating: false, activating: true }, post.store_id);
       const trustScore = (await this.trust.get(post.tenant_id, post.author_member_id!)).score;
       await this.applySubmission(tx, {
         id,
@@ -526,7 +549,7 @@ export class PostsService {
       }
       assertTransition(post.status_code, 'live', 'owner');
       await this.repo.lockUser(tx, userId);
-      await this.checkLimits(tx, { creating: false, activating: true });
+      await this.checkLimits(tx, { creating: false, activating: true }, post.store_id);
       const policy = await this.repo.categoryPolicy(tx, post.category_id, post.tenant_id);
       await this.repo.update(tx, id, {
         status: 'live',
@@ -756,11 +779,17 @@ export class PostsService {
     }
   }
 
-  /** Per-user limits across every tenant (my_post_stats); call under lockUser. */
+  /**
+   * Per-user limits across every tenant (my_post_stats); call under lockUser.
+   * A store's post is bounded by the store's catalog limit instead
+   * (checkStorePosting, ADR 056), and doesn't count here.
+   */
   private async checkLimits(
     tx: DatabaseTransaction,
     what: { creating: boolean; activating: boolean },
+    storeId: string | null | undefined,
   ): Promise<void> {
+    if (storeId) return;
     const [maxActive, maxPerDay] = await Promise.all([
       this.settings.get('post_max_active_per_user'),
       this.settings.get('post_max_per_day_per_user'),

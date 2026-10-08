@@ -15,5 +15,7 @@ import { MediaSchedule } from './media-schedule';
 @Module({
   imports: [JobRunnerModule, SettingsModule, StorageModule],
   providers: [MediaProcessingService, MediaMaintenanceService, MediaProcessor, MediaSchedule],
+  // The bulk import runs its images through the same pipeline (ADR 056).
+  exports: [MediaProcessingService],
 })
 export class MediaWorkerModule {}

@@ -14,6 +14,7 @@ import { PostsWorkerModule } from './posts/posts-worker.module';
 import { QueueModule } from './queue/queue.module';
 import { SavedSearchesWorkerModule } from './saved-searches/saved-searches-worker.module';
 import { SearchWorkerModule } from './search/indexing/search-worker.module';
+import { StoreImportWorkerModule } from './stores/import/store-import-worker.module';
 
 /**
  * The standalone worker process (worker.ts) — no HTTP listener, just enough
@@ -42,6 +43,7 @@ import { SearchWorkerModule } from './search/indexing/search-worker.module';
     PostsWorkerModule,
     SavedSearchesWorkerModule,
     SearchWorkerModule,
+    StoreImportWorkerModule,
   ],
 })
 export class WorkerModule {}

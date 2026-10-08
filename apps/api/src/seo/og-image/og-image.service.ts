@@ -49,10 +49,45 @@ export class OgImageService {
     if (await this.storage.head('media', key)) return this.storage.getObject('media', key);
 
     const cover = coverKey ? await this.storage.getObject('media', coverKey) : null;
-    const png = await render(data, cover);
+    const png = await render(postCard(data), cover);
     await this.storage.putObject('media', key, png, 'image/png', CACHE_CONTROL);
     return png;
   }
+}
+
+/**
+ * A store catalog's share image (ADR 056): the store's name, how many
+ * products and "order on WhatsApp", its area, the cover photo. Same card,
+ * same storage-by-content-hash caching as a listing's.
+ */
+export async function storeCardPng(
+  storage: StorageService,
+  store: {
+    id: string;
+    name: string;
+    products: number;
+    where: string;
+    tenantName: string;
+    coverKey: string | null;
+  },
+): Promise<Buffer> {
+  const card: OgCard = {
+    title: store.name,
+    accent: OG_TEXT.catalogLine(store.products),
+    where: store.where,
+    brand: `${OG_TEXT.brand} · ${store.tenantName}`,
+    sold: false,
+  };
+  const version = createHash('sha256')
+    .update(JSON.stringify([OG.version, card, store.coverKey]))
+    .digest('hex')
+    .slice(0, OG.hashChars);
+  const key = `og/store/${store.id}/${version}.png`;
+  if (await storage.head('media', key)) return storage.getObject('media', key);
+  const cover = store.coverKey ? await storage.getObject('media', store.coverKey) : null;
+  const png = await render(card, cover);
+  await storage.putObject('media', key, png, 'image/png', CACHE_CONTROL);
+  return png;
 }
 
 function versionOf(data: OgRow, coverKey: string | null): string {
@@ -103,7 +138,26 @@ const RGBA = 4;
 // settings-exempt: see above
 const RGB = 3;
 
-async function render(data: OgRow, cover: Buffer | null): Promise<Buffer> {
+/** What a share card shows: a title, an accent line, where, the brand line, a sold pill. */
+export interface OgCard {
+  title: string;
+  accent: string;
+  where: string;
+  brand: string;
+  sold: boolean;
+}
+
+function postCard(data: OgRow): OgCard {
+  return {
+    title: data.title,
+    accent: ogPriceLine(data.price, data.price_type_code),
+    where: [data.area_bn, data.tenant_name_bn].filter(Boolean).join(', '),
+    brand: `${OG_TEXT.brand} · ${data.tenant_name_bn}`,
+    sold: data.status_code === 'sold',
+  };
+}
+
+async function render(card: OgCard, cover: Buffer | null): Promise<Buffer> {
   const textWidth = OG.textWidth;
   const layers: OverlayOptions[] = [];
 
@@ -120,25 +174,14 @@ async function render(data: OgRow, cover: Buffer | null): Promise<Buffer> {
     layers.push({ input, left: OG.padding, top: y });
     y += ((await sharp(input).metadata()).height ?? 0) + OG.gap;
   };
-  await flow(await fittedTitle(span('#ffffff', data.title), textWidth));
-  await flow(
-    await text(
-      span(OG.accent, ogPriceLine(data.price, data.price_type_code)),
-      OG.price.font,
-      textWidth,
-    ),
-  );
-  const where = [data.area_bn, data.tenant_name_bn].filter(Boolean).join(', ');
-  await flow(await text(span(OG.muted, where), OG.area.font, OG.area.width));
-  const brand = await text(
-    span('#ffffff', `${OG_TEXT.brand} · ${data.tenant_name_bn}`),
-    OG.brand.font,
-    textWidth,
-  );
+  await flow(await fittedTitle(span('#ffffff', card.title), textWidth));
+  await flow(await text(span(OG.accent, card.accent), OG.price.font, textWidth));
+  await flow(await text(span(OG.muted, card.where), OG.area.font, OG.area.width));
+  const brand = await text(span('#ffffff', card.brand), OG.brand.font, textWidth);
   const brandHeight = (await sharp(brand).metadata()).height ?? 0;
   layers.push({ input: brand, left: OG.padding, top: OG.height - OG.brand.bottom - brandHeight });
 
-  if (data.status_code === 'sold') {
+  if (card.sold) {
     const label = await text(span('#ffffff', OG_TEXT.sold), OG.sold.font, textWidth);
     const meta = await sharp(label).metadata();
     const pill = await sharp({

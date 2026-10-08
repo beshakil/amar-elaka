@@ -14,6 +14,14 @@ export const QUEUE_GEO = 'geo';
 export const QUEUE_PLACES = 'places';
 /** Map upkeep (cutting each tenant's offline map file): one queue, one processor (map/offline/offline-map.processor.ts). */
 export const QUEUE_MAP = 'map';
+/** Bulk imports into a store (ADR 056): long jobs, kept off the lifecycle queues. */
+export const QUEUE_IMPORTS = 'imports';
+
+/** One store import to run; the row says the rest (store_imports, 0052). */
+export interface StoreImportJob {
+  tenantId: string;
+  importId: string;
+}
 
 /** BullMQ has no built-in dead-letter concept — a job that exhausts its retries is relayed onto `<queue>-dlq` instead (queue/dlq.util.ts). */
 export function deadLetterQueueName(queueName: string): string {
@@ -34,6 +42,7 @@ export const JOB_REMIND_EXPIRING_POSTS = 'remind-expiring-posts';
 export const JOB_CLEAN_STALE_DRAFTS = 'clean-stale-drafts';
 export const JOB_FLUSH_POST_VIEWS = 'flush-post-views';
 export const JOB_ROLLUP_ANALYTICS = 'rollup-analytics';
+export const JOB_RUN_STORE_IMPORT = 'run-store-import';
 export const JOB_MATCH_SAVED_SEARCHES = 'match-saved-searches';
 export const JOB_PAUSE_IDLE_SAVED_SEARCHES = 'pause-idle-saved-searches';
 export const JOB_REFRESH_UNMET_DEMAND = 'refresh-unmet-demand';
@@ -90,6 +99,9 @@ export interface QueueJobs {
     [JOB_CLEAN_STALE_DRAFTS]: ScheduledJobData;
     [JOB_FLUSH_POST_VIEWS]: ScheduledJobData;
     [JOB_ROLLUP_ANALYTICS]: ScheduledJobData;
+  };
+  [QUEUE_IMPORTS]: {
+    [JOB_RUN_STORE_IMPORT]: StoreImportJob;
   };
   [QUEUE_SAVED_SEARCHES]: {
     [JOB_MATCH_SAVED_SEARCHES]: ScheduledJobData;

@@ -585,6 +585,59 @@ async function handlePublic(
     send(res, 200, page);
     return true;
   }
+  // The WhatsApp catalog (ADR 056): no phone in the page's data; the order answers with wa.me.
+  const catalogMatch = /^\/stores\/([a-z0-9-]+)\/(catalog|og\.png)$/.exec(path);
+  if (req.method === 'GET' && catalogMatch) {
+    const store = storeOf(tenantId);
+    if (!store || store.slug !== catalogMatch[1]) fail(res, 404, 'STORE_NOT_FOUND');
+    else if (catalogMatch[2] === 'og.png') {
+      res.writeHead(200, { 'content-type': 'image/png' });
+      res.end(PNG_1X1);
+    } else {
+      const catalog: Schemas['StoreCatalogDto'] = {
+        store: {
+          id: store.id,
+          tenantId,
+          slug: store.slug,
+          name: store.name,
+          description: store.description,
+          logo: null,
+          cover: null,
+          orderable: true,
+        },
+        products: livePosts(tenantId).map((post) => ({
+          postId: post.id,
+          title: post.title,
+          price: post.price,
+          priceType: 'fixed',
+          photo: null,
+        })),
+        shareImagePath: `/stores/${store.slug}/og.png`,
+      };
+      send(res, 200, catalog);
+    }
+    return true;
+  }
+  const orderMatch = /^\/stores\/([a-z0-9-]+)\/catalog\/order\/([^/]+)$/.exec(path);
+  if (req.method === 'POST' && orderMatch) {
+    const store = storeOf(tenantId);
+    const post = state.posts.get(orderMatch[2] ?? '');
+    if (!store || store.slug !== orderMatch[1] || !post || post.status !== 'live') {
+      fail(res, 404, 'POST_NOT_FOUND');
+    } else {
+      const phone = '+8801711111111';
+      const message = `"${post.title}" অর্ডার করতে চাই`;
+      const reveal: Schemas['ContactRevealDto'] = {
+        channel: 'whatsapp',
+        name: post.title,
+        phone,
+        href: `https://wa.me/${phone.slice(1)}?text=${encodeURIComponent(message)}`,
+        message,
+      };
+      send(res, 200, reveal);
+    }
+    return true;
+  }
   const storeMatch = /^\/stores\/([a-z0-9-]+)$/.exec(path);
   if (req.method === 'GET' && storeMatch) {
     const store = storeOf(tenantId);

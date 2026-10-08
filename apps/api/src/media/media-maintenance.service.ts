@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { MEDIA_KINDS } from '../storage/media-kind.constants';
 import { inArray, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import type { DatabaseTransaction } from '../database/database.client';
@@ -13,7 +14,7 @@ import { assetObjectKeys } from './media.types';
 
 const AssetKeys = z.object({
   id: z.string(),
-  kind_code: z.enum(['image', 'video', 'document']),
+  kind_code: z.enum(MEDIA_KINDS),
   storage_key: z.string(),
   variants: z.unknown(),
 });

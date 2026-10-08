@@ -9,6 +9,7 @@ import {
   listingStatusSchema,
   postDetailSchema,
   searchResponseSchema,
+  storeCatalogSchema,
   storePageSchema,
   type TenantConfig,
 } from '../api/schemas';
@@ -112,6 +113,21 @@ export const storePage = cache(async (tenant: TenantConfig, slug: string) => {
     return await apiFetch({
       path: `/stores/${slug}`,
       schema: storePageSchema,
+      tenantId: tenant.id,
+      revalidate: revalidate(tenant, 'listingRevalidateSeconds'),
+    });
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) return null;
+    throw error;
+  }
+});
+
+/** The store's WhatsApp catalog (ADR 056); null when there's no such active store here. */
+export const storeCatalog = cache(async (tenant: TenantConfig, slug: string) => {
+  try {
+    return await apiFetch({
+      path: `/stores/${slug}/catalog`,
+      schema: storeCatalogSchema,
       tenantId: tenant.id,
       revalidate: revalidate(tenant, 'listingRevalidateSeconds'),
     });

@@ -80,11 +80,47 @@ async function main(): Promise<void> {
         userIds.get('tenant-admin')!,
       );
       await seedAnalyticsHistory(tx, tenantIds);
+      await seedStoreImport(tx, storeIds[0]!, categoryIds.get('gadgets-electronics')!);
     });
     console.log('Seed complete.');
   } finally {
     await sql.end();
   }
+}
+
+// ---------------------------------------------------------------------------
+// Bulk import and the WhatsApp catalog (ADR 056)
+// ---------------------------------------------------------------------------
+
+/**
+ * The first store takes WhatsApp orders (its catalog's button works in dev)
+ * and has one finished dry run with a row of each outcome, so the import
+ * history and its report have something to show.
+ */
+async function seedStoreImport(
+  tx: TransactionSql,
+  storeId: string,
+  categoryId: string,
+): Promise<void> {
+  const [store] = await tx<{ tenant_id: string; owner_member_id: string }[]>`
+    update stores set whatsapp_e164 = '+8801700000777' where id = ${storeId}
+    returning tenant_id, owner_member_id`;
+  if (!store) return;
+  const importId = seedId('store-import:demo');
+  await tx`
+    insert into store_imports (id, tenant_id, store_id, category_id, created_by_member_id, sheet_format, dry_run,
+                               status_code, total_rows, processed_rows, created_count, skipped_count, failed_count,
+                               started_at, finished_at)
+    values (${importId}, ${store.tenant_id}, ${storeId}, ${categoryId}, ${store.owner_member_id}, 'xlsx', true,
+            'succeeded', 3, 3, 1, 1, 1, now() - interval '1 hour', now() - interval '1 hour')
+    on conflict (id) do nothing`;
+  await tx`
+    insert into store_import_rows (tenant_id, import_id, row_number, outcome, reason_code, reason) values
+      (${store.tenant_id}, ${importId}, 2, 'valid', null, null),
+      (${store.tenant_id}, ${importId}, 3, 'skipped', 'blank_row', 'খালি সারি'),
+      (${store.tenant_id}, ${importId}, 4, 'failed', 'missing_title', 'শিরোনাম: লিখতে হবে')
+    on conflict (tenant_id, import_id, row_number) do nothing`;
+  console.log('store import: 1 demo dry run; first store takes WhatsApp orders');
 }
 
 // ---------------------------------------------------------------------------

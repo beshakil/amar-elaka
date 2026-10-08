@@ -365,6 +365,13 @@
       "when": 1791482426143,
       "tag": "0051_seller_analytics",
       "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1791488107414,
+      "tag": "0052_store_import_and_catalog",
+      "breakpoints": true
     }
   ]
 }

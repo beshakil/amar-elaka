@@ -9,7 +9,7 @@ import { visibilityOf } from '../posts/post-visibility';
 import { PostNotFoundException } from '../posts/posts.exceptions';
 import { PostsRepository } from '../posts/posts.repository';
 import { SettingsService } from '../settings/settings.service';
-import { contactMessage } from './contact-message.templates';
+import { catalogOrderMessage, contactMessage } from './contact-message.templates';
 import { contactHref, LEAD_CHANNEL, offeredChannels } from './contact-payload';
 import type { ContactInput, ContactReveal } from './dto/engagement.dto';
 import {
@@ -201,6 +201,77 @@ export class ContactService {
         phone,
         href: contactHref(input.channel, phone, message),
         message: input.channel === 'call' ? null : message,
+      };
+    });
+  }
+
+  /**
+   * An order tap on the WhatsApp catalog (ADR 056): the store's WhatsApp
+   * (else its phone) with the product named in the message, recorded as a
+   * lead (source store_catalog, the post and the store) with the same dedupe
+   * and daily limit as every reveal. The store is the host tenant's, by slug.
+   */
+  async catalogOrder(
+    slug: string,
+    postId: string,
+    signals: ViewerSignals,
+    locale: 'bn' | 'en',
+  ): Promise<ContactReveal> {
+    const tenantId = this.context.require().tenantId;
+    if (!tenantId) throw new ContactStoreNotFoundException();
+    if (
+      !this.context.require().userId &&
+      (await this.settings.get('require_login_for_contact', tenantId))
+    ) {
+      throw new ContactLoginRequiredException();
+    }
+    const key = viewerKey(this.secret, signals);
+    return this.ownership.inTenant(tenantId, 'lookup', async ({ memberId }) => {
+      const target = await this.tenantDb.transaction(
+        (tx) => this.repo.catalogOrderTarget(tx, slug, postId),
+        {
+          accessMode: 'read only',
+        },
+      );
+      if (!target) throw new PostNotFoundException();
+      if (memberId !== undefined && target.owner_member_id === memberId)
+        throw new ContactOwnStoreException();
+      if (target.number === null) throw new ContactChannelUnavailableException('whatsapp');
+      const number = target.number;
+
+      await this.countLead(key, 'whatsapp', `catalog:${postId}`, async () => {
+        await this.tenantDb.transaction((tx) =>
+          this.repo.insertLead(tx, {
+            channel: LEAD_CHANNEL.whatsapp,
+            source: 'store_catalog',
+            postId,
+            storeId: target.store_id,
+            targetMemberId: target.owner_member_id,
+            actorMemberId: memberId ?? null,
+            viewerKey: key,
+          }),
+        );
+        this.tracker.contact({
+          tenantId,
+          postId,
+          storeId: target.store_id,
+          authorMemberId: target.owner_member_id,
+          channel: 'whatsapp',
+          visitor: key,
+        });
+      });
+
+      const message = catalogOrderMessage(
+        target.title,
+        await this.shareUrl(tenantId, postId),
+        locale,
+      );
+      return {
+        channel: 'whatsapp',
+        name: target.title,
+        phone: number,
+        href: contactHref('whatsapp', number, message),
+        message,
       };
     });
   }

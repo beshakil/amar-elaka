@@ -111,6 +111,8 @@ export const staffParamSchema = z
   .strict();
 export class StaffParamDto extends createZodDto(staffParamSchema) {}
 
+/** A store slug in a path. */
+export const STORE_SLUG_PATTERN_DTO = z.string().regex(STORE_SLUG_PATTERN);
 export const storeSlugParamSchema = z
   .object({ slug: z.string().regex(STORE_SLUG_PATTERN) })
   .strict();

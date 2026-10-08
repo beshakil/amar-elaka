@@ -30,6 +30,8 @@ import { ShareService } from './share.service';
     AnalyticsCountersModule,
   ],
   controllers: [EngagementController, StoreContactController, ShareController],
+  // The stores module's catalog export links products by their share links (ADR 056).
+  exports: [ShareService],
   providers: [
     EngagementRepository,
     PostDetailService,

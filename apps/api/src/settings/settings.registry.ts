@@ -428,6 +428,15 @@ export const SETTING_DEFINITIONS = {
   analytics_counter_retention_days: wholeNumber,
   analytics_unique_retention_days: wholeNumber,
   analytics_rollup_days_back: wholeNumber,
+
+  // Bulk upload and the WhatsApp catalog (ADR 056, migration 0052)
+  store_import_max_rows: wholeNumber,
+  store_import_max_file_bytes: wholeNumber,
+  store_import_zip_max_entries: wholeNumber,
+  store_import_zip_max_unpacked_bytes: wholeNumber,
+  store_import_image_fetch_timeout_ms: wholeNumber,
+  store_import_image_fetch_attempts: wholeNumber,
+  store_catalog_page_max: wholeNumber,
 } as const satisfies Record<string, z.ZodTypeAny>;
 
 export type SettingKey = keyof typeof SETTING_DEFINITIONS;

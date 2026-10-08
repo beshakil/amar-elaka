@@ -5,7 +5,7 @@ import { mediaAssets } from '../database/schema/content';
 import { TenantContext } from '../database/tenant-context';
 import { TenantDb } from '../database/tenant-db';
 import { SettingsService } from '../settings/settings.service';
-import { MEDIA_KIND_POLICIES } from '../storage/media-kind.constants';
+import { MEDIA_KIND_POLICIES, type MediaKind } from '../storage/media-kind.constants';
 import { STORAGE_SERVICE, type StorageService } from '../storage/storage.ports';
 import { sniffMediaType, type SniffedImageType } from './image-signature';
 import { InvalidImageError, processImage, type ProcessedImage } from './image-pipeline';
@@ -19,7 +19,7 @@ export type ProcessOutcome = 'ready' | 'rejected' | 'skipped';
 /** The file itself is unusable; retrying can't help (the processor won't). */
 export class UnprocessableMediaError extends Error {}
 
-type Kind = 'image' | 'video' | 'document';
+type Kind = MediaKind;
 
 interface AssetRow {
   id: string;

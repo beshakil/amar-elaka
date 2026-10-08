@@ -35,6 +35,12 @@ const INFRASTRUCTURE_PATHS: ReadonlyArray<{ prefix: string; reason: string }> = 
       'just has to say the same thing in TypeScript for the drift test.',
   },
   {
+    prefix: 'stores/import/image-source.ts',
+    reason:
+      'SSRF guard: the reserved IPv4/IPv6 ranges (RFC 6890) as network/prefix pairs and the ' +
+      'IPv4 address family — protocol facts, not behaviour; its timeout and retries are settings.',
+  },
+  {
     prefix: 'media/thumbhash.ts',
     reason:
       'Port of the published ThumbHash encoder (evanw/thumbhash): DCT sizes, quantisation ' +

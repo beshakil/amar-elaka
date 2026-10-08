@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AnalyticsCountersModule } from '../analytics/seller/analytics-counters.module';
 import { AuthModule } from '../auth/auth.module';
+import { EngagementModule } from '../engagement/engagement.module';
 import { FeedModule } from '../feed/feed.module';
 import { HoursModule } from '../hours/hours.module';
 import { LocationsModule } from '../locations/locations.module';
@@ -11,6 +12,11 @@ import { RbacModule } from '../rbac/rbac.module';
 import { SettingsModule } from '../settings/settings.module';
 import { StorageModule } from '../storage/storage.module';
 import { TrustModule } from '../trust/trust.module';
+import { StoreCatalogController } from './catalog/store-catalog.controller';
+import { StoreCatalogService } from './catalog/store-catalog.service';
+import { StoreImportController } from './import/store-import.controller';
+import { StoreImportRepository } from './import/store-import.repository';
+import { StoreImportService } from './import/store-import.service';
 import { StorePageService } from './store-page.service';
 import { StoresController } from './stores.controller';
 import { StoresRepository } from './stores.repository';
@@ -36,8 +42,16 @@ import { StoresService } from './stores.service';
     FeedModule,
     TrustModule,
     AnalyticsCountersModule,
+    EngagementModule,
   ],
-  controllers: [StoresController],
-  providers: [StoresService, StorePageService, StoresRepository],
+  controllers: [StoresController, StoreImportController, StoreCatalogController],
+  providers: [
+    StoresService,
+    StorePageService,
+    StoresRepository,
+    StoreImportService,
+    StoreImportRepository,
+    StoreCatalogService,
+  ],
 })
 export class StoresModule {}

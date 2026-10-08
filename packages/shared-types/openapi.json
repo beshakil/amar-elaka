@@ -4138,6 +4138,45 @@
         ]
       }
     },
+    "/stores/{slug}/catalog/order/{postId}": {
+      "post": {
+        "operationId": "StoreContactController_catalogOrder",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "postId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContactRevealDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "StoreContact"
+        ]
+      }
+    },
     "/stores/{id}/contact": {
       "post": {
         "operationId": "StoreContactController_contact",
@@ -5544,6 +5583,266 @@
         },
         "tags": [
           "Stores"
+        ]
+      }
+    },
+    "/stores/{id}/import/template": {
+      "get": {
+        "operationId": "StoreImportController_template",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "categoryId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "format",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "csv",
+                "xlsx"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "An XLSX or CSV file."
+          }
+        },
+        "tags": [
+          "StoreImport"
+        ]
+      }
+    },
+    "/stores/{id}/import": {
+      "post": {
+        "operationId": "StoreImportController_start",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartImportDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportViewDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "StoreImport"
+        ]
+      }
+    },
+    "/stores/{id}/imports": {
+      "get": {
+        "operationId": "StoreImportController_list",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportListDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "StoreImport"
+        ]
+      }
+    },
+    "/stores/{id}/imports/{importId}": {
+      "get": {
+        "operationId": "StoreImportController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "importId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportViewDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "StoreImport"
+        ]
+      }
+    },
+    "/stores/{id}/imports/{importId}/report.csv": {
+      "get": {
+        "operationId": "StoreImportController_report",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "importId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The row-level report (CSV)."
+          }
+        },
+        "tags": [
+          "StoreImport"
+        ]
+      }
+    },
+    "/stores/{slug}/catalog": {
+      "get": {
+        "operationId": "StoreCatalogController_catalog",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreCatalogDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "StoreCatalog"
+        ]
+      }
+    },
+    "/stores/{slug}/og.png": {
+      "get": {
+        "operationId": "StoreCatalogController_image",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A 1200×630 PNG."
+          }
+        },
+        "tags": [
+          "StoreCatalog"
+        ]
+      }
+    },
+    "/stores/{id}/catalog.csv": {
+      "get": {
+        "operationId": "StoreCatalogController_export",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A CSV product feed."
+          }
+        },
+        "tags": [
+          "StoreCatalog"
         ]
       }
     },
@@ -7178,7 +7477,8 @@
             "enum": [
               "image",
               "video",
-              "document"
+              "document",
+              "import"
             ]
           },
           "contentType": {
@@ -7267,7 +7567,8 @@
             "enum": [
               "image",
               "video",
-              "document"
+              "document",
+              "import"
             ]
           },
           "mimeType": {
@@ -16763,6 +17064,441 @@
         "required": [
           "storeId",
           "status"
+        ]
+      },
+      "StartImportDto": {
+        "type": "object",
+        "properties": {
+          "categoryId": {
+            "type": "string"
+          },
+          "sheetMediaId": {
+            "type": "string"
+          },
+          "imagesMediaId": {
+            "type": "string"
+          },
+          "dryRun": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "categoryId",
+          "sheetMediaId"
+        ]
+      },
+      "ImportViewDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "storeId": {
+            "type": "string"
+          },
+          "categoryId": {
+            "type": "string"
+          },
+          "sheetFormat": {
+            "type": "string",
+            "enum": [
+              "csv",
+              "xlsx"
+            ]
+          },
+          "dryRun": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "succeeded",
+              "failed"
+            ]
+          },
+          "errorCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "progress": {
+            "type": "object",
+            "properties": {
+              "totalRows": {
+                "type": "number",
+                "nullable": true
+              },
+              "processedRows": {
+                "type": "number"
+              },
+              "created": {
+                "type": "number"
+              },
+              "skipped": {
+                "type": "number"
+              },
+              "failed": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "totalRows",
+              "processedRows",
+              "created",
+              "skipped",
+              "failed"
+            ]
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "startedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "finishedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "reportUrl": {
+            "type": "string"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "row": {
+                  "type": "number"
+                },
+                "outcome": {
+                  "type": "string",
+                  "enum": [
+                    "created",
+                    "valid",
+                    "skipped",
+                    "failed"
+                  ]
+                },
+                "reasonCode": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "reason": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "postId": {
+                  "type": "string",
+                  "nullable": true
+                }
+              },
+              "required": [
+                "row",
+                "outcome",
+                "reasonCode",
+                "reason",
+                "postId"
+              ]
+            }
+          }
+        },
+        "required": [
+          "id",
+          "storeId",
+          "categoryId",
+          "sheetFormat",
+          "dryRun",
+          "status",
+          "errorCode",
+          "progress",
+          "createdAt",
+          "startedAt",
+          "finishedAt",
+          "reportUrl"
+        ]
+      },
+      "ImportListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "storeId": {
+                  "type": "string"
+                },
+                "categoryId": {
+                  "type": "string"
+                },
+                "sheetFormat": {
+                  "type": "string",
+                  "enum": [
+                    "csv",
+                    "xlsx"
+                  ]
+                },
+                "dryRun": {
+                  "type": "boolean"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "queued",
+                    "running",
+                    "succeeded",
+                    "failed"
+                  ]
+                },
+                "errorCode": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "progress": {
+                  "type": "object",
+                  "properties": {
+                    "totalRows": {
+                      "type": "number",
+                      "nullable": true
+                    },
+                    "processedRows": {
+                      "type": "number"
+                    },
+                    "created": {
+                      "type": "number"
+                    },
+                    "skipped": {
+                      "type": "number"
+                    },
+                    "failed": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "totalRows",
+                    "processedRows",
+                    "created",
+                    "skipped",
+                    "failed"
+                  ]
+                },
+                "createdAt": {
+                  "type": "string"
+                },
+                "startedAt": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "finishedAt": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "reportUrl": {
+                  "type": "string"
+                },
+                "rows": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "row": {
+                        "type": "number"
+                      },
+                      "outcome": {
+                        "type": "string",
+                        "enum": [
+                          "created",
+                          "valid",
+                          "skipped",
+                          "failed"
+                        ]
+                      },
+                      "reasonCode": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "reason": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "postId": {
+                        "type": "string",
+                        "nullable": true
+                      }
+                    },
+                    "required": [
+                      "row",
+                      "outcome",
+                      "reasonCode",
+                      "reason",
+                      "postId"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "id",
+                "storeId",
+                "categoryId",
+                "sheetFormat",
+                "dryRun",
+                "status",
+                "errorCode",
+                "progress",
+                "createdAt",
+                "startedAt",
+                "finishedAt",
+                "reportUrl"
+              ]
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "StoreCatalogDto": {
+        "type": "object",
+        "properties": {
+          "store": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "tenantId": {
+                "type": "string"
+              },
+              "slug": {
+                "type": "string"
+              },
+              "name": {
+                "type": "object",
+                "properties": {
+                  "bn": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "en": {
+                    "type": "string",
+                    "nullable": true
+                  }
+                },
+                "required": [
+                  "bn",
+                  "en"
+                ]
+              },
+              "description": {
+                "type": "string",
+                "nullable": true
+              },
+              "logo": {
+                "type": "object",
+                "properties": {
+                  "url": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "url"
+                ],
+                "nullable": true
+              },
+              "cover": {
+                "type": "object",
+                "properties": {
+                  "url": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "url"
+                ],
+                "nullable": true
+              },
+              "orderable": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "id",
+              "tenantId",
+              "slug",
+              "name",
+              "description",
+              "logo",
+              "cover",
+              "orderable"
+            ]
+          },
+          "products": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "postId": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "price": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "priceType": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "photo": {
+                  "type": "object",
+                  "properties": {
+                    "url": {
+                      "type": "string"
+                    },
+                    "width": {
+                      "type": "number"
+                    },
+                    "height": {
+                      "type": "number"
+                    },
+                    "thumbhash": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "url",
+                    "width",
+                    "height",
+                    "thumbhash"
+                  ],
+                  "nullable": true
+                }
+              },
+              "required": [
+                "postId",
+                "title",
+                "price",
+                "priceType",
+                "photo"
+              ]
+            }
+          },
+          "shareImagePath": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "store",
+          "products",
+          "shareImagePath"
         ]
       },
       "SellerAnalyticsDto": {

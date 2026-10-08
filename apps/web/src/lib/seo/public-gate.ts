@@ -14,6 +14,7 @@ import { listingPath, listingSlug } from './slug';
  *   /category/<slug>/<area> not a landing page (too few listings there,
  *                           ADR 042) → 404
  *   /store/<slug>           no such active store here → 404
+ *   /store/<slug>/catalog   the same (its WhatsApp catalog, ADR 056)
  *
  * Only definite answers are cached (briefly, in this process); an API that
  * can't answer lets the page render, which shows its own error state.
@@ -193,7 +194,11 @@ export async function publicPageGate(
     return (await areaPageExists(first, second, tenantId)) === false ? notFound(request) : null;
   }
 
-  if (section === 'store' && first && !second) {
+  if (
+    section === 'store' &&
+    first &&
+    (second === undefined || (second === 'catalog' && rest.length === 0))
+  ) {
     if (!SLUG.test(first)) return notFound(request);
     return (await storeExists(first, tenantId)) === false ? notFound(request) : null;
   }

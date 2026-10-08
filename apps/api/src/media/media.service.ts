@@ -9,7 +9,7 @@ import { TenantDb } from '../database/tenant-db';
 import { TenantRequiredException } from '../database/tenant.exceptions';
 import { JOB_PROCESS_MEDIA, QUEUE_MEDIA, type ProcessMediaJob } from '../queue/queue.types';
 import { SettingsService } from '../settings/settings.service';
-import { MEDIA_KIND_POLICIES } from '../storage/media-kind.constants';
+import { MEDIA_KIND_POLICIES, type MediaKind } from '../storage/media-kind.constants';
 import {
   MediaAssetNotFoundException,
   UnsupportedContentTypeException,
@@ -61,7 +61,11 @@ export class MediaService {
     if (!policy.allowedContentTypes.includes(input.contentType)) {
       throw new UnsupportedContentTypeException();
     }
-    if (input.byteSize > (await this.settings.get('media_max_upload_bytes', tenantId))) {
+    const maxBytes =
+      input.kind === 'import'
+        ? await this.settings.get('store_import_max_file_bytes', tenantId)
+        : await this.settings.get('media_max_upload_bytes', tenantId);
+    if (input.byteSize > maxBytes) {
       throw new UploadTooLargeException();
     }
     await this.enforceRateLimits(userId, input.byteSize, tenantId);
@@ -194,7 +198,7 @@ export class MediaService {
     if (!row) throw new MediaAssetNotFoundException();
     return {
       ...row,
-      kindCode: row.kindCode as 'image' | 'video' | 'document',
+      kindCode: row.kindCode as MediaKind,
       byteSize: Number(row.byteSize),
     };
   }

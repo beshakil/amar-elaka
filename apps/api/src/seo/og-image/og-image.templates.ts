@@ -1,4 +1,4 @@
-import { bengaliDigits, groupSouthAsian } from '../../common/text/bengali-numerals';
+import { bengaliDigits, bengaliNumber, groupSouthAsian } from '../../common/text/bengali-numerals';
 
 /**
  * rule 6: no hardcoded user-facing strings in application code — this is the
@@ -12,6 +12,8 @@ export const OG_TEXT = {
   priceOnRequest: 'দাম জানতে যোগাযোগ করুন',
   negotiable: 'আলোচনা সাপেক্ষে',
   perMonth: '/মাস',
+  /** The WhatsApp catalog's share card (ADR 056). */
+  catalogLine: (products: number) => `${bengaliNumber(products)}টি পণ্য · WhatsApp-এ অর্ডার করুন`,
 } as const;
 
 /** "65000.00" → "৳ ৬৫,০০০": South Asian grouping, Bengali digits, paisa only when non-zero. */
