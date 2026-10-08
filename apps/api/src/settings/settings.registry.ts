@@ -409,6 +409,16 @@ export const SETTING_DEFINITIONS = {
   // Month 2 review gaps (migration 0049)
   client_config_refresh_minutes: wholeNumber,
   search_description_max_chars: wholeNumber,
+
+  // Stores (ADR 054, migration 0050): limits per tier; everyone is basic until week 17
+  store_max_per_owner: wholeNumber,
+  store_staff_max_basic: wholeNumber,
+  store_staff_max_pro: wholeNumber,
+  store_staff_max_premium: wholeNumber,
+  store_catalog_max_basic: wholeNumber,
+  store_catalog_max_pro: wholeNumber,
+  store_catalog_max_premium: wholeNumber,
+  store_description_max_length: wholeNumber,
 } as const satisfies Record<string, z.ZodTypeAny>;
 
 export type SettingKey = keyof typeof SETTING_DEFINITIONS;

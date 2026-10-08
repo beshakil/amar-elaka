@@ -63,7 +63,7 @@ async function main(): Promise<void> {
       await seedTenantCategories(tx, tenantIds, categoryIds);
       const commodityIds = await seedBazarCommodities(tx);
       const bazarMarketIds = await seedBazarMarkets(tx, tenantIds);
-      const storeIds = await seedStores(tx, tenantIds, memberIds);
+      const storeIds = await seedStores(tx, tenantIds, memberIds, categoryIds);
       await seedPosts(tx, tenantIds, memberIds, storeIds, categoryIds, geoAreaIdBySlug);
       await seedPlaces(tx, tenantIds, memberIds, categoryIds, geoAreaIdBySlug);
       await seedPlaceModeration(tx, tenantIds, memberIds);
@@ -468,6 +468,7 @@ async function seedStores(
   tx: TransactionSql,
   tenantIds: Map<string, string>,
   memberIds: MemberIds,
+  categoryIds: Map<string, string>,
 ): Promise<string[]> {
   const storeNames = [
     'Rahim Electronics',
@@ -493,12 +494,22 @@ async function seedStores(
       name_bn: name,
       name_en: name,
       status_code: 'active',
+      // What the store is (0050): the shop directory's place category, as its pin would be.
+      category_id: categoryIds.get('local-shop-directory') ?? null,
     };
   });
   await tx`
-    insert into stores ${tx(rows, 'id', 'tenant_id', 'owner_member_id', 'slug', 'name_bn', 'name_en', 'status_code')}
+    insert into stores ${tx(rows, 'id', 'tenant_id', 'owner_member_id', 'slug', 'name_bn', 'name_en', 'status_code', 'category_id')}
     on conflict (id) do nothing`;
-  console.log(`stores: ${rows.length}`);
+  // A Mirpur community member edits the first store's catalog (ADR 054): posts as it, nothing else.
+  const editorMemberId = memberIds.mirpur.community[0];
+  if (editorMemberId) {
+    await tx`
+      insert into store_members (tenant_id, store_id, member_id, role_code, invited_by_member_id, accepted_at)
+      values (${rows[0]!.tenant_id!}, ${rows[0]!.id}, ${editorMemberId}, 'editor', ${rows[0]!.owner_member_id}, now())
+      on conflict (tenant_id, store_id, member_id) do nothing`;
+  }
+  console.log(`stores: ${rows.length} (1 editor)`);
   return rows.map((r) => r.id);
 }
 

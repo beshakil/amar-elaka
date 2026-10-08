@@ -1,12 +1,10 @@
 import type { DatabaseTransaction } from '../database/database.client';
 import { TenantContext } from '../database/tenant-context';
 import type { TenantDb } from '../database/tenant-db';
-import type { FeedService } from '../feed/feed.service';
 import { SearchUnavailableError } from '../search/engine/search-engine.port';
 import type { SearchCriteria, SearchMatcher } from '../search/query/search-matcher';
 import type { SearchQueryRepository } from '../search/query/search-query.repository';
 import type { SettingsService } from '../settings/settings.service';
-import type { StorageService } from '../storage/storage.ports';
 import { SeoSearchUnavailableException } from './seo.exceptions';
 import type { AreaRow, CategoryTreeRow, SeoRepository } from './seo.repository';
 import { SeoService } from './seo.service';
@@ -49,7 +47,6 @@ function setup(counts: Record<string, number>[] | Error) {
       activeAreas: () => Promise.resolve(areas),
       enabledCategoryTrees: () => Promise.resolve(trees),
     } as unknown as SeoRepository,
-    {} as FeedService,
     {
       get: (key: string) =>
         Promise.resolve(
@@ -61,7 +58,6 @@ function setup(counts: Record<string, number>[] | Error) {
           )[key],
         ),
     } as unknown as SettingsService,
-    {} as StorageService,
     matcher,
     {
       tenantCenter: () => Promise.resolve({ lat: 23.81, lng: 90.41 }),

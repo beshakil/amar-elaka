@@ -504,6 +504,7 @@ const livePosts = (tenantId: string) =>
 
 function storeOf(tenantId: string): Schemas['StorePageDto'] | null {
   if (tenantId !== TENANT_MIRPUR) return null;
+  const posts = livePosts(tenantId).map(cardOf);
   return {
     id: '0191e3a0-0000-7000-8000-0000000051e0',
     tenantId,
@@ -513,15 +514,28 @@ function storeOf(tenantId: string): Schemas['StorePageDto'] | null {
     addressText: 'দোকান ১২, মিরপুর ১০ গোলচত্বর',
     area: { bn: 'মিরপুর ১০', en: 'Mirpur 10' },
     location: { lat: 23.8069, lng: 90.3687 },
+    // ADR 054: the store's pin, category, badge, stats, hours and catalog filter.
+    category: null,
+    mapPin: { lat: 23.8069, lng: 90.3687, placeId: null },
     logo: null,
     cover: null,
     isVerified: true,
+    verification: { badge: 'business', storeVerified: true },
     rating: 4.5,
     ratingCount: 12,
     followerCount: 30,
+    stats: { followers: 30, livePosts: posts.length, memberSince: '2026-01-15T00:00:00.000Z' },
+    hours: {
+      weekly: [],
+      usesPlaceHours: false,
+      specialDays: [],
+      closedUntil: null,
+      openState: null,
+    },
+    catalogCategories: [],
     createdAt: '2026-01-15T00:00:00.000Z',
     updatedAt: '2026-09-01T00:00:00.000Z',
-    posts: livePosts(tenantId).map(cardOf),
+    posts,
     nextCursor: null,
   };
 }

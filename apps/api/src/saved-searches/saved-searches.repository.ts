@@ -223,7 +223,7 @@ export class SavedSearchesRepository {
       from public.posts p
       join public.saved_search_watermarks w on w.tenant_id = p.tenant_id
       where p.tenant_id = ${tenantId}::uuid
-        and public.post_is_listed(p.status_code, p.deleted_at, p.scrubbed_at, p.hidden_by_owner, p.expires_at, now())
+        and public.post_is_listed(p.status_code, p.deleted_at, p.scrubbed_at, p.hidden_by_owner, p.store_hidden, p.expires_at, now())
         and p.published_at is not null
         and p.published_at <= now() - make_interval(secs => ${graceSeconds})
         and (p.published_at, p.id) > (w.last_published_at, w.last_post_id)

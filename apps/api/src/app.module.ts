@@ -19,6 +19,7 @@ import { SavedModule } from './saved/saved.module';
 import { SavedSearchesModule } from './saved-searches/saved-searches.module';
 import { SeoModule } from './seo/seo.module';
 import { SettingsModule } from './settings/settings.module';
+import { StoresModule } from './stores/stores.module';
 import { MediaModule } from './media/media.module';
 import { ModerationModule } from './moderation/moderation.module';
 import { PostsModule } from './posts/posts.module';
@@ -66,6 +67,7 @@ import { TenantsModule } from './tenants/tenants.module';
     LocationsModule,
     MapModule,
     PlatformJobsModule,
+    StoresModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },

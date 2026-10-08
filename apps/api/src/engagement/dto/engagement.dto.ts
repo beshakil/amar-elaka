@@ -44,6 +44,15 @@ export const contactSchema = z
 export type ContactInput = z.infer<typeof contactSchema>;
 export class ContactDto extends createZodDto(contactSchema) {}
 
+/** POST /stores/:id/contact (ADR 054): the store's own numbers, from its page by default. */
+export const storeContactSchema = z
+  .object({
+    channel: z.enum(CONTACT_CHANNELS),
+    source: z.enum(CONTACT_SOURCES).default('store_page'),
+  })
+  .strict();
+export class StoreContactDto extends createZodDto(storeContactSchema) {}
+
 /** report_reasons (0010). */
 export const REPORT_REASONS = [
   'scam',

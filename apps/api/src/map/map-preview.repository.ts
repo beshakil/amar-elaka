@@ -49,14 +49,14 @@ export class MapPreviewRepository {
           left join public.localities l on l.tenant_id = p.tenant_id and l.id = p.locality_id
           left join public.geo_areas ga on ga.id = p.geo_area_id
           ${firstImage('post_id', 'p')}
-          where p.id = ${id} and public.post_is_listed(p.status_code, p.deleted_at, p.scrubbed_at, p.hidden_by_owner, p.expires_at, now())`,
+          where p.id = ${id} and public.post_is_listed(p.status_code, p.deleted_at, p.scrubbed_at, p.hidden_by_owner, p.store_hidden, p.expires_at, now())`,
         );
       case 'stores':
         return this.one(
           tx,
           sql`
-          select s.name_bn, s.name_en,
-                 array_remove(array[s.phone_e164, s.whatsapp_e164], null) as phones,
+          -- A store's numbers leave only through POST /stores/:id/contact (a lead).
+          select s.name_bn, s.name_en, null::text[] as phones,
                  s.address_text as address,
                  m.thumbhash as cover_thumbhash, m.variants as cover_variants, null::text as title
           from public.stores s

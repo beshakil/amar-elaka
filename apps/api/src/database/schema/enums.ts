@@ -171,3 +171,6 @@ export const scheduledJobs = pgTable('scheduled_jobs', enumTableColumns());
 // Enum tables added by migration 0039 (ADR 044).
 export const geoProviderEndpoints = pgTable('geo_provider_endpoints', enumTableColumns());
 export const geoProviderStatuses = pgTable('geo_provider_statuses', enumTableColumns());
+
+// Enum table added by migration 0050 (ADR 054): store plan tiers; limits per tier are settings.
+export const storeTiers = pgTable('store_tiers', enumTableColumns());

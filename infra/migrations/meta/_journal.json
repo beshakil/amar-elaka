@@ -351,6 +351,13 @@
       "when": 1791368532278,
       "tag": "0049_open_now_indexes_and_client_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1791472513786,
+      "tag": "0050_stores_module",
+      "breakpoints": true
     }
   ]
 }

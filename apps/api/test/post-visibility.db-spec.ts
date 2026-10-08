@@ -18,6 +18,8 @@ interface Combination {
   deleted: boolean;
   hidden: boolean;
   scrubbed: boolean;
+  /** 0050: the post's store is suspended, closed or deleted. */
+  storeHidden: boolean;
   expires: 'never' | 'past' | 'future';
 }
 
@@ -26,8 +28,10 @@ function* combinations(): Generator<Combination> {
     for (const deleted of [false, true]) {
       for (const hidden of [false, true]) {
         for (const scrubbed of [false, true]) {
-          for (const expires of ['never', 'past', 'future'] as const) {
-            yield { status, deleted, hidden, scrubbed, expires };
+          for (const storeHidden of [false, true]) {
+            for (const expires of ['never', 'past', 'future'] as const) {
+              yield { status, deleted, hidden, scrubbed, storeHidden, expires };
+            }
           }
         }
       }
@@ -53,7 +57,8 @@ describe('post visibility: one rule in SQL, the same answer in TypeScript', () =
         : new Date(now.getTime() + (c.expires === 'past' ? -HOUR_MS : HOUR_MS));
     const [row] = await admin<{ listed: boolean; viewable: boolean }[]>`
       select public.post_is_listed(${c.status}, ${deletedAt}::timestamptz, ${scrubbedAt}::timestamptz,
-                                   ${c.hidden}, ${expiresAt}::timestamptz, ${now}::timestamptz) as listed,
+                                   ${c.hidden}, ${c.storeHidden}, ${expiresAt}::timestamptz,
+                                   ${now}::timestamptz) as listed,
              public.post_is_viewable(${c.status}, ${deletedAt}::timestamptz, ${c.hidden}) as viewable`;
     return row!;
   }
@@ -71,11 +76,16 @@ describe('post visibility: one rule in SQL, the same answer in TypeScript', () =
     expect(mismatches).toEqual([]);
   });
 
-  it('listed: live, not deleted, scrubbed, hidden or past expires_at; always also viewable', async () => {
+  it('listed: live, not deleted, scrubbed, hidden, store-hidden or past expires_at; always also viewable', async () => {
     for (const c of combinations()) {
       const { listed, viewable } = await judge(c);
       const expected =
-        c.status === 'live' && !c.deleted && !c.hidden && !c.scrubbed && c.expires !== 'past';
+        c.status === 'live' &&
+        !c.deleted &&
+        !c.hidden &&
+        !c.scrubbed &&
+        !c.storeHidden &&
+        c.expires !== 'past';
       expect({ ...c, listed }).toEqual({ ...c, listed: expected });
       if (listed) expect(viewable).toBe(true);
     }
@@ -87,6 +97,7 @@ describe('post visibility: one rule in SQL, the same answer in TypeScript', () =
       deleted: false,
       hidden: false,
       scrubbed: false,
+      storeHidden: false,
       expires: 'never',
     });
     expect(sold).toEqual({ listed: false, viewable: true });

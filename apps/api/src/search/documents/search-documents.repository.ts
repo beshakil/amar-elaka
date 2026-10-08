@@ -125,7 +125,7 @@ const CAPPED_BOOST = sql.raw(`exists (
               and b.status_code = 'active' and b.post_id is not null
               and b.starts_at <= now() and b.ends_at > now()
               and bt.placement_code = 'category_top'
-              and public.post_is_listed(bp.status_code, bp.deleted_at, bp.scrubbed_at, bp.hidden_by_owner, bp.expires_at, now())
+              and public.post_is_listed(bp.status_code, bp.deleted_at, bp.scrubbed_at, bp.hidden_by_owner, bp.store_hidden, bp.expires_at, now())
           ) ranked
           where ranked.post_id = p.id
             and ranked.slot <= coalesce(
@@ -160,7 +160,7 @@ export class SearchDocumentsRepository {
     const rows = await tx.execute(sql`
       select
         p.id, p.tenant_id, p.title, p.description, p.fields, p.price::text as price,
-        (public.post_is_listed(p.status_code, p.deleted_at, p.scrubbed_at, p.hidden_by_owner, p.expires_at, now())
+        (public.post_is_listed(p.status_code, p.deleted_at, p.scrubbed_at, p.hidden_by_owner, p.store_hidden, p.expires_at, now())
           and c.deleted_at is null and c.is_active
           and coalesce(tc.is_enabled, false)
           and m.ban_severity_code is distinct from 'banned') as indexable,
@@ -213,7 +213,7 @@ export class SearchDocumentsRepository {
         (st.status_code = 'active'
           and st.deleted_at is null
           and m.ban_severity_code is distinct from 'banned') as indexable,
-        pl.category_id, c.slug as category_slug, c.name_bn as category_name_bn, c.name_en as category_name_en,
+        coalesce(st.category_id, pl.category_id) as category_id, c.slug as category_slug, c.name_bn as category_name_bn, c.name_en as category_name_en,
         null::jsonb as json_schema, null::jsonb as ui_schema,
         null::text[] as filterable_fields, null::text[] as searchable_fields, '{}'::jsonb as fields,
         st.locality_id,
@@ -232,7 +232,8 @@ export class SearchDocumentsRepository {
       from public.stores st
       join public.tenants t on t.id = st.tenant_id
       left join public.places pl on pl.tenant_id = st.tenant_id and pl.id = st.place_id and pl.deleted_at is null
-      left join public.categories c on c.id = pl.category_id and c.deleted_at is null
+      -- 0050: a store's own category; claimed stores made before it fall back to the pin's.
+      left join public.categories c on c.id = coalesce(st.category_id, pl.category_id) and c.deleted_at is null
       left join public.localities l
         on l.tenant_id = st.tenant_id and l.id = st.locality_id and l.deleted_at is null
       left join public.geo_areas ga on ga.id = t.geo_area_id

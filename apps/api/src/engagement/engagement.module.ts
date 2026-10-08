@@ -5,7 +5,7 @@ import { PostsModule } from '../posts/posts.module';
 import { SettingsModule } from '../settings/settings.module';
 import { StorageModule } from '../storage/storage.module';
 import { ContactService } from './contact.service';
-import { EngagementController } from './engagement.controller';
+import { EngagementController, StoreContactController } from './engagement.controller';
 import { EngagementRepository } from './engagement.repository';
 import { ENGAGEMENT_STORE, RedisEngagementStore } from './engagement.store';
 import { PostDetailService } from './post-detail.service';
@@ -21,7 +21,7 @@ import { ShareService } from './share.service';
  */
 @Module({
   imports: [AuthModule, SettingsModule, StorageModule, PostsModule, FeedModule],
-  controllers: [EngagementController, ShareController],
+  controllers: [EngagementController, StoreContactController, ShareController],
   providers: [
     EngagementRepository,
     PostDetailService,

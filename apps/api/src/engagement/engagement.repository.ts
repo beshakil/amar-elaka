@@ -44,7 +44,8 @@ export type EngagementCounts = z.infer<typeof COUNTS_ROW>;
 export interface NewLead {
   channel: 'call_click' | 'whatsapp_click' | 'sms_click';
   source: string;
-  postId: string;
+  /** Null for a store's own contact (POST /stores/:id/contact). */
+  postId: string | null;
   storeId: string | null;
   targetMemberId: string | null;
   actorMemberId: string | null;
@@ -165,6 +166,48 @@ export class EngagementRepository {
       .array(z.object({ slug: z.string() }))
       .max(1)
       .parse([...rows])[0]?.slug;
+  }
+
+  /** The store's tenant (item_tenant_of, 0032). */
+  async storeTenantOf(tx: DatabaseTransaction, storeId: string): Promise<string | undefined> {
+    const rows = await tx.execute(
+      sql`select public.item_tenant_of('store', ${storeId}::uuid) as tenant_id`,
+    );
+    return (
+      z.array(z.object({ tenant_id: z.string().nullable() })).parse([...rows])[0]?.tenant_id ??
+      undefined
+    );
+  }
+
+  /** An active store's name, numbers and owner, under its public-read policy (ADR 054). */
+  async storeContact(
+    tx: DatabaseTransaction,
+    storeId: string,
+  ): Promise<
+    | {
+        name_bn: string;
+        phone_e164: string | null;
+        whatsapp_e164: string | null;
+        owner_member_id: string;
+      }
+    | undefined
+  > {
+    const rows = await tx.execute(sql`
+      select s.name_bn, s.phone_e164, s.whatsapp_e164, s.owner_member_id
+      from public.stores s
+      where s.id = ${storeId}::uuid and s.tenant_id = public.current_tenant_id()
+        and s.status_code = 'active' and s.deleted_at is null`);
+    return z
+      .array(
+        z.object({
+          name_bn: z.string(),
+          phone_e164: z.string().nullable(),
+          whatsapp_e164: z.string().nullable(),
+          owner_member_id: z.string(),
+        }),
+      )
+      .max(1)
+      .parse([...rows])[0];
   }
 
   /** One contact reveal (lead_events, 0009): billing evidence, so every field says who and where. */

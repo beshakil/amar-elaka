@@ -9,8 +9,15 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 import { auditColumns, geographyPoint, id, softDeleteColumns, timestamptz } from './columns';
+import { categories } from './catalog';
 import { subscriptionPlans } from './commerce';
-import { sellerTypes, sellerVerificationLevels, storeMemberRoles, storeStatuses } from './enums';
+import {
+  sellerTypes,
+  sellerVerificationLevels,
+  storeMemberRoles,
+  storeStatuses,
+  storeTiers,
+} from './enums';
 import { users } from './identity';
 import { tenants } from './tenancy';
 
@@ -74,6 +81,17 @@ export const stores = pgTable('stores', {
   currentPlanCode: text('current_plan_code').references(() => subscriptionPlans.code, {
     onDelete: 'restrict',
   }),
+  // 0050: basic | pro | premium. Limits per tier are settings; only staff or
+  // the system move it (stores_b_protect_tier_and_slug).
+  tierCode: text('tier_code')
+    .notNull()
+    .default('basic')
+    .references(() => storeTiers.code, { onDelete: 'restrict' }),
+  // 0050: what the store sells or does (a place-kind category, as its map pin).
+  categoryId: uuid('category_id').references(() => categories.id, { onDelete: 'restrict' }),
+  // 0050: the owner may change the slug once; the old one keeps resolving.
+  slugChangedAt: timestamptz('slug_changed_at'),
+  previousSlug: text('previous_slug'),
   isVerified: boolean('is_verified').notNull().default(false),
   ratingAvg: numeric('rating_avg', { precision: 3, scale: 2 }),
   ratingCount: integer('rating_count').notNull().default(0),
@@ -93,9 +111,10 @@ export const storeMembers = pgTable('store_members', {
   storeId: uuid('store_id').notNull(),
   // Composite FK (tenant_id, member_id) -> tenant_members, CASCADE.
   memberId: uuid('member_id').notNull(),
+  // 0050: manager | editor ('staff' retired, its rows became editors).
   roleCode: text('role_code')
     .notNull()
-    .default('staff')
+    .default('editor')
     .references(() => storeMemberRoles.code, { onDelete: 'restrict' }),
   // Composite FK (tenant_id, invited_by_member_id) -> tenant_members, SET NULL.
   invitedByMemberId: uuid('invited_by_member_id'),

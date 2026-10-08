@@ -289,7 +289,7 @@ export class FeedRepository {
         limit 1
       ) cover on true
       where p.id = any (${uuidArray(ids)})
-        and public.post_is_listed(p.status_code, p.deleted_at, p.scrubbed_at, p.hidden_by_owner, p.expires_at, now())`);
+        and public.post_is_listed(p.status_code, p.deleted_at, p.scrubbed_at, p.hidden_by_owner, p.store_hidden, p.expires_at, now())`);
     return z.array(postCardRow).parse([...rows]);
   }
 

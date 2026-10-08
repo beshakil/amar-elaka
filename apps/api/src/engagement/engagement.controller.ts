@@ -16,6 +16,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { TenantContext } from '../database/tenant-context';
 import { PostIdParamDto } from '../posts/dto/posts.dto';
+import { StoreIdParamDto } from '../stores/dto/stores.dto';
 import { ContactService } from './contact.service';
 import {
   ContactDto,
@@ -24,6 +25,7 @@ import {
   PostDetailQueryDto,
   ReportDto,
   ReportResultDto,
+  StoreContactDto,
   type ContactReveal,
   type PostDetail,
   type ReportResult,
@@ -93,6 +95,42 @@ export class EngagementController {
       ip: request.ip,
       userAgent: request.headers['user-agent'],
     };
+  }
+}
+
+/**
+ * POST /api/v1/stores/:id/contact (ADR 054): a store's own numbers, revealed
+ * like a post's (ContactService) — the store page and map preview never
+ * carry them.
+ */
+@Controller({ path: 'stores', version: '1' })
+export class StoreContactController {
+  constructor(
+    private readonly contacts: ContactService,
+    private readonly context: TenantContext,
+  ) {}
+
+  @Post(':id/contact')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(OptionalJwtAuthGuard)
+  @ApiOkResponse({ type: ContactRevealDto })
+  contact(
+    @Param() params: StoreIdParamDto,
+    @Body() body: StoreContactDto,
+    @Req() request: FastifyRequest,
+  ): Promise<ContactReveal> {
+    const installId = request.headers['x-install-id'];
+    return this.contacts.revealStore(
+      params.id,
+      body,
+      {
+        userId: this.context.current()?.userId,
+        installId: typeof installId === 'string' ? installId : undefined,
+        ip: request.ip,
+        userAgent: request.headers['user-agent'],
+      },
+      localeOf(request),
+    );
   }
 }
 

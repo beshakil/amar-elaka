@@ -48,7 +48,8 @@ export class MapPreviewService {
             thumbhash: row.cover_thumbhash,
           }
         : null,
-      phones: params.layer === 'posts' ? [] : (row.phones ?? []),
+      // Posts and stores are called through their contact endpoints, which record the lead.
+      phones: params.layer === 'posts' || params.layer === 'stores' ? [] : (row.phones ?? []),
       address: row.address,
     };
   }

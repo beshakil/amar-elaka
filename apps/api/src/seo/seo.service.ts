@@ -1,15 +1,12 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import type { DatabaseTransaction } from '../database/database.client';
 import { TenantContext } from '../database/tenant-context';
 import { TenantRequiredException } from '../database/tenant.exceptions';
 import { TenantDb } from '../database/tenant-db';
-import { FeedService } from '../feed/feed.service';
 import { SearchUnavailableError } from '../search/engine/search-engine.port';
 import { SearchMatcher, type SearchCriteria } from '../search/query/search-matcher';
 import { SearchQueryRepository } from '../search/query/search-query.repository';
-import { parseVariants } from '../media/media.types';
 import { SettingsService } from '../settings/settings.service';
-import { STORAGE_SERVICE, type StorageService } from '../storage/storage.ports';
 import type {
   CategoryAreas,
   ListingStatus,
@@ -17,10 +14,8 @@ import type {
   SitemapPosts,
   SitemapStores,
   SitemapSummary,
-  StorePage,
-  StorePostsQuery,
 } from './dto/seo.dto';
-import { SeoSearchUnavailableException, StoreNotFoundPublicException } from './seo.exceptions';
+import { SeoSearchUnavailableException } from './seo.exceptions';
 import { SeoRepository } from './seo.repository';
 
 // settings-exempt: unit conversion (the window itself is sold_noindex_days)
@@ -28,7 +23,8 @@ const MS_PER_DAY = 24 * 60 * 60 * 1_000;
 
 /**
  * What the public web pages need beyond the feed and the detail (ADR 039):
- * the HTTP answer for a listing URL, the sitemap's data, and store pages.
+ * the HTTP answer for a listing URL and the sitemap's data. Store pages are
+ * the stores module's (GET /stores/:slug, ADR 054).
  */
 @Injectable()
 export class SeoService {
@@ -36,9 +32,7 @@ export class SeoService {
     private readonly tenantDb: TenantDb,
     private readonly context: TenantContext,
     private readonly repo: SeoRepository,
-    private readonly feed: FeedService,
     private readonly settings: SettingsService,
-    @Inject(STORAGE_SERVICE) private readonly storage: StorageService,
     private readonly matcher: SearchMatcher,
     private readonly searchRepo: SearchQueryRepository,
   ) {}
@@ -167,51 +161,6 @@ export class SeoService {
       this.repo.sitemapStores(tx, query.offset, Math.min(query.limit ?? perFile, perFile)),
     );
     return { items: rows.map((r) => ({ slug: r.slug, updatedAt: r.updated_at.toISOString() })) };
-  }
-
-  /** The host tenant's active store and its live listings (newest first). */
-  async store(slug: string, query: StorePostsQuery): Promise<StorePage> {
-    this.requireTenant();
-    const [pageDefault, pageMax] = await Promise.all([
-      this.settings.get('feed_page_size_default'),
-      this.settings.get('feed_page_size_max'),
-    ]);
-    const limit = Math.min(query.limit ?? pageDefault, pageMax);
-    const found = await this.readOnly(async (tx) => {
-      const row = await this.repo.store(tx, slug);
-      if (!row) return undefined;
-      const refs = await this.repo.storePostRefs(tx, row.id, query.cursor ?? null, limit + 1);
-      return { row, refs };
-    });
-    if (!found) throw new StoreNotFoundPublicException();
-    const { row, refs } = found;
-    const page = refs.slice(0, limit);
-    return {
-      id: row.id,
-      tenantId: row.tenant_id,
-      slug: row.slug,
-      name: { bn: row.name_bn, en: row.name_en },
-      description: row.description,
-      addressText: row.address_text,
-      area:
-        row.area_bn === null && row.area_en === null ? null : { bn: row.area_bn, en: row.area_en },
-      location: row.lat !== null && row.lng !== null ? { lat: row.lat, lng: row.lng } : null,
-      logo: this.image(row.logo_variants, row.logo_thumbhash),
-      cover: this.image(row.cover_variants, row.cover_thumbhash),
-      isVerified: row.is_verified,
-      rating: row.rating,
-      ratingCount: row.rating_count,
-      followerCount: row.follower_count,
-      createdAt: row.created_at.toISOString(),
-      updatedAt: row.updated_at.toISOString(),
-      posts: await this.feed.cardsFor(page),
-      nextCursor: refs.length > limit ? (page.at(-1)?.id ?? null) : null,
-    };
-  }
-
-  private image(variants: unknown, thumbhash: string | null): StorePage['logo'] {
-    const parsed = parseVariants(variants);
-    return parsed ? { url: this.storage.getPublicUrl('media', parsed.card.key), thumbhash } : null;
   }
 
   private requireTenant(): string {

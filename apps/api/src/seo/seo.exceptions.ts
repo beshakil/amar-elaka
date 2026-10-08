@@ -1,15 +1,6 @@
 import { HttpStatus } from '@nestjs/common';
 import { DomainException } from '../common/exceptions/domain-exception';
 
-export class StoreNotFoundPublicException extends DomainException {
-  readonly code = 'STORE_NOT_FOUND';
-  readonly httpStatus = HttpStatus.NOT_FOUND;
-
-  constructor() {
-    super('Store not found.');
-  }
-}
-
 /** The search engine couldn't count listings; the landing-page list is unknown right now. */
 export class SeoSearchUnavailableException extends DomainException {
   readonly code = 'SEARCH_UNAVAILABLE';

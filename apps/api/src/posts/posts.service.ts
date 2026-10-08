@@ -14,6 +14,15 @@ import {
 import { ModerationRepository } from '../moderation/moderation.repository';
 import { SettingsService } from '../settings/settings.service';
 import { STORAGE_SERVICE, type StorageService } from '../storage/storage.ports';
+import { asStoreTier, catalogLimitKey } from '../stores/store-limits';
+import {
+  PostStoreOutsideAreaException,
+  StoreCatalogFullException,
+  StoreMembershipRequiredException,
+  StoreNotActiveException,
+  StoreNotFoundException,
+} from '../stores/stores.exceptions';
+import { sqlStateOf } from '../common/utils/sql-state';
 import { TrustScoreService } from '../trust/trust-score.service';
 import type {
   CreatePostInput,
@@ -44,11 +53,14 @@ import {
 } from './posts.exceptions';
 import {
   PostsRepository,
+  type NewPost,
   type PostMediaRow,
   type PostPatch,
   type PostRow,
 } from './posts.repository';
 
+/** posts_validate_store_authorship (0006, 0050): the author may not post as this store. */
+const STORE_AUTHORSHIP_REFUSED = 'AE246';
 // settings-exempt: unit conversions (the durations themselves are settings)
 const MS_PER_HOUR = 60 * 60 * 1_000;
 // settings-exempt: see above
@@ -143,10 +155,11 @@ export class PostsService {
           owningTenantId: owner.tenantId,
           requestTenantId,
         });
+        if (input.storeId) await this.checkStorePosting(tx, input.storeId, owner.tenantId);
         // Buyers reach the seller as their profile says, unless the post says otherwise.
         const profile =
           input.contactName && input.contactPhone ? null : await this.repo.myContactDefaults(tx);
-        const postId = await this.repo.insert(tx, memberId!, {
+        const postId = await this.insertPost(tx, memberId!, {
           categoryId: validated.categoryId,
           fieldSchemaId: validated.fieldSchemaId,
           title: input.title,
@@ -162,6 +175,7 @@ export class PostsService {
           showWhatsapp: input.showWhatsapp,
           contactName: input.contactName ?? profile?.name ?? null,
           contactPhone: input.contactPhone ?? profile?.phone ?? null,
+          storeId: input.storeId ?? null,
           status: 'draft',
           publishedAt: null,
           expiresAt: null,
@@ -757,6 +771,40 @@ export class PostsService {
     }
     if (what.activating && stats.active >= maxActive) {
       throw new PostLimitReachedException('active', maxActive);
+    }
+  }
+
+  /**
+   * Posting as a store (ADR 054): the store exists, is in the post's area,
+   * is active, the author is its owner or accepted staff, and its catalog
+   * (draft, in review, live) has room for the store's tier. The database
+   * checks authorship again (posts trigger, AE246).
+   */
+  private async checkStorePosting(
+    tx: DatabaseTransaction,
+    storeId: string,
+    owningTenantId: string,
+  ): Promise<void> {
+    const facts = await this.repo.storePostingFacts(tx, storeId);
+    if (!facts) throw new StoreNotFoundException();
+    if (facts.tenantId !== owningTenantId) throw new PostStoreOutsideAreaException();
+    if (!facts.mayPost) throw new StoreMembershipRequiredException();
+    if (facts.status !== 'active') throw new StoreNotActiveException(facts.status);
+    const max = await this.settings.get(catalogLimitKey(asStoreTier(facts.tier)), owningTenantId);
+    if (facts.catalogCount >= max) throw new StoreCatalogFullException(max);
+  }
+
+  private async insertPost(
+    tx: DatabaseTransaction,
+    memberId: string,
+    post: NewPost,
+  ): Promise<string> {
+    try {
+      return await this.repo.insert(tx, memberId, post);
+    } catch (error) {
+      if (sqlStateOf(error) === STORE_AUTHORSHIP_REFUSED)
+        throw new StoreMembershipRequiredException();
+      throw error;
     }
   }
 

@@ -40,6 +40,8 @@ export const createPostSchema = z
     /** Who buyers contact; defaults to the author's own profile name and phone. */
     contactName: contactName.optional(),
     contactPhone: bdMobile.optional(),
+    /** Post as this store (ADR 054): its owner or staff, in the store's area. */
+    storeId: z.string().uuid().optional(),
     /** true = submit for review right away; false = keep as a draft. */
     submit: z.boolean().default(false),
   })

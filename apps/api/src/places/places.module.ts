@@ -53,5 +53,7 @@ import { PlacesService } from './places.service';
     PlaceModerationService,
     PlaceModerationRepository,
   ],
+  // The stores module creates and keeps a store's map pin (ADR 054).
+  exports: [PlacesRepository, DuplicatesService],
 })
 export class PlacesModule {}

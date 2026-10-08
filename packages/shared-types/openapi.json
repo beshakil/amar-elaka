@@ -4138,6 +4138,46 @@
         ]
       }
     },
+    "/stores/{id}/contact": {
+      "post": {
+        "operationId": "StoreContactController_contact",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StoreContactDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContactRevealDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "StoreContact"
+        ]
+      }
+    },
     "/s/{code}": {
       "get": {
         "operationId": "ShareController_resolve",
@@ -4775,54 +4815,6 @@
         ]
       }
     },
-    "/stores/{slug}": {
-      "get": {
-        "operationId": "PublicStoresController_store",
-        "parameters": [
-          {
-            "name": "slug",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
-              "type": "string"
-            }
-          },
-          {
-            "name": "cursor",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "limit",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "minimum": 1,
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StorePageDto"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "PublicStores"
-        ]
-      }
-    },
     "/posts/{id}/og.png": {
       "get": {
         "operationId": "OgImageController_image",
@@ -5191,6 +5183,365 @@
         },
         "tags": [
           "PlatformJobs"
+        ]
+      }
+    },
+    "/stores": {
+      "post": {
+        "operationId": "StoresController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateStoreDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreViewDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Stores"
+        ]
+      }
+    },
+    "/stores/me": {
+      "get": {
+        "operationId": "StoresController_mine",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyStoresDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Stores"
+        ]
+      }
+    },
+    "/stores/review-queue": {
+      "get": {
+        "operationId": "StoresController_reviewQueue",
+        "parameters": [
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreReviewQueueDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Stores"
+        ]
+      }
+    },
+    "/stores/{slug}": {
+      "get": {
+        "operationId": "StoresController_page",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "category",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StorePageDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Stores"
+        ]
+      }
+    },
+    "/stores/{id}/manage": {
+      "get": {
+        "operationId": "StoresController_manage",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreViewDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Stores"
+        ]
+      }
+    },
+    "/stores/{id}": {
+      "patch": {
+        "operationId": "StoresController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateStoreDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreViewDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Stores"
+        ]
+      }
+    },
+    "/stores/{id}/staff": {
+      "post": {
+        "operationId": "StoresController_invite",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InviteStaffDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffViewDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Stores"
+        ]
+      }
+    },
+    "/stores/{id}/staff/accept": {
+      "post": {
+        "operationId": "StoresController_accept",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreViewDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Stores"
+        ]
+      }
+    },
+    "/stores/{id}/staff/{memberId}": {
+      "delete": {
+        "operationId": "StoresController_removeStaff",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "memberId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Stores"
+        ]
+      }
+    },
+    "/stores/{id}/status": {
+      "post": {
+        "operationId": "StoresController_setStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StoreStatusDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreStatusResultDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Stores"
         ]
       }
     }
@@ -7004,6 +7355,9 @@
           "contactPhone": {
             "type": "string",
             "pattern": "^\\+8801[3-9]\\d{8}$"
+          },
+          "storeId": {
+            "type": "string"
           },
           "submit": {
             "type": "boolean"
@@ -12793,6 +13147,31 @@
           "created"
         ]
       },
+      "StoreContactDto": {
+        "type": "object",
+        "properties": {
+          "channel": {
+            "type": "string",
+            "enum": [
+              "call",
+              "whatsapp",
+              "sms"
+            ]
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "post_detail",
+              "search_result",
+              "store_page",
+              "boosted_slot"
+            ]
+          }
+        },
+        "required": [
+          "channel"
+        ]
+      },
       "ShortLinkDto": {
         "type": "object",
         "properties": {
@@ -14044,254 +14423,6 @@
           "items"
         ]
       },
-      "StorePageDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "tenantId": {
-            "type": "string"
-          },
-          "slug": {
-            "type": "string"
-          },
-          "name": {
-            "type": "object",
-            "properties": {
-              "bn": {
-                "type": "string",
-                "nullable": true
-              },
-              "en": {
-                "type": "string",
-                "nullable": true
-              }
-            },
-            "required": [
-              "bn",
-              "en"
-            ]
-          },
-          "description": {
-            "type": "string",
-            "nullable": true
-          },
-          "addressText": {
-            "type": "string",
-            "nullable": true
-          },
-          "area": {
-            "type": "object",
-            "properties": {
-              "bn": {
-                "type": "string",
-                "nullable": true
-              },
-              "en": {
-                "type": "string",
-                "nullable": true
-              }
-            },
-            "required": [
-              "bn",
-              "en"
-            ],
-            "nullable": true
-          },
-          "location": {
-            "type": "object",
-            "properties": {
-              "lat": {
-                "type": "number"
-              },
-              "lng": {
-                "type": "number"
-              }
-            },
-            "required": [
-              "lat",
-              "lng"
-            ],
-            "nullable": true
-          },
-          "logo": {
-            "type": "object",
-            "properties": {
-              "url": {
-                "type": "string"
-              },
-              "thumbhash": {
-                "type": "string",
-                "nullable": true
-              }
-            },
-            "required": [
-              "url",
-              "thumbhash"
-            ],
-            "nullable": true
-          },
-          "cover": {
-            "type": "object",
-            "properties": {
-              "url": {
-                "type": "string"
-              },
-              "thumbhash": {
-                "type": "string",
-                "nullable": true
-              }
-            },
-            "required": [
-              "url",
-              "thumbhash"
-            ],
-            "nullable": true
-          },
-          "isVerified": {
-            "type": "boolean"
-          },
-          "rating": {
-            "type": "number",
-            "nullable": true
-          },
-          "ratingCount": {
-            "type": "number"
-          },
-          "followerCount": {
-            "type": "number"
-          },
-          "createdAt": {
-            "type": "string"
-          },
-          "updatedAt": {
-            "type": "string"
-          },
-          "posts": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "kind": {
-                  "type": "string",
-                  "enum": [
-                    "post"
-                  ]
-                },
-                "id": {
-                  "type": "string"
-                },
-                "tenantId": {
-                  "type": "string"
-                },
-                "title": {
-                  "type": "string"
-                },
-                "price": {
-                  "type": "string",
-                  "nullable": true
-                },
-                "cover": {
-                  "type": "object",
-                  "properties": {
-                    "url": {
-                      "type": "string"
-                    },
-                    "thumbhash": {
-                      "type": "string",
-                      "nullable": true
-                    }
-                  },
-                  "required": [
-                    "url",
-                    "thumbhash"
-                  ],
-                  "nullable": true
-                },
-                "distanceMeters": {
-                  "type": "number",
-                  "nullable": true
-                },
-                "area": {
-                  "type": "object",
-                  "properties": {
-                    "bn": {
-                      "type": "string",
-                      "nullable": true
-                    },
-                    "en": {
-                      "type": "string",
-                      "nullable": true
-                    }
-                  },
-                  "required": [
-                    "bn",
-                    "en"
-                  ],
-                  "nullable": true
-                },
-                "badges": {
-                  "type": "array",
-                  "items": {
-                    "type": "string",
-                    "enum": [
-                      "boosted",
-                      "highlighted",
-                      "verified_store",
-                      "free",
-                      "negotiable"
-                    ]
-                  }
-                },
-                "createdAt": {
-                  "type": "string"
-                },
-                "isSaved": {
-                  "type": "boolean"
-                }
-              },
-              "required": [
-                "kind",
-                "id",
-                "tenantId",
-                "title",
-                "price",
-                "cover",
-                "distanceMeters",
-                "area",
-                "badges",
-                "createdAt",
-                "isSaved"
-              ]
-            }
-          },
-          "nextCursor": {
-            "type": "string",
-            "nullable": true
-          }
-        },
-        "required": [
-          "id",
-          "tenantId",
-          "slug",
-          "name",
-          "description",
-          "addressText",
-          "area",
-          "location",
-          "logo",
-          "cover",
-          "isVerified",
-          "rating",
-          "ratingCount",
-          "followerCount",
-          "createdAt",
-          "updatedAt",
-          "posts",
-          "nextCursor"
-        ]
-      },
       "MapConfigDto": {
         "type": "object",
         "properties": {
@@ -15270,6 +15401,1294 @@
           "code",
           "queue",
           "queueJobId"
+        ]
+      },
+      "CreateStoreDto": {
+        "type": "object",
+        "properties": {
+          "nameBn": {
+            "type": "string",
+            "minLength": 1
+          },
+          "nameEn": {
+            "type": "string",
+            "minLength": 1
+          },
+          "slug": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1
+          },
+          "categoryId": {
+            "type": "string"
+          },
+          "logoMediaId": {
+            "type": "string"
+          },
+          "bannerMediaId": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string",
+            "minLength": 1
+          },
+          "whatsapp": {
+            "type": "string",
+            "minLength": 1
+          },
+          "addressText": {
+            "type": "string",
+            "minLength": 1
+          },
+          "location": {
+            "type": "object",
+            "properties": {
+              "lat": {
+                "type": "number",
+                "minimum": -90,
+                "maximum": 90
+              },
+              "lng": {
+                "type": "number",
+                "minimum": -180,
+                "maximum": 180
+              }
+            },
+            "required": [
+              "lat",
+              "lng"
+            ]
+          },
+          "hours": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "opens": {
+                  "type": "string",
+                  "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                },
+                "closes": {
+                  "type": "string",
+                  "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                },
+                "day": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 7
+                }
+              },
+              "required": [
+                "opens",
+                "closes",
+                "day"
+              ]
+            }
+          },
+          "confirmNotDuplicate": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "nameBn",
+          "categoryId",
+          "location"
+        ]
+      },
+      "StoreViewDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "previousSlug": {
+            "type": "string",
+            "nullable": true
+          },
+          "slugChangeable": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "object",
+            "properties": {
+              "bn": {
+                "type": "string",
+                "nullable": true
+              },
+              "en": {
+                "type": "string",
+                "nullable": true
+              }
+            },
+            "required": [
+              "bn",
+              "en"
+            ]
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "category": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "slug": {
+                "type": "string"
+              },
+              "name": {
+                "type": "object",
+                "properties": {
+                  "bn": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "en": {
+                    "type": "string",
+                    "nullable": true
+                  }
+                },
+                "required": [
+                  "bn",
+                  "en"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "slug",
+              "name"
+            ],
+            "nullable": true
+          },
+          "logo": {
+            "type": "object",
+            "properties": {
+              "url": {
+                "type": "string"
+              },
+              "thumbhash": {
+                "type": "string",
+                "nullable": true
+              }
+            },
+            "required": [
+              "url",
+              "thumbhash"
+            ],
+            "nullable": true
+          },
+          "banner": {
+            "type": "object",
+            "properties": {
+              "url": {
+                "type": "string"
+              },
+              "thumbhash": {
+                "type": "string",
+                "nullable": true
+              }
+            },
+            "required": [
+              "url",
+              "thumbhash"
+            ],
+            "nullable": true
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true
+          },
+          "whatsapp": {
+            "type": "string",
+            "nullable": true
+          },
+          "addressText": {
+            "type": "string",
+            "nullable": true
+          },
+          "location": {
+            "type": "object",
+            "properties": {
+              "lat": {
+                "type": "number"
+              },
+              "lng": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "lat",
+              "lng"
+            ],
+            "nullable": true
+          },
+          "placeId": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending_review",
+              "active",
+              "suspended",
+              "closed"
+            ]
+          },
+          "tier": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pro",
+              "premium"
+            ]
+          },
+          "isVerified": {
+            "type": "boolean"
+          },
+          "limits": {
+            "type": "object",
+            "properties": {
+              "staff": {
+                "type": "number"
+              },
+              "catalog": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "staff",
+              "catalog"
+            ]
+          },
+          "counts": {
+            "type": "object",
+            "properties": {
+              "staff": {
+                "type": "number"
+              },
+              "catalog": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "staff",
+              "catalog"
+            ]
+          },
+          "myRole": {
+            "type": "string",
+            "enum": [
+              "owner",
+              "manager",
+              "editor"
+            ]
+          },
+          "staff": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "memberId": {
+                  "type": "string"
+                },
+                "displayName": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "phoneMasked": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "role": {
+                  "type": "string",
+                  "enum": [
+                    "manager",
+                    "editor"
+                  ]
+                },
+                "accepted": {
+                  "type": "boolean"
+                },
+                "invitedAt": {
+                  "type": "string"
+                },
+                "acceptedAt": {
+                  "type": "string",
+                  "nullable": true
+                }
+              },
+              "required": [
+                "memberId",
+                "displayName",
+                "phoneMasked",
+                "role",
+                "accepted",
+                "invitedAt",
+                "acceptedAt"
+              ]
+            }
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "tenantId",
+          "slug",
+          "previousSlug",
+          "slugChangeable",
+          "name",
+          "description",
+          "category",
+          "logo",
+          "banner",
+          "phone",
+          "whatsapp",
+          "addressText",
+          "location",
+          "placeId",
+          "status",
+          "tier",
+          "isVerified",
+          "limits",
+          "counts",
+          "myRole",
+          "staff",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "MyStoresDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "tenantId": {
+                  "type": "string"
+                },
+                "slug": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "object",
+                  "properties": {
+                    "bn": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "en": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "bn",
+                    "en"
+                  ]
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "pending_review",
+                    "active",
+                    "suspended",
+                    "closed"
+                  ]
+                },
+                "tier": {
+                  "type": "string",
+                  "enum": [
+                    "basic",
+                    "pro",
+                    "premium"
+                  ]
+                },
+                "logo": {
+                  "type": "object",
+                  "properties": {
+                    "url": {
+                      "type": "string"
+                    },
+                    "thumbhash": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "url",
+                    "thumbhash"
+                  ],
+                  "nullable": true
+                },
+                "role": {
+                  "type": "string",
+                  "enum": [
+                    "owner",
+                    "manager",
+                    "editor"
+                  ]
+                },
+                "accepted": {
+                  "type": "boolean"
+                },
+                "invitedAt": {
+                  "type": "string",
+                  "nullable": true
+                }
+              },
+              "required": [
+                "id",
+                "tenantId",
+                "slug",
+                "name",
+                "status",
+                "tier",
+                "logo",
+                "role",
+                "accepted",
+                "invitedAt"
+              ]
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "StoreReviewQueueDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "slug": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "object",
+                  "properties": {
+                    "bn": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "en": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "bn",
+                    "en"
+                  ]
+                },
+                "category": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "slug": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "object",
+                      "properties": {
+                        "bn": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "en": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "bn",
+                        "en"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "slug",
+                    "name"
+                  ],
+                  "nullable": true
+                },
+                "location": {
+                  "type": "object",
+                  "properties": {
+                    "lat": {
+                      "type": "number"
+                    },
+                    "lng": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "lat",
+                    "lng"
+                  ],
+                  "nullable": true
+                },
+                "ownerMemberId": {
+                  "type": "string"
+                },
+                "outsideBoundary": {
+                  "type": "boolean"
+                },
+                "createdAt": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "slug",
+                "name",
+                "category",
+                "location",
+                "ownerMemberId",
+                "outsideBoundary",
+                "createdAt"
+              ]
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ]
+      },
+      "StorePageDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "name": {
+            "type": "object",
+            "properties": {
+              "bn": {
+                "type": "string",
+                "nullable": true
+              },
+              "en": {
+                "type": "string",
+                "nullable": true
+              }
+            },
+            "required": [
+              "bn",
+              "en"
+            ]
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "category": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "slug": {
+                "type": "string"
+              },
+              "name": {
+                "type": "object",
+                "properties": {
+                  "bn": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "en": {
+                    "type": "string",
+                    "nullable": true
+                  }
+                },
+                "required": [
+                  "bn",
+                  "en"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "slug",
+              "name"
+            ],
+            "nullable": true
+          },
+          "addressText": {
+            "type": "string",
+            "nullable": true
+          },
+          "area": {
+            "type": "object",
+            "properties": {
+              "bn": {
+                "type": "string",
+                "nullable": true
+              },
+              "en": {
+                "type": "string",
+                "nullable": true
+              }
+            },
+            "required": [
+              "bn",
+              "en"
+            ],
+            "nullable": true
+          },
+          "location": {
+            "type": "object",
+            "properties": {
+              "lat": {
+                "type": "number"
+              },
+              "lng": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "lat",
+              "lng"
+            ],
+            "nullable": true
+          },
+          "mapPin": {
+            "type": "object",
+            "properties": {
+              "lat": {
+                "type": "number"
+              },
+              "lng": {
+                "type": "number"
+              },
+              "placeId": {
+                "type": "string",
+                "nullable": true
+              }
+            },
+            "required": [
+              "lat",
+              "lng",
+              "placeId"
+            ],
+            "nullable": true
+          },
+          "logo": {
+            "type": "object",
+            "properties": {
+              "url": {
+                "type": "string"
+              },
+              "thumbhash": {
+                "type": "string",
+                "nullable": true
+              }
+            },
+            "required": [
+              "url",
+              "thumbhash"
+            ],
+            "nullable": true
+          },
+          "cover": {
+            "type": "object",
+            "properties": {
+              "url": {
+                "type": "string"
+              },
+              "thumbhash": {
+                "type": "string",
+                "nullable": true
+              }
+            },
+            "required": [
+              "url",
+              "thumbhash"
+            ],
+            "nullable": true
+          },
+          "isVerified": {
+            "type": "boolean"
+          },
+          "verification": {
+            "type": "object",
+            "properties": {
+              "badge": {
+                "type": "string",
+                "enum": [
+                  "none",
+                  "phone",
+                  "identity",
+                  "business"
+                ]
+              },
+              "storeVerified": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "badge",
+              "storeVerified"
+            ]
+          },
+          "rating": {
+            "type": "number",
+            "nullable": true
+          },
+          "ratingCount": {
+            "type": "number"
+          },
+          "followerCount": {
+            "type": "number"
+          },
+          "stats": {
+            "type": "object",
+            "properties": {
+              "followers": {
+                "type": "number"
+              },
+              "livePosts": {
+                "type": "number"
+              },
+              "memberSince": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "followers",
+              "livePosts",
+              "memberSince"
+            ]
+          },
+          "hours": {
+            "type": "object",
+            "properties": {
+              "weekly": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "day": {
+                      "type": "number"
+                    },
+                    "opens": {
+                      "type": "string"
+                    },
+                    "closes": {
+                      "type": "string"
+                    },
+                    "closesNextDay": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "day",
+                    "opens",
+                    "closes",
+                    "closesNextDay"
+                  ]
+                }
+              },
+              "usesPlaceHours": {
+                "type": "boolean"
+              },
+              "specialDays": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "date": {
+                      "type": "string"
+                    },
+                    "closed": {
+                      "type": "boolean"
+                    },
+                    "ranges": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "opens": {
+                            "type": "string"
+                          },
+                          "closes": {
+                            "type": "string"
+                          },
+                          "closesNextDay": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "opens",
+                          "closes",
+                          "closesNextDay"
+                        ]
+                      }
+                    },
+                    "note": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "date",
+                    "closed",
+                    "ranges",
+                    "note"
+                  ]
+                }
+              },
+              "closedUntil": {
+                "type": "string",
+                "nullable": true
+              },
+              "openState": {
+                "type": "object",
+                "properties": {
+                  "state": {
+                    "type": "string",
+                    "enum": [
+                      "open",
+                      "closes_soon",
+                      "opens_soon",
+                      "closed",
+                      "unknown"
+                    ]
+                  },
+                  "changesAt": {
+                    "type": "string",
+                    "nullable": true
+                  }
+                },
+                "required": [
+                  "state",
+                  "changesAt"
+                ],
+                "nullable": true
+              }
+            },
+            "required": [
+              "weekly",
+              "usesPlaceHours",
+              "specialDays",
+              "closedUntil",
+              "openState"
+            ]
+          },
+          "catalogCategories": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "slug": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "object",
+                  "properties": {
+                    "bn": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "en": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "bn",
+                    "en"
+                  ]
+                },
+                "count": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "slug",
+                "name",
+                "count"
+              ]
+            }
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          },
+          "posts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "post"
+                  ]
+                },
+                "id": {
+                  "type": "string"
+                },
+                "tenantId": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "price": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "cover": {
+                  "type": "object",
+                  "properties": {
+                    "url": {
+                      "type": "string"
+                    },
+                    "thumbhash": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "url",
+                    "thumbhash"
+                  ],
+                  "nullable": true
+                },
+                "distanceMeters": {
+                  "type": "number",
+                  "nullable": true
+                },
+                "area": {
+                  "type": "object",
+                  "properties": {
+                    "bn": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "en": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "bn",
+                    "en"
+                  ],
+                  "nullable": true
+                },
+                "badges": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "boosted",
+                      "highlighted",
+                      "verified_store",
+                      "free",
+                      "negotiable"
+                    ]
+                  }
+                },
+                "createdAt": {
+                  "type": "string"
+                },
+                "isSaved": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "kind",
+                "id",
+                "tenantId",
+                "title",
+                "price",
+                "cover",
+                "distanceMeters",
+                "area",
+                "badges",
+                "createdAt",
+                "isSaved"
+              ]
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "tenantId",
+          "slug",
+          "name",
+          "description",
+          "category",
+          "addressText",
+          "area",
+          "location",
+          "mapPin",
+          "logo",
+          "cover",
+          "isVerified",
+          "verification",
+          "rating",
+          "ratingCount",
+          "followerCount",
+          "stats",
+          "hours",
+          "catalogCategories",
+          "createdAt",
+          "updatedAt",
+          "posts",
+          "nextCursor"
+        ]
+      },
+      "UpdateStoreDto": {
+        "type": "object",
+        "properties": {
+          "nameBn": {
+            "type": "string",
+            "minLength": 1
+          },
+          "nameEn": {
+            "type": "string",
+            "minLength": 1,
+            "nullable": true
+          },
+          "slug": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "nullable": true
+          },
+          "categoryId": {
+            "type": "string"
+          },
+          "logoMediaId": {
+            "type": "string",
+            "nullable": true
+          },
+          "bannerMediaId": {
+            "type": "string",
+            "nullable": true
+          },
+          "phone": {
+            "type": "string",
+            "minLength": 1,
+            "nullable": true
+          },
+          "whatsapp": {
+            "type": "string",
+            "minLength": 1,
+            "nullable": true
+          },
+          "addressText": {
+            "type": "string",
+            "minLength": 1,
+            "nullable": true
+          },
+          "location": {
+            "type": "object",
+            "properties": {
+              "lat": {
+                "type": "number",
+                "minimum": -90,
+                "maximum": 90
+              },
+              "lng": {
+                "type": "number",
+                "minimum": -180,
+                "maximum": 180
+              }
+            },
+            "required": [
+              "lat",
+              "lng"
+            ]
+          },
+          "hours": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "opens": {
+                  "type": "string",
+                  "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                },
+                "closes": {
+                  "type": "string",
+                  "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                },
+                "day": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 7
+                }
+              },
+              "required": [
+                "opens",
+                "closes",
+                "day"
+              ]
+            }
+          }
+        }
+      },
+      "InviteStaffDto": {
+        "type": "object",
+        "properties": {
+          "phone": {
+            "type": "string",
+            "minLength": 1
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "manager",
+              "editor"
+            ]
+          }
+        },
+        "required": [
+          "phone",
+          "role"
+        ]
+      },
+      "StaffViewDto": {
+        "type": "object",
+        "properties": {
+          "memberId": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string",
+            "nullable": true
+          },
+          "phoneMasked": {
+            "type": "string",
+            "nullable": true
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "manager",
+              "editor"
+            ]
+          },
+          "accepted": {
+            "type": "boolean"
+          },
+          "invitedAt": {
+            "type": "string"
+          },
+          "acceptedAt": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "memberId",
+          "displayName",
+          "phoneMasked",
+          "role",
+          "accepted",
+          "invitedAt",
+          "acceptedAt"
+        ]
+      },
+      "StoreStatusDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "suspended",
+              "closed"
+            ]
+          },
+          "reasonCode": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$"
+          },
+          "reasonText": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "status",
+          "reasonCode"
+        ]
+      },
+      "StoreStatusResultDto": {
+        "type": "object",
+        "properties": {
+          "storeId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending_review",
+              "active",
+              "suspended",
+              "closed"
+            ]
+          }
+        },
+        "required": [
+          "storeId",
+          "status"
         ]
       }
     }

@@ -94,6 +94,8 @@ export interface NewPost {
   showWhatsapp: boolean | undefined;
   contactName: string | null;
   contactPhone: string | null;
+  /** Posted as this store (ADR 054); the author must be its owner or accepted staff. */
+  storeId: string | null;
   status: PostStatus;
   publishedAt: Date | null;
   expiresAt: Date | null;
@@ -325,12 +327,12 @@ export class PostsRepository {
   async insert(tx: DatabaseTransaction, memberId: string, post: NewPost): Promise<string> {
     const rows = await tx.execute(sql`
       insert into public.posts
-        (author_member_id, category_id, field_schema_id, title, description, fields,
+        (author_member_id, store_id, category_id, field_schema_id, title, description, fields,
          location, location_is_approximate, geo_area_id, ownership_resolution_code, outside_boundary,
          show_phone, allow_chat, show_whatsapp, contact_name, contact_phone_e164,
          status_code, published_at, expires_at, bumped_at)
       values
-        (${memberId}::uuid, ${post.categoryId}::uuid, ${post.fieldSchemaId}::uuid, ${post.title},
+        (${memberId}::uuid, ${post.storeId}::uuid, ${post.categoryId}::uuid, ${post.fieldSchemaId}::uuid, ${post.title},
          ${post.description}, ${JSON.stringify(post.fields)}::jsonb,
          public.geo_point(${post.lat}, ${post.lng}), false, ${post.geoAreaId}::uuid,
          ${post.ownershipResolution}, ${post.outsideBoundary},
@@ -344,6 +346,44 @@ export class PostsRepository {
       .array(z.object({ id: z.string() }))
       .length(1)
       .parse([...rows])[0]!.id;
+  }
+
+  /**
+   * What posting as a store needs (store_posting_facts, 0050): its tenant,
+   * status, tier, how many posts it holds and whether the caller may post as
+   * it (member_may_post_as_store — the same rule as the posts trigger).
+   */
+  async storePostingFacts(
+    tx: DatabaseTransaction,
+    storeId: string,
+  ): Promise<
+    | { tenantId: string; status: string; tier: string; catalogCount: number; mayPost: boolean }
+    | undefined
+  > {
+    const rows = await tx.execute(sql`
+      select tenant_id, status_code, tier_code, catalog_count, may_post
+      from public.store_posting_facts(${storeId}::uuid)`);
+    const row = z
+      .array(
+        z.object({
+          tenant_id: z.string(),
+          status_code: z.string(),
+          tier_code: z.string(),
+          catalog_count: z.number(),
+          may_post: z.boolean(),
+        }),
+      )
+      .max(1)
+      .parse([...rows])[0];
+    return row
+      ? {
+          tenantId: row.tenant_id,
+          status: row.status_code,
+          tier: row.tier_code,
+          catalogCount: row.catalog_count,
+          mayPost: row.may_post,
+        }
+      : undefined;
   }
 
   async update(tx: DatabaseTransaction, id: string, patch: PostPatch): Promise<void> {

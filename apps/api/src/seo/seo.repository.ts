@@ -14,31 +14,6 @@ const STATUS_ROW = z.object({
 });
 export type StatusRow = z.infer<typeof STATUS_ROW>;
 
-const STORE_ROW = z.object({
-  id: z.string(),
-  tenant_id: z.string(),
-  slug: z.string(),
-  name_bn: z.string(),
-  name_en: z.string().nullable(),
-  description: z.string().nullable(),
-  address_text: z.string().nullable(),
-  area_bn: z.string().nullable(),
-  area_en: z.string().nullable(),
-  lat: z.number().nullable(),
-  lng: z.number().nullable(),
-  logo_variants: z.unknown(),
-  logo_thumbhash: z.string().nullable(),
-  cover_variants: z.unknown(),
-  cover_thumbhash: z.string().nullable(),
-  is_verified: z.boolean(),
-  rating: z.number().nullable(),
-  rating_count: z.number(),
-  follower_count: z.number(),
-  created_at: z.coerce.date(),
-  updated_at: z.coerce.date(),
-});
-export type StoreRow = z.infer<typeof STORE_ROW>;
-
 const OG_ROW = z.object({
   title: z.string(),
   price: z.string().nullable(),
@@ -72,7 +47,7 @@ export type CategoryTreeRow = z.infer<typeof CATEGORY_TREE_ROW>;
 /** The tenant's posts a sitemap lists: listed ones, and sold ones still inside the index window. */
 const sitemapPostsWhere = (soldNoindexDays: number) => sql`
   p.tenant_id = public.current_tenant_id()
-  and (public.post_is_listed(p.status_code, p.deleted_at, p.scrubbed_at, p.hidden_by_owner, p.expires_at, now())
+  and (public.post_is_listed(p.status_code, p.deleted_at, p.scrubbed_at, p.hidden_by_owner, p.store_hidden, p.expires_at, now())
        or (p.status_code = 'sold' and p.scrubbed_at is null
            and public.post_is_viewable(p.status_code, p.deleted_at, p.hidden_by_owner)
            and p.sold_at > now() - make_interval(days => ${soldNoindexDays})))`;
@@ -165,52 +140,6 @@ export class SeoRepository {
       order by s.id
       offset ${offset} limit ${limit}`);
     return z.array(z.object({ slug: z.string(), updated_at: z.coerce.date() })).parse([...rows]);
-  }
-
-  /** The host tenant's active store with this slug (public-read policy). */
-  async store(tx: DatabaseTransaction, slug: string): Promise<StoreRow | undefined> {
-    const rows = await tx.execute(sql`
-      select s.id, s.tenant_id, s.slug, s.name_bn, s.name_en, s.description, s.address_text,
-             coalesce(l.name_bn, ga.name_bn) as area_bn, coalesce(l.name_en, ga.name_en) as area_en,
-             st_y(coalesce(s.location, pl.location)::geometry) as lat,
-             st_x(coalesce(s.location, pl.location)::geometry) as lng,
-             logo.variants as logo_variants, logo.thumbhash as logo_thumbhash,
-             cover.variants as cover_variants, cover.thumbhash as cover_thumbhash,
-             s.is_verified, s.rating_avg::float8 as rating, s.rating_count, s.follower_count,
-             s.created_at, s.updated_at
-      from public.stores s
-      left join public.places pl on pl.tenant_id = s.tenant_id and pl.id = s.place_id
-      left join public.localities l on l.tenant_id = s.tenant_id and l.id = coalesce(s.locality_id, pl.locality_id)
-      left join public.geo_areas ga on ga.id = pl.geo_area_id
-      left join public.media_assets logo
-        on logo.tenant_id = s.tenant_id and logo.id = s.logo_media_id
-       and logo.status_code = 'ready' and logo.visibility_code = 'public'
-      left join public.media_assets cover
-        on cover.tenant_id = s.tenant_id and cover.id = s.cover_media_id
-       and cover.status_code = 'ready' and cover.visibility_code = 'public'
-      where s.tenant_id = public.current_tenant_id() and s.slug = ${slug}
-        and s.status_code = 'active' and s.deleted_at is null`);
-    return z
-      .array(STORE_ROW)
-      .max(1)
-      .parse([...rows])[0];
-  }
-
-  /** The store's live listings, newest first, keyset-paged by id. */
-  async storePostRefs(
-    tx: DatabaseTransaction,
-    storeId: string,
-    before: string | null,
-    limit: number,
-  ): Promise<{ id: string; tenant_id: string }[]> {
-    const rows = await tx.execute(sql`
-      select p.id, p.tenant_id from public.posts p
-      where p.tenant_id = public.current_tenant_id() and p.store_id = ${storeId}::uuid
-        and public.post_is_listed(p.status_code, p.deleted_at, p.scrubbed_at, p.hidden_by_owner, p.expires_at, now())
-        and (${before}::uuid is null or p.id < ${before}::uuid)
-      order by p.id desc
-      limit ${limit}`);
-    return z.array(z.object({ id: z.string(), tenant_id: z.string() })).parse([...rows]);
   }
 
   // ---- category + area landing pages (ADR 042) ---------------------------

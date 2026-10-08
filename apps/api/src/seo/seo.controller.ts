@@ -1,6 +1,5 @@
-import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Query } from '@nestjs/common';
 import { ApiOkResponse } from '@nestjs/swagger';
-import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import {
   CategoryAreasDto,
   ListingIdParamDto,
@@ -9,15 +8,11 @@ import {
   SitemapPostsDto,
   SitemapStoresDto,
   SitemapSummaryDto,
-  StorePageDto,
-  StorePostsQueryDto,
-  StoreSlugParamDto,
   type CategoryAreas,
   type ListingStatus,
   type SitemapPosts,
   type SitemapStores,
   type SitemapSummary,
-  type StorePage,
 } from './dto/seo.dto';
 import { SeoService } from './seo.service';
 
@@ -57,21 +52,5 @@ export class SeoController {
   @ApiOkResponse({ type: SitemapStoresDto })
   stores(@Query() query: SitemapPageQueryDto): Promise<SitemapStores> {
     return this.seo.sitemapStores(query);
-  }
-}
-
-/** GET /api/v1/stores/:slug — a store's public page (basic, ADR 039). */
-@Controller({ path: 'stores', version: '1' })
-export class PublicStoresController {
-  constructor(private readonly seo: SeoService) {}
-
-  @Get(':slug')
-  @UseGuards(OptionalJwtAuthGuard)
-  @ApiOkResponse({ type: StorePageDto })
-  store(
-    @Param() params: StoreSlugParamDto,
-    @Query() query: StorePostsQueryDto,
-  ): Promise<StorePage> {
-    return this.seo.store(params.slug, query);
   }
 }

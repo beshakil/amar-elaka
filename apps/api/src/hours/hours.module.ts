@@ -12,6 +12,6 @@ import { HoursService } from './hours.service';
   imports: [AuthModule, RbacModule, SettingsModule, PostsModule],
   controllers: [HoursController],
   providers: [HoursService, HoursRepository],
-  exports: [HoursRepository],
+  exports: [HoursRepository, HoursService],
 })
 export class HoursModule {}

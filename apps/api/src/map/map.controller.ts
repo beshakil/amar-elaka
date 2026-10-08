@@ -56,8 +56,8 @@ export class MapController {
 
   /**
    * One tapped feature's photo, public phones and address, read in its own
-   * tenant (`tenant` = the feature's `tenant_id`). Posts never carry a phone
-   * here: calling goes through the post's contact action.
+   * tenant (`tenant` = the feature's `tenant_id`). Posts and stores never
+   * carry a phone here: calling goes through their contact actions (a lead).
    */
   @Get('features/:layer/:id')
   @ApiOkResponse({ type: MapPreviewResponseDto })

@@ -1,18 +1,10 @@
 import { z } from 'zod';
 import { createZodDto } from '../../common/pipes/zod-dto';
-import { postCardSchema } from '../../feed/dto/feed.dto';
-
-const localized = z.object({ bn: z.string().nullable(), en: z.string().nullable() });
 
 // ---- requests --------------------------------------------------------------
 
 export const listingIdParamSchema = z.object({ id: z.string().uuid() }).strict();
 export class ListingIdParamDto extends createZodDto(listingIdParamSchema) {}
-
-export const storeSlugParamSchema = z
-  .object({ slug: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/) })
-  .strict();
-export class StoreSlugParamDto extends createZodDto(storeSlugParamSchema) {}
 
 export const sitemapPageQuerySchema = z
   .object({
@@ -23,15 +15,6 @@ export const sitemapPageQuerySchema = z
   .strict();
 export type SitemapPageQuery = z.infer<typeof sitemapPageQuerySchema>;
 export class SitemapPageQueryDto extends createZodDto(sitemapPageQuerySchema) {}
-
-export const storePostsQuerySchema = z
-  .object({
-    cursor: z.string().uuid().optional(),
-    limit: z.coerce.number().int().min(1).optional(),
-  })
-  .strict();
-export type StorePostsQuery = z.infer<typeof storePostsQuerySchema>;
-export class StorePostsQueryDto extends createZodDto(storePostsQuerySchema) {}
 
 // ---- responses -------------------------------------------------------------
 
@@ -74,32 +57,6 @@ export const sitemapStoresSchema = z.object({
 });
 export type SitemapStores = z.infer<typeof sitemapStoresSchema>;
 export class SitemapStoresDto extends createZodDto(sitemapStoresSchema) {}
-
-const image = z.object({ url: z.string(), thumbhash: z.string().nullable() }).nullable();
-
-/** GET /stores/:slug — a store's public page. Never its phone number. */
-export const storePageSchema = z.object({
-  id: z.string(),
-  tenantId: z.string(),
-  slug: z.string(),
-  name: localized,
-  description: z.string().nullable(),
-  addressText: z.string().nullable(),
-  area: localized.nullable(),
-  location: z.object({ lat: z.number(), lng: z.number() }).nullable(),
-  logo: image,
-  cover: image,
-  isVerified: z.boolean(),
-  rating: z.number().nullable(),
-  ratingCount: z.number(),
-  followerCount: z.number(),
-  createdAt: z.string(),
-  updatedAt: z.string(),
-  posts: z.array(postCardSchema),
-  nextCursor: z.string().nullable(),
-});
-export type StorePage = z.infer<typeof storePageSchema>;
-export class StorePageDto extends createZodDto(storePageSchema) {}
 
 // ---- category + area landing pages (ADR 042) ---------------------------
 

@@ -20,7 +20,7 @@
 10. Local information
 11. Operations
 12. Enum tables
-13. Decisions & tradeoffs
+13. Decisions & tradeoffs (13A: Month 2 tables, 13B: Month 3 tables)
 14. Open questions
 15. Migration, seed & test plan
 
@@ -1670,30 +1670,34 @@ Seller-specific info and reputation for a member who sells, with or without a st
 A seller's branded storefront grouping their posts, optionally tied to a physical place.
 **Scope:** TENANT-SCOPED
 
-| column              | type                    | null | default            | comment                                                                      |
-| ------------------- | ----------------------- | ---- | ------------------ | ---------------------------------------------------------------------------- |
-| `<pk>`              |                         |      |                    |                                                                              |
-| `<tenant>`          |                         |      |                    |                                                                              |
-| `owner_member_id`   | `uuid`                  | NO   | —                  | Legal/billing owner.                                                         |
-| `place_id`          | `uuid`                  | YES  | —                  | Physical location in the directory.                                          |
-| `slug`              | `text`                  | NO   | —                  | CHECK lower-case.                                                            |
-| `name_bn`           | `text`                  | NO   | —                  |                                                                              |
-| `name_en`           | `text`                  | YES  | —                  |                                                                              |
-| `description`       | `text`                  | YES  | —                  |                                                                              |
-| `logo_media_id`     | `uuid`                  | YES  | —                  |                                                                              |
-| `cover_media_id`    | `uuid`                  | YES  | —                  |                                                                              |
-| `phone_e164`        | `text`                  | YES  | —                  |                                                                              |
-| `whatsapp_e164`     | `text`                  | YES  | —                  |                                                                              |
-| `address_text`      | `text`                  | YES  | —                  |                                                                              |
-| `locality_id`       | `uuid`                  | YES  | —                  |                                                                              |
-| `location`          | `geography(Point,4326)` | YES  | —                  | Copied from place if linked.                                                 |
-| `status_code`       | `text → store_statuses` | NO   | `'pending_review'` | pending_review / active / suspended / closed.                                |
-| `current_plan_code` | `text`                  | YES  | —                  | Cache of the active subscription plan code, for feed ranking without a join. |
-| `is_verified`       | `boolean`               | NO   | `false`            | Cache of an approved, unexpired business verification.                       |
-| `rating_avg`        | `numeric(3,2)`          | YES  | —                  | Cache.                                                                       |
-| `rating_count`      | `integer`               | NO   | `0`                | Cache.                                                                       |
-| `search_synced_at`  | `timestamptz`           | YES  | —                  | Last successful Meilisearch sync.                                            |
-| `<audit+soft>`      |                         |      |                    |                                                                              |
+| column              | type                    | null | default            | comment                                                                       |
+| ------------------- | ----------------------- | ---- | ------------------ | ----------------------------------------------------------------------------- |
+| `<pk>`              |                         |      |                    |                                                                               |
+| `<tenant>`          |                         |      |                    |                                                                               |
+| `owner_member_id`   | `uuid`                  | NO   | —                  | Legal/billing owner.                                                          |
+| `place_id`          | `uuid`                  | YES  | —                  | Physical location in the directory.                                           |
+| `slug`              | `text`                  | NO   | —                  | CHECK lower-case.                                                             |
+| `name_bn`           | `text`                  | NO   | —                  |                                                                               |
+| `name_en`           | `text`                  | YES  | —                  |                                                                               |
+| `description`       | `text`                  | YES  | —                  |                                                                               |
+| `logo_media_id`     | `uuid`                  | YES  | —                  |                                                                               |
+| `cover_media_id`    | `uuid`                  | YES  | —                  |                                                                               |
+| `phone_e164`        | `text`                  | YES  | —                  |                                                                               |
+| `whatsapp_e164`     | `text`                  | YES  | —                  |                                                                               |
+| `address_text`      | `text`                  | YES  | —                  |                                                                               |
+| `locality_id`       | `uuid`                  | YES  | —                  |                                                                               |
+| `location`          | `geography(Point,4326)` | YES  | —                  | Copied from place if linked.                                                  |
+| `status_code`       | `text → store_statuses` | NO   | `'pending_review'` | pending_review / active / suspended / closed.                                 |
+| `current_plan_code` | `text`                  | YES  | —                  | Cache of the active subscription plan code, for feed ranking without a join.  |
+| `tier_code`         | `text → store_tiers`    | NO   | `'basic'`          | 0050: basic / pro / premium; limits per tier are settings. Staff/system only. |
+| `category_id`       | `uuid → categories`     | YES  | —                  | 0050: a place-kind category, as its map pin.                                  |
+| `slug_changed_at`   | `timestamptz`           | YES  | —                  | 0050: set by the one slug change the owner may make.                          |
+| `previous_slug`     | `text`                  | YES  | —                  | 0050: the old slug; still opens the store and stays taken.                    |
+| `is_verified`       | `boolean`               | NO   | `false`            | Cache of an approved, unexpired business verification.                        |
+| `rating_avg`        | `numeric(3,2)`          | YES  | —                  | Cache.                                                                        |
+| `rating_count`      | `integer`               | NO   | `0`                | Cache.                                                                        |
+| `search_synced_at`  | `timestamptz`           | YES  | —                  | Last successful Meilisearch sync.                                             |
+| `<audit+soft>`      |                         |      |                    |                                                                               |
 
 **Keys:** PK `id`. `owner_member_id → tenant_members (T)` RESTRICT. `place_id → places (T)` SET NULL. `logo_media_id`, `cover_media_id → media_assets (T)` SET NULL. `locality_id → localities (T)` SET NULL.
 **Indexes:**
@@ -1704,6 +1708,7 @@ A seller's branded storefront grouping their posts, optionally tied to a physica
 - `GIST (location) where status_code = 'active'`: nearby stores.
 - `(updated_at) where search_synced_at is null or search_synced_at < updated_at`: search sync safety-net sweeper.
   **RLS:** T-PUBLIC-READ (active). INSERT by any member as owner of themselves. UPDATE by the owner, `store_members` with role manager, or staff. Status changes are staff-only (service).
+  **0050 (ADR 054):** CHECK slug not in (`me`, `review-queue`); `stores_b_protect_tier_and_slug` (tier: staff/system only; slug: once, AE240); `stores_propagate_hidden` sets `posts.store_hidden` when the status or deletion changes. `create_store()` creates a store with its claimed map pin; `store_slug_available()`, `my_stores()`, `store_staff()`, `store_posting_facts()`, `member_may_post_as_store()` are SECURITY DEFINER helpers. `posts.store_hidden` (boolean) feeds `post_is_listed(…, store_hidden, …)`. `moderation_actions.store_id` is a fourth target.
 
 ---
 
@@ -1712,23 +1717,23 @@ A seller's branded storefront grouping their posts, optionally tied to a physica
 Additional people who can manage a store (the owner isn't duplicated here).
 **Scope:** TENANT-SCOPED
 
-| column                 | type                        | null | default   | comment                    |
-| ---------------------- | --------------------------- | ---- | --------- | -------------------------- |
-| `<pk>`                 |                             |      |           |                            |
-| `<tenant>`             |                             |      |           |                            |
-| `store_id`             | `uuid`                      | NO   | —         |                            |
-| `member_id`            | `uuid`                      | NO   | —         |                            |
-| `role_code`            | `text → store_member_roles` | NO   | `'staff'` | manager / staff.           |
-| `invited_by_member_id` | `uuid`                      | YES  | —         |                            |
-| `accepted_at`          | `timestamptz`               | YES  | —         | NULL = pending invitation. |
-| `<audit>`              |                             |      |           |                            |
+| column                 | type                        | null | default    | comment                                   |
+| ---------------------- | --------------------------- | ---- | ---------- | ----------------------------------------- |
+| `<pk>`                 |                             |      |            |                                           |
+| `<tenant>`             |                             |      |            |                                           |
+| `store_id`             | `uuid`                      | NO   | —          |                                           |
+| `member_id`            | `uuid`                      | NO   | —          |                                           |
+| `role_code`            | `text → store_member_roles` | NO   | `'editor'` | manager / editor (0050; `staff` retired). |
+| `invited_by_member_id` | `uuid`                      | YES  | —          |                                           |
+| `accepted_at`          | `timestamptz`               | YES  | —          | NULL = pending invitation.                |
+| `<audit>`              |                             |      |            |                                           |
 
 **Keys:** PK `id`. `store_id → stores (T)` CASCADE. `member_id → tenant_members (T)` CASCADE. `invited_by_member_id → tenant_members (T)` SET NULL.
 **Indexes:**
 
 - `unique (tenant_id, store_id, member_id)`
 - `(tenant_id, member_id) where accepted_at is not null`: "stores I help manage". Also used by the SECURITY DEFINER `can_manage_store(store_id)` helper that other policies call.
-  **RLS:** T-ISOLATE. SELECT by the store owner, the store's members, and staff. INSERT/DELETE by the owner or a manager. A member may UPDATE their own row only to accept (`accepted_at`).
+  **RLS:** T-ISOLATE. SELECT by the store owner, the store's members, and staff. INSERT/DELETE by the owner or a manager. A member may UPDATE their own row only to accept (`accepted_at`), and (0050) DELETE it to leave or decline. Invitations go through `store_invite_staff()` (0050).
 
 ---
 
@@ -5209,6 +5214,14 @@ Found missing by the month 2 review. All are FORCE RLS; columns as migrated.
   - Retired `map_style_fallback`: a client loading a Barikoi style bypassed the budget.
   - Retired `search_suggest_limit`: unused.
   - Added `client_config_refresh_minutes` (360) and `search_description_max_chars` (2000).
+
+## 13B. Tables added in Month 3
+
+### `store_tiers` (0050, ADR 054)
+
+Lookup: `basic`, `pro`, `premium` (code, label_key, sort_order, is_active, timestamps). **Scope:** GLOBAL. **RLS:**
+read by all, written by platform admins. Limits per tier are settings (`store_staff_max_<tier>`,
+`store_catalog_max_<tier>`), not columns.
 
 ## 14. Open questions
 

@@ -155,6 +155,9 @@ export const posts = pgTable('posts', {
   filledFieldCount: smallint('filled_field_count').notNull().default(0),
   searchSyncedAt: timestamptz('search_synced_at'),
   hiddenByOwner: boolean('hidden_by_owner').notNull().default(false),
+  // 0050: its store is not active (suspended, closed, deleted); kept by
+  // posts_c_maintain_store_hidden and stores_propagate_hidden.
+  storeHidden: boolean('store_hidden').notNull().default(false),
   scrubbedAt: timestamptz('scrubbed_at'),
   scrubReason: text('scrub_reason'),
   deletionReasonCode: text('deletion_reason_code').references(() => postDeletionReasons.code, {

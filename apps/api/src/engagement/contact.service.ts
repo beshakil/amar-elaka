@@ -16,7 +16,9 @@ import {
   ContactLimitReachedException,
   ContactLoginRequiredException,
   ContactOwnPostException,
+  ContactOwnStoreException,
   ContactPostNotLiveException,
+  ContactStoreNotFoundException,
 } from './engagement.exceptions';
 import { EngagementRepository } from './engagement.repository';
 import { ENGAGEMENT_STORE, type EngagementStore } from './engagement.store';
@@ -126,6 +128,66 @@ export class ContactService {
   }
 
   /**
+   * POST /stores/:id/contact (ADR 054): a store's own phone or WhatsApp, the
+   * same way as a post's — the only place a store's numbers leave the API,
+   * each reveal a lead_events row (post_id null), with the same dedupe and
+   * daily limit. Calls and SMS need the store's phone, WhatsApp its WhatsApp.
+   */
+  async revealStore(
+    storeId: string,
+    input: ContactInput,
+    signals: ViewerSignals,
+    locale: 'bn' | 'en',
+  ): Promise<ContactReveal> {
+    const tenantId = await this.tenantDb.transaction((tx) => this.repo.storeTenantOf(tx, storeId), {
+      accessMode: 'read only',
+    });
+    if (!tenantId) throw new ContactStoreNotFoundException();
+    if (
+      !this.context.require().userId &&
+      (await this.settings.get('require_login_for_contact', tenantId))
+    ) {
+      throw new ContactLoginRequiredException();
+    }
+    const key = viewerKey(this.secret, signals);
+
+    return this.ownership.inTenant(tenantId, 'lookup', async ({ memberId }) => {
+      const store = await this.tenantDb.transaction((tx) => this.repo.storeContact(tx, storeId), {
+        accessMode: 'read only',
+      });
+      if (!store) throw new ContactStoreNotFoundException();
+      if (memberId !== undefined && store.owner_member_id === memberId) {
+        throw new ContactOwnStoreException();
+      }
+      const phone = input.channel === 'whatsapp' ? store.whatsapp_e164 : store.phone_e164;
+      if (phone === null) throw new ContactChannelUnavailableException(input.channel);
+
+      await this.countLead(key, input.channel, `store:${storeId}`, async () => {
+        await this.tenantDb.transaction((tx) =>
+          this.repo.insertLead(tx, {
+            channel: LEAD_CHANNEL[input.channel],
+            source: input.source,
+            postId: null,
+            storeId,
+            targetMemberId: store.owner_member_id,
+            actorMemberId: memberId ?? null,
+            viewerKey: key,
+          }),
+        );
+      });
+
+      const message = contactMessage(store.name_bn, null, locale);
+      return {
+        channel: input.channel,
+        name: store.name_bn,
+        phone,
+        href: contactHref(input.channel, phone, message),
+        message: input.channel === 'call' ? null : message,
+      };
+    });
+  }
+
+  /**
    * Records the lead unless this viewer revealed this channel within
    * lead_dedupe_minutes, and enforces the daily limit on new reveals only.
    * Anything refused or failed after claiming gives the claim and the count
@@ -134,14 +196,15 @@ export class ContactService {
   private async countLead(
     key: string,
     channel: string,
-    postId: string,
+    /** The post id, or `store:<id>` for a store's own numbers. */
+    target: string,
     write: () => Promise<void>,
   ): Promise<void> {
     const [dedupeMinutes, max] = await Promise.all([
       this.settings.get('lead_dedupe_minutes'),
       this.settings.get('contact_reveals_per_user_per_day'),
     ]);
-    const claim = `lead:${postId}:${channel}:${key}`;
+    const claim = `lead:${target}:${channel}:${key}`;
     if (
       dedupeMinutes > 0 &&
       !(await this.store.claimOnce(claim, dedupeMinutes * SECONDS_PER_MINUTE))

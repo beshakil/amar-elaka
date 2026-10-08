@@ -57,6 +57,24 @@ export class ContactOwnPostException extends DomainException {
   }
 }
 
+export class ContactOwnStoreException extends DomainException {
+  readonly code = 'CONTACT_OWN_STORE';
+  readonly httpStatus = HttpStatus.CONFLICT;
+
+  constructor() {
+    super('This is your own store.');
+  }
+}
+
+export class ContactStoreNotFoundException extends DomainException {
+  readonly code = 'STORE_NOT_FOUND';
+  readonly httpStatus = HttpStatus.NOT_FOUND;
+
+  constructor() {
+    super('Store not found.');
+  }
+}
+
 export class ReportOwnPostException extends DomainException {
   readonly code = 'REPORT_OWN_POST';
   readonly httpStatus = HttpStatus.CONFLICT;

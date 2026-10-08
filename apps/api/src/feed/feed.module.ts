@@ -12,6 +12,6 @@ import { FeedService } from './feed.service';
   imports: [AuthModule, SettingsModule, StorageModule, CacheModule],
   controllers: [FeedController],
   providers: [FeedService, FeedRepository],
-  exports: [FeedService],
+  exports: [FeedService, FeedRepository],
 })
 export class FeedModule {}

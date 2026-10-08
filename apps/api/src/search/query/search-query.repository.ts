@@ -460,7 +460,7 @@ export class SearchQueryRepository {
             posts.price::text as price, null::text as slug
           from public.posts
           join public.categories c on c.id = posts.category_id
-          where public.post_is_listed(posts.status_code, posts.deleted_at, posts.scrubbed_at, posts.hidden_by_owner, posts.expires_at, now())
+          where public.post_is_listed(posts.status_code, posts.deleted_at, posts.scrubbed_at, posts.hidden_by_owner, posts.store_hidden, posts.expires_at, now())
             and (${!q.shippableOnly}::boolean or c.is_shippable)
             and ${anyTermMatches([sql`posts.title`, sql`posts.description`], q.terms)}
             and ${categoryFilter(sql`posts.category_id`)}

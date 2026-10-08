@@ -352,7 +352,7 @@ describe('Row level security: stores domain (0006)', () => {
       const disposableId = '0191e3a0-4444-7000-8000-000000000062';
       await admin`
         insert into store_members (id, tenant_id, store_id, member_id, role_code)
-        values (${disposableId}, ${TENANT_A}, ${STORE_ACTIVE}, ${MEMBER_STRANGER}, 'staff')`;
+        values (${disposableId}, ${TENANT_A}, ${STORE_ACTIVE}, ${MEMBER_STRANGER}, 'editor')`;
 
       const result = await withContext(
         app,
@@ -364,7 +364,7 @@ describe('Row level security: stores domain (0006)', () => {
 
       const [row] = await admin<{ role_code: string; accepted: boolean }[]>`
         select role_code, accepted_at is not null as accepted from store_members where id = ${disposableId}`;
-      expect(row).toMatchObject({ role_code: 'staff', accepted: true });
+      expect(row).toMatchObject({ role_code: 'editor', accepted: true });
       await admin`delete from store_members where id = ${disposableId}`;
     });
   });

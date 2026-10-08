@@ -371,12 +371,13 @@ export const moderationActions = pgTable('moderation_actions', {
   tenantId: uuid('tenant_id')
     .notNull()
     .references(() => tenants.id, { onDelete: 'restrict' }),
-  // Exactly one target (0042): composite FKs (tenant_id, post_id) -> posts,
-  // (tenant_id, place_id) -> places, (tenant_id, place_claim_id) ->
-  // place_claims, all RESTRICT.
+  // Exactly one target (0042, 0050): composite FKs (tenant_id, post_id) ->
+  // posts, (tenant_id, place_id) -> places, (tenant_id, place_claim_id) ->
+  // place_claims, (tenant_id, store_id) -> stores, all RESTRICT.
   postId: uuid('post_id'),
   placeId: uuid('place_id'),
   placeClaimId: uuid('place_claim_id'),
+  storeId: uuid('store_id'),
   actorUserId: uuid('actor_user_id').references(() => users.id, { onDelete: 'restrict' }),
   actionCode: text('action_code')
     .notNull()

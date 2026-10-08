@@ -72,7 +72,7 @@ export class PostExpiryReminderService {
       select p.id, p.title, p.expires_at, tm.user_id
       from public.posts p
       join public.tenant_members tm on tm.tenant_id = p.tenant_id and tm.id = p.author_member_id
-      where public.post_is_listed(p.status_code, p.deleted_at, p.scrubbed_at, p.hidden_by_owner, p.expires_at, now())
+      where public.post_is_listed(p.status_code, p.deleted_at, p.scrubbed_at, p.hidden_by_owner, p.store_hidden, p.expires_at, now())
         and p.expires_at is not null
         and p.expires_at <= now() + make_interval(days => ${days})
         and p.expiry_reminder_for is distinct from p.expires_at
