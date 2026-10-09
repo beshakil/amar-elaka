@@ -130,6 +130,7 @@ class PostDraftStore {
           showPhone: Value(draft.showPhone),
           allowChat: Value(draft.allowChat),
           showWhatsapp: Value(draft.showWhatsapp),
+          storeId: Value(draft.storeId),
           idempotencyKey: draft.idempotencyKey,
           submitState: Value(draft.submitState.name),
           lastErrorCode: Value(draft.lastErrorCode),
@@ -181,6 +182,7 @@ class PostDraftStore {
     showPhone: row.showPhone,
     allowChat: row.allowChat,
     showWhatsapp: row.showWhatsapp,
+    storeId: row.storeId,
     submitState: DraftSubmitState.values.firstWhere(
       (s) => s.name == row.submitState,
       orElse: () => DraftSubmitState.editing,

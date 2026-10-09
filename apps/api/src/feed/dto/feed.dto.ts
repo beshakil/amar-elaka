@@ -71,6 +71,9 @@ export const POST_BADGES = [
   'verified_store',
   'free',
   'negotiable',
+  // A store product's stock (ADR 057); in stock shows no badge.
+  'out_of_stock',
+  'on_order',
 ] as const;
 
 export const postCardSchema = z.object({

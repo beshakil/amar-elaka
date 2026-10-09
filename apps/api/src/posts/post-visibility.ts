@@ -4,8 +4,10 @@ import type { PostStatus } from './post-state-machine';
  * Who is looking at a post. `staff` mirrors the database's app_is_staff()
  * (moderator, tenant_admin, partner_owner) in the post's owning tenant, plus
  * platform staff; the RLS policies already limit staff to their own tenant.
+ * `manager` is the owner or a manager of the post's store (ADR 057): they
+ * see it as its author does, without it being theirs.
  */
-export type PostViewer = 'owner' | 'staff' | 'public';
+export type PostViewer = 'owner' | 'manager' | 'staff' | 'public';
 
 export interface VisibilityFacts {
   status: PostStatus;

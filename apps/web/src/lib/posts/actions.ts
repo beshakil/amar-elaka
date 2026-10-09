@@ -14,6 +14,8 @@ import {
   type PointAreas,
   type Post,
   type ReverseGeocode,
+  STOCK_STATUSES,
+  type StockStatus,
 } from '../api/schemas';
 import { readSession } from '../auth/session';
 import { currentTenantId } from '../tenant';
@@ -125,6 +127,39 @@ export async function setHidden(id: string, hidden: boolean): Promise<ActionResu
       ...auth,
     }),
   );
+}
+
+/** A store product's stock (ADR 057): its author, or the store's owner and managers. */
+export async function setStock(id: string, stockStatus: StockStatus): Promise<ActionResult<Post>> {
+  if (!uuid.safeParse(id).success || !(STOCK_STATUSES as readonly string[]).includes(stockStatus))
+    return invalid;
+  return asSeller((auth) =>
+    apiFetch({
+      path: `/posts/${id}/stock`,
+      method: 'POST',
+      schema: postSchema,
+      ...auth,
+      body: { stockStatus },
+    }),
+  );
+}
+
+/**
+ * A new price from the seller panel's table: the post's other fields stay as
+ * they are (PATCH replaces `fields` as a whole, and validates it again).
+ */
+export async function setPrice(id: string, price: string): Promise<ActionResult<Post>> {
+  if (!uuid.safeParse(id).success || !money.safeParse(price).success) return invalid;
+  return asSeller(async (auth) => {
+    const current = await apiFetch({ path: `/posts/${id}`, schema: postSchema, ...auth });
+    return apiFetch({
+      path: `/posts/${id}`,
+      method: 'PATCH',
+      schema: postSchema,
+      ...auth,
+      body: { fields: { ...current.fields, price } },
+    });
+  });
 }
 
 export async function deletePost(id: string): Promise<ActionResult<null>> {

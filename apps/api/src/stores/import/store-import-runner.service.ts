@@ -51,6 +51,9 @@ interface RowResult {
 }
 
 /** Sheet rows → header row and data rows (numbered as the spreadsheet numbers them). */
+// settings-exempt: spreadsheets number rows from 1, and the data starts below the header row
+const FIRST_DATA_ROW_OFFSET = 2;
+
 export function splitSheet(rows: readonly string[][]): {
   header: string[];
   data: { number: number; cells: string[] }[];
@@ -62,10 +65,9 @@ export function splitSheet(rows: readonly string[][]): {
   while (last > headerIndex && isBlank(rows[last]!)) last--;
   return {
     header: rows[headerIndex]!,
-    // settings-exempt: spreadsheets number rows from 1, and the data starts below the header row
     data: rows
       .slice(headerIndex + 1, last + 1)
-      .map((cells, i) => ({ number: headerIndex + 2 + i, cells })),
+      .map((cells, i) => ({ number: headerIndex + FIRST_DATA_ROW_OFFSET + i, cells })),
   };
 }
 

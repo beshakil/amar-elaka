@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { createZodDto } from '../../common/pipes/zod-dto';
+import { STOCK_STATUSES } from '../../posts/post-stock';
 
 const localized = z.object({ bn: z.string().nullable(), en: z.string().nullable() });
 
@@ -26,6 +27,8 @@ export const storeCatalogSchema = z.object({
       title: z.string(),
       price: z.string().nullable(),
       priceType: z.string().nullable(),
+      /** Out of stock shows no order button (ADR 057). */
+      stockStatus: z.enum(STOCK_STATUSES),
       photo: z
         .object({
           url: z.string(),

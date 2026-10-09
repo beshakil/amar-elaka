@@ -215,6 +215,8 @@ interface State {
   savedSearchLimit: boolean;
   /** POST /saved/post/:id: "<viewer email> <post id>" pairs already saved. */
   savedPosts: Set<string>;
+  /** POST /posts/:id/stock: each product's stock (ADR 057). */
+  stock: Map<string, 'in_stock' | 'out_of_stock' | 'on_order'>;
 }
 
 function freshState(): State {
@@ -241,6 +243,7 @@ function freshState(): State {
     savedSearches: [],
     savedSearchLimit: false,
     savedPosts: new Set(),
+    stock: new Map(),
   };
 }
 let state = freshState();
@@ -400,6 +403,7 @@ function seedPost(overrides: Partial<Schemas['PostDto']>): Schemas['PostDto'] {
     bumpedAt: now,
     createdAt: now,
     updatedAt: now,
+    stockStatus: null,
     isMine: true,
     hiddenByOwner: false,
     moderationReason: null,
@@ -509,6 +513,9 @@ function storeOf(tenantId: string): Schemas['StorePageDto'] | null {
     id: '0191e3a0-0000-7000-8000-0000000051e0',
     tenantId,
     slug: STORE_SLUG,
+    url: `http://mirpur.localhost:3001/store/${STORE_SLUG}`,
+    isFollowing: false,
+    contactChannels: ['call', 'whatsapp', 'sms'],
     name: { bn: 'রহিম ইলেকট্রনিক্স', en: 'Rahim Electronics' },
     description: 'মিরপুর ১০-এর পুরোনো মোবাইলের দোকান।',
     addressText: 'দোকান ১২, মিরপুর ১০ গোলচত্বর',
@@ -610,6 +617,7 @@ async function handlePublic(
           title: post.title,
           price: post.price,
           priceType: 'fixed',
+          stockStatus: state.stock.get(post.id) ?? 'in_stock',
           photo: null,
         })),
         shareImagePath: `/stores/${store.slug}/og.png`,
@@ -1373,6 +1381,7 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
     }
     return send(res, 200, detailOf(post));
   }
+  if (await handleSeller(req, res, url, path, tenantId)) return;
   if (await handlePublic(req, res, url, path, tenantId)) return;
   const viewer = viewerOf(req);
   if (!viewer) return fail(res, 401, 'UNAUTHENTICATED');
@@ -1743,3 +1752,193 @@ createServer((req, res) => {
 }).listen(STUB_PORT, '127.0.0.1', () => {
   console.log(`stub api listening on http://127.0.0.1:${STUB_PORT}`);
 });
+
+// ---------------------------------------------------------------------------
+// The seller panel (ADR 057): the seller's store, its dashboard, products,
+// stock, imports and counter card. The products are the seller's posts.
+// ---------------------------------------------------------------------------
+
+const SELLER_STORE_ID = '0191e3a0-0000-7000-8000-0000000051e0';
+
+function analyticsOf(): Schemas['SellerAnalyticsDto'] {
+  const metrics = (views: number, contacts: number) => ({
+    views,
+    uniqueViewers: Math.round(views * 0.8),
+    contacts: { total: contacts, call: contacts - 2, whatsapp: 2, sms: 0, chat: 0 },
+    uniqueContacters: contacts,
+    saves: 3,
+    shares: 1,
+    searchAppearances: views * 3,
+    mapTaps: 2,
+    conversionRate: 3.5,
+  });
+  return {
+    scope: 'store',
+    period: {
+      days: 30,
+      from: '2026-09-10',
+      to: '2026-10-09',
+      previousFrom: '2026-08-11',
+      previousTo: '2026-09-09',
+      available: [7, 30, 90],
+    },
+    summary: {
+      bn: 'গত ৩০ দিনে ১,২৪০ জন আপনার পোস্ট দেখেছেন, ৪৭ জন যোগাযোগ করেছেন।',
+      en: 'In the last 30 days, 1,240 people saw your posts and 47 contacted you.',
+    },
+    totals: metrics(1612, 47),
+    previous: metrics(1300, 51),
+    trend: {
+      views: 24,
+      uniqueViewers: 20,
+      contacts: -7.8,
+      uniqueContacters: null,
+      saves: null,
+      shares: null,
+      searchAppearances: null,
+      mapTaps: null,
+      conversionRate: null,
+    },
+    daily: Array.from({ length: 30 }, (_, i) => ({
+      date: `2026-09-${String(i + 1).padStart(2, '0')}`,
+      views: 30 + ((i * 37) % 41),
+      contacts: 1 + ((i * 7) % 4),
+    })),
+    topPosts: [...state.posts.values()].slice(0, 3).map((post) => ({
+      postId: post.id,
+      tenantId: post.tenantId,
+      title: post.title,
+      status: post.status,
+      metrics: metrics(120, 4),
+    })),
+    topQueries: [{ query: 'মোবাইল', searchers: 12, clicks: 5 }],
+    generatedAt: new Date().toISOString(),
+  };
+}
+
+async function handleSeller(
+  req: IncomingMessage,
+  res: ServerResponse,
+  url: URL,
+  path: string,
+  tenantId: string,
+): Promise<boolean> {
+  if (!path.startsWith('/stores/') && !/^\/posts\/[^/]+\/stock$/.test(path)) return false;
+  const viewer = viewerOf(req);
+  if (req.method === 'GET' && path === '/stores/me') {
+    if (!viewer) return (fail(res, 401, 'UNAUTHORIZED'), true);
+    const store = storeOf(tenantId);
+    const mine: Schemas['MyStoresDto'] = {
+      items: store
+        ? [
+            {
+              id: store.id,
+              tenantId,
+              slug: store.slug,
+              name: store.name,
+              status: 'active',
+              tier: 'basic',
+              logo: null,
+              role: 'owner',
+              accepted: true,
+              invitedAt: null,
+            },
+          ]
+        : [],
+    };
+    send(res, 200, mine);
+    return true;
+  }
+  const stockMatch = /^\/posts\/([^/]+)\/stock$/.exec(path);
+  if (req.method === 'POST' && stockMatch) {
+    const post = state.posts.get(stockMatch[1] ?? '');
+    if (!post) return (fail(res, 404, 'POST_NOT_FOUND'), true);
+    const body = (await readJson(req)) ?? {};
+    const stock = body.stockStatus as 'in_stock' | 'out_of_stock' | 'on_order';
+    state.stock.set(post.id, stock);
+    send(res, 200, { ...post, stockStatus: stock });
+    return true;
+  }
+  const match =
+    /^\/stores\/([0-9a-f-]{36})\/(manage|analytics|products|imports|counter-card\.pdf|counter-card\.png)$/.exec(
+      path,
+    );
+  if (!match || req.method !== 'GET') return false;
+  if (!viewer) return (fail(res, 401, 'UNAUTHORIZED'), true);
+  const store = storeOf(tenantId);
+  if (!store || match[1] !== SELLER_STORE_ID) return (fail(res, 404, 'STORE_NOT_FOUND'), true);
+  switch (match[2]) {
+    case 'manage': {
+      const view: Schemas['StoreViewDto'] = {
+        id: store.id,
+        tenantId,
+        slug: store.slug,
+        previousSlug: null,
+        slugChangeable: true,
+        catalogUrl: `http://mirpur.localhost:3001/store/${store.slug}/catalog`,
+        name: store.name,
+        description: store.description,
+        category: null,
+        logo: null,
+        banner: null,
+        phone: '+8801711111111',
+        whatsapp: null,
+        addressText: store.addressText,
+        location: store.location,
+        placeId: null,
+        status: 'active',
+        tier: 'basic',
+        isVerified: true,
+        limits: { staff: 3, catalog: 50 },
+        counts: { staff: 0, catalog: state.posts.size },
+        myRole: 'owner',
+        staff: [],
+        createdAt: store.createdAt,
+        updatedAt: store.updatedAt,
+      };
+      send(res, 200, view);
+      return true;
+    }
+    case 'analytics':
+      send(res, 200, analyticsOf());
+      return true;
+    case 'products': {
+      const products: Schemas['StoreProductsDto'] = {
+        items: [...state.posts.values()].reverse().map((post) => ({
+          id: post.id,
+          title: post.title,
+          categoryId: post.categoryId,
+          price: post.price,
+          priceType: 'fixed',
+          status: post.status,
+          stockStatus: state.stock.get(post.id) ?? 'in_stock',
+          hidden: post.hiddenByOwner ?? false,
+          thumbUrl: null,
+          views: 12,
+          saves: 1,
+          expiresAt: post.expiresAt,
+          updatedAt: post.updatedAt,
+          isMine: true,
+          canManage: true,
+        })),
+        nextCursor: null,
+      };
+      send(res, 200, products);
+      return true;
+    }
+    case 'imports':
+      send(res, 200, { items: [] } satisfies Schemas['ImportListDto']);
+      return true;
+    case 'counter-card.png':
+      res.writeHead(200, { 'content-type': 'image/png' });
+      res.end(PNG_1X1);
+      return true;
+    default:
+      res.writeHead(200, {
+        'content-type': 'application/pdf',
+        'content-disposition': `attachment; filename="counter-card-${store.slug}-a5.pdf"`,
+      });
+      res.end(Buffer.from('%PDF-1.4\n%%EOF\n', 'latin1'));
+      return true;
+  }
+}

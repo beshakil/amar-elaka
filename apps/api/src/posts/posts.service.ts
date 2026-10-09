@@ -39,6 +39,7 @@ import { POST_IDEMPOTENCY_STORE, type PostIdempotencyStore } from './post-idempo
 import { PostOwnershipService } from './post-ownership.service';
 import { isPriceDrop } from './price-drop';
 import { assertTransition, type PostStatus } from './post-state-machine';
+import { stockStatusOf, type StockStatus } from './post-stock';
 import { isStaffRole, visibilityOf, type PostViewer } from './post-visibility';
 import {
   NotPostOwnerException,
@@ -46,6 +47,7 @@ import {
   PostMediaInvalidException,
   PostMediaTenantMismatchException,
   PostNotEditableException,
+  PostNotStoreProductException,
   PostNotFoundException,
   PostRenewTooEarlyException,
   PostTextTooLongException,
@@ -259,7 +261,13 @@ export class PostsService {
           ? 'owner'
           : isStaffRole(role)
             ? 'staff'
-            : 'public';
+            : row.store_id !== null &&
+                (await this.tenantDb.transaction(
+                  (tx) => this.repo.managesStore(tx, row.store_id!),
+                  { accessMode: 'read only' },
+                ))
+              ? 'manager'
+              : 'public';
       const visibility = visibilityOf(
         {
           status: row.status_code,
@@ -399,6 +407,8 @@ export class PostsService {
       if (input.contactPhone !== undefined) patch.contactPhone = input.contactPhone;
 
       if (input.mediaIds !== undefined) {
+        // Photos are the author's own uploads: a manager changes the rest, not them.
+        if (scope.asManager) throw new NotPostOwnerException();
         const current = await this.repo.mediaIdsOf(tx, id);
         if (JSON.stringify(current) !== JSON.stringify(input.mediaIds)) {
           const mediaIds = await this.checkMedia(tx, input.mediaIds, userId, id, {
@@ -588,6 +598,21 @@ export class PostsService {
     });
   }
 
+  /** A store product's stock (ADR 057): in stock, out of stock, on order. No re-review. */
+  setStock(id: string, stockStatus: StockStatus): Promise<PostView> {
+    const userId = this.requireUserId();
+    return this.asOwner(id, async (post, tx) => {
+      if (post.store_id === null) throw new PostNotStoreProductException();
+      if (stockStatusOf(post.store_id, post.stock_status_code) === stockStatus) return;
+      await this.repo.update(tx, id, { stockStatus });
+      await this.repo.emit(tx, 'post.stock_changed', id, {
+        tenantId: post.tenant_id,
+        actorUserId: userId,
+        stockStatus,
+      });
+    });
+  }
+
   setHidden(id: string, hidden: boolean): Promise<PostView> {
     const userId = this.requireUserId();
     return this.asOwner(id, async (post, tx) => {
@@ -724,7 +749,7 @@ export class PostsService {
     work: (
       post: PostRow,
       tx: DatabaseTransaction,
-      scope: { requestTenantId: string },
+      scope: { requestTenantId: string; asManager: boolean },
     ) => Promise<void>,
     options: { returnView?: boolean } = {},
   ): Promise<PostView> {
@@ -741,11 +766,15 @@ export class PostsService {
           if (await this.repo.findById(tx, id)) throw new NotPostOwnerException();
           throw new PostNotFoundException();
         }
-        if (memberId === undefined || post.author_member_id !== memberId)
-          throw new NotPostOwnerException();
+        if (memberId === undefined) throw new NotPostOwnerException();
+        const isAuthor = post.author_member_id === memberId;
+        // A store's owner and managers run every post of the store (ADR 057).
+        const asManager =
+          !isAuthor && post.store_id !== null && (await this.repo.managesStore(tx, post.store_id));
+        if (!isAuthor && !asManager) throw new NotPostOwnerException();
         if (post.scrubbed_at !== null) throw new PostNotEditableException('scrubbed');
         if (post.deleted_at !== null) throw new PostNotFoundException();
-        await work(post, tx, { requestTenantId });
+        await work(post, tx, { requestTenantId, asManager });
       }),
     );
     return options.returnView === false ? (undefined as never) : this.getOwnedView(id);
@@ -947,6 +976,7 @@ export class PostsService {
       bumpedAt: row.bumped_at?.toISOString() ?? null,
       createdAt: row.created_at.toISOString(),
       updatedAt: row.updated_at.toISOString(),
+      stockStatus: stockStatusOf(row.store_id, row.stock_status_code),
       isMine: viewer === 'owner',
       ...(privileged
         ? {

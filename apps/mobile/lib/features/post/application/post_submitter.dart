@@ -128,6 +128,7 @@ class PostSubmitter {
       if (draft.contactName.trim().isNotEmpty)
         'contactName': draft.contactName.trim(),
       if (draft.contactPhone.isNotEmpty) 'contactPhone': draft.contactPhone,
+      if (!draft.isEdit && draft.storeId != null) 'storeId': draft.storeId,
     };
   }
 

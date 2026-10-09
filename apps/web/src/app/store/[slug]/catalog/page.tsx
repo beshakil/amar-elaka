@@ -15,7 +15,7 @@ interface Props {
 }
 
 /** The order route's refusals the page explains (?order=…); anything else reads as "failed". */
-const ORDER_ERRORS = ['limit', 'off', 'own', 'gone', 'failed'] as const;
+const ORDER_ERRORS = ['limit', 'off', 'own', 'gone', 'stock', 'failed'] as const;
 type OrderError = (typeof ORDER_ERRORS)[number];
 
 async function load(params: Props['params']) {
@@ -142,7 +142,18 @@ export default async function StoreCatalogPage({ params, searchParams }: Props) 
                 <p className="font-semibold">
                   {priceLabel(product.price, product.priceType, words)}
                 </p>
-                {store.orderable && (
+                {product.stockStatus !== 'in_stock' && (
+                  <p
+                    className={
+                      product.stockStatus === 'out_of_stock'
+                        ? 'text-xs font-medium text-destructive'
+                        : 'text-xs font-medium text-amber-700'
+                    }
+                  >
+                    {t(`stock.${product.stockStatus}`)}
+                  </p>
+                )}
+                {store.orderable && product.stockStatus !== 'out_of_stock' && (
                   <form
                     method="post"
                     action={`/store/${store.slug}/catalog/order/${product.postId}`}

@@ -1,0 +1,45 @@
+{
+  "name": "@amar-elaka/ui",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./button": "./src/button.tsx",
+    "./checkbox": "./src/checkbox.tsx",
+    "./dropdown-menu": "./src/dropdown-menu.tsx",
+    "./input": "./src/input.tsx",
+    "./table": "./src/table.tsx",
+    "./cn": "./src/cn.ts",
+    "./data-table": "./src/data-table/data-table.tsx",
+    "./data-table/csv": "./src/data-table/csv.ts",
+    "./messages/bn.json": "./messages/bn.json"
+  },
+  "scripts": {
+    "lint": "eslint \"src/**/*.{ts,tsx}\"",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@tanstack/react-table": "^9.2.4",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.47.0",
+    "radix-ui": "^1.6.7",
+    "tailwind-merge": "^3.7.0"
+  },
+  "peerDependencies": {
+    "next-intl": "^4.14.6",
+    "react": "^19.3.0"
+  },
+  "devDependencies": {
+    "@amar-elaka/config": "workspace:*",
+    "@types/node": "^22.10.2",
+    "@types/react": "^19.3.0",
+    "eslint": "^9.17.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "next-intl": "^4.14.6",
+    "react": "^19.3.0",
+    "typescript": "^5.7.2",
+    "vitest": "^4.1.11"
+  }
+}

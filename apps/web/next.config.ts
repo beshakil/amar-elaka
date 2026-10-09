@@ -21,6 +21,7 @@ const nextConfig: NextConfig = {
   // packages/shared-types, and packages/map-style's base map styles).
   transpilePackages: [
     '@amar-elaka/dynamic-form',
+    '@amar-elaka/ui',
     '@amar-elaka/shared-types',
     '@amar-elaka/map-style',
   ],

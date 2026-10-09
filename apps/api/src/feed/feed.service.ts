@@ -1,3 +1,4 @@
+import { stockStatusOf } from '../posts/post-stock';
 import { Inject, Injectable } from '@nestjs/common';
 import { parseFieldFilters, type FieldFilter } from '../categories/field-schema';
 import { CacheService } from '../cache/cache.service';
@@ -360,6 +361,8 @@ export class FeedService {
     if (row.store_verified) badges.push('verified_store');
     if (row.price_type_code === 'free') badges.push('free');
     if (row.price_type_code === 'negotiable') badges.push('negotiable');
+    const stock = stockStatusOf(row.store_id, row.stock_status_code);
+    if (stock === 'out_of_stock' || stock === 'on_order') badges.push(stock);
     return {
       kind: 'post',
       id: row.id,

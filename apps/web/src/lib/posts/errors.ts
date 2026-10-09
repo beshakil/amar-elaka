@@ -63,6 +63,8 @@ export function postErrorMessage(
       return { key: 'notFound' };
     case 'POST_NOT_OWNER':
       return { key: 'notOwner' };
+    case 'POST_NOT_STORE_PRODUCT':
+      return { key: 'notStoreProduct' };
     case 'POST_RENEW_TOO_EARLY':
       return {
         key: 'renewTooEarly',

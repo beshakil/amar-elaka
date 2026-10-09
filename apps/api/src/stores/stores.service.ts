@@ -1,3 +1,4 @@
+import { CounterCardService } from './counter-card/counter-card.service';
 import { randomUUID } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import { UnauthenticatedException } from '../auth/exceptions/auth.exceptions';
@@ -99,6 +100,7 @@ export class StoresService {
     private readonly trust: TrustScoreService,
     private readonly notifications: NotificationService,
     @Inject(STORAGE_SERVICE) private readonly storage: StorageService,
+    private readonly cards: CounterCardService,
   ) {}
 
   // ---- create --------------------------------------------------------------
@@ -586,6 +588,7 @@ export class StoresService {
       slug: row.slug,
       previousSlug: row.previous_slug,
       slugChangeable: role === 'owner' && row.slug_changed_at === null,
+      catalogUrl: this.cards.catalogUrl(row.tenant_slug, row.slug),
       name: { bn: row.name_bn, en: row.name_en },
       description: row.description,
       category:

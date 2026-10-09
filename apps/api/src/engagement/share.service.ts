@@ -60,8 +60,13 @@ export class ShareService {
     throw new Error(`share code: no free code after ${CODE_ATTEMPTS} attempts`);
   }
 
+  /** The tenant's public web site (share links, the store catalog, ADR 057). */
+  siteFor(tenantSlug: string): string {
+    return this.baseTemplate.replace('{slug}', tenantSlug);
+  }
+
   urlFor(tenantSlug: string, code: string): string {
-    return `${this.baseTemplate.replace('{slug}', tenantSlug)}/s/${code}`;
+    return `${this.siteFor(tenantSlug)}/s/${code}`;
   }
 
   /** GET /s/:code — which post, in which tenant, at which URL. Ids only: the post's own visibility applies when it's read. */

@@ -437,6 +437,8 @@ export const SETTING_DEFINITIONS = {
   store_import_image_fetch_timeout_ms: wholeNumber,
   store_import_image_fetch_attempts: wholeNumber,
   store_catalog_page_max: wholeNumber,
+  store_counter_card_dpi: wholeNumber,
+  store_counter_sticker_mm: wholeNumber,
 } as const satisfies Record<string, z.ZodTypeAny>;
 
 export type SettingKey = keyof typeof SETTING_DEFINITIONS;

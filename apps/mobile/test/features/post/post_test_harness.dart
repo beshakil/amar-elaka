@@ -27,6 +27,7 @@ import 'package:drift/drift.dart' show DatabaseConnection;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
@@ -454,6 +455,8 @@ Future<PostTestApp> pumpPostApp(
   ThemeData? theme,
   Directory? uploadDir,
   Size physicalSize = const Size(1080, 2400),
+  List<Override> overrides = const [],
+  List<RouteBase> routes = const [],
 }) async {
   tester.view.physicalSize = physicalSize;
   tester.view.devicePixelRatio = 2.5;
@@ -491,6 +494,7 @@ Future<PostTestApp> pumpPostApp(
         path: RoutePaths.myPosts,
         builder: (_, _) => const MyPostsScreen(),
       ),
+      ...routes,
     ],
   );
   addTearDown(router.dispose);
@@ -508,6 +512,7 @@ Future<PostTestApp> pumpPostApp(
           location ?? FakeLocationService(),
         ),
         baseMapEnabledProvider.overrideWithValue(false),
+        ...overrides,
         isOnlineProvider.overrideWith((ref) => Stream.value(online)),
         uploadQueueProvider.overrideWith((ref, queueId) {
           final queue = UploadQueue(

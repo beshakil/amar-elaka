@@ -1,6 +1,7 @@
 @import 'tailwindcss';
 /* The shared dynamic form renderer's classes (packages/dynamic-form). */
 @source '../../../../packages/dynamic-form/src';
+@source '../../../../packages/ui/src';
 
 /*
  * Colour tokens are plain CSS custom properties so a tenant can override the

@@ -16,7 +16,7 @@ const RESOLVE_TIMEOUT_MS = 3_000;
 const REFRESH_TIMEOUT_MS = 5_000;
 
 /** Seller pages: a session is required (post creation, my posts). */
-const PROTECTED_PREFIXES = ['/post', '/me'];
+const PROTECTED_PREFIXES = ['/post', '/me', '/seller'];
 const LOGIN_PATH = '/login';
 // Infrastructure tuning, not business rules: how long a hostname's answer is
 // reused before asking again, and how many hostnames are remembered at once.

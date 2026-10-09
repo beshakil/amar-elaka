@@ -15,6 +15,7 @@ const STORE_ROW = z.object({
   slug: z.string(),
   previous_slug: z.string().nullable(),
   slug_changed_at: nullableDate,
+  tenant_slug: z.string(),
   name_bn: z.string(),
   name_en: z.string().nullable(),
   description: z.string().nullable(),
@@ -43,6 +44,10 @@ const STORE_ROW = z.object({
 export type StoreRow = z.infer<typeof STORE_ROW>;
 
 const PAGE_ROW = z.object({
+  phone_e164: z.string().nullable(),
+  whatsapp_e164: z.string().nullable(),
+  tenant_slug: z.string(),
+  is_following: z.boolean(),
   id: z.string(),
   tenant_id: z.string(),
   slug: z.string(),
@@ -150,7 +155,8 @@ const STORE_SELECT = sql`
   st_y(s.location::geometry) as lat, st_x(s.location::geometry) as lng,
   s.status_code, s.tier_code, s.is_verified,
   case when s.owner_member_id = public.current_member_id() then 'owner' else sm.role_code end as my_role,
-  s.created_at, s.updated_at`;
+  s.created_at, s.updated_at,
+  (select t.slug from public.tenants t where t.id = s.tenant_id) as tenant_slug`;
 
 /** The store's logo and banner, when ready and public. */
 const STORE_IMAGES = sql`
@@ -467,12 +473,16 @@ export class StoresRepository {
              cover.variants as cover_variants, cover.thumbhash as cover_thumbhash,
              s.is_verified, sp.verification_level_code as seller_level,
              s.rating_avg::float8 as rating, s.rating_count, s.follower_count,
+             s.phone_e164, s.whatsapp_e164, t.slug as tenant_slug,
+             exists (select 1 from public.store_follows f
+                     where f.store_id = s.id and f.user_id = public.current_user_id()) as is_following,
              (select count(*) from public.posts p
               where p.tenant_id = s.tenant_id and p.store_id = s.id
                 and public.post_is_listed(p.status_code, p.deleted_at, p.scrubbed_at, p.hidden_by_owner, p.store_hidden, p.expires_at, now())
              ) as live_posts,
              s.created_at, s.updated_at
       from public.stores s
+      join public.tenants t on t.id = s.tenant_id
       left join public.places pl on pl.tenant_id = s.tenant_id and pl.id = s.place_id
       left join public.localities l on l.tenant_id = s.tenant_id and l.id = coalesce(s.locality_id, pl.locality_id)
       left join public.geo_areas ga on ga.id = pl.geo_area_id

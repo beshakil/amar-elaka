@@ -1,3 +1,5 @@
+import { ShareService } from '../engagement/share.service';
+import { storeChannels } from '../engagement/store-channels';
 import { Inject, Injectable } from '@nestjs/common';
 import { AnalyticsTracker } from '../analytics/seller/analytics-tracker.service';
 import { APP_CONFIG } from '../config/config.module';
@@ -47,6 +49,7 @@ export class StorePageService {
     @Inject(STORAGE_SERVICE) private readonly storage: StorageService,
     private readonly tracker: AnalyticsTracker,
     @Inject(APP_CONFIG) private readonly env: Pick<Env, 'JWT_SECRET'>,
+    private readonly share: ShareService,
   ) {}
 
   async page(slug: string, query: StorePageQuery, viewer?: ViewerSignals): Promise<StorePage> {
@@ -90,6 +93,9 @@ export class StorePageService {
       id: row.id,
       tenantId: row.tenant_id,
       slug: row.slug,
+      url: `${this.share.siteFor(row.tenant_slug)}/store/${row.slug}`,
+      isFollowing: row.is_following,
+      contactChannels: storeChannels(row),
       name: { bn: row.name_bn, en: row.name_en },
       description: row.description,
       category:

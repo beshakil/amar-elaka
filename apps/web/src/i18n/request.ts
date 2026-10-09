@@ -14,5 +14,7 @@ export default getRequestConfig(async () => ({
     ...(await import('../messages/bn.json')).default,
     // `dynamicForm.*`: the shared category form/filter renderer's own strings.
     ...(await import('@amar-elaka/dynamic-form/messages/bn.json')).default,
+    // `dataTable.*`: the shared DataTable's own strings (packages/ui).
+    ...(await import('@amar-elaka/ui/messages/bn.json')).default,
   },
 }));

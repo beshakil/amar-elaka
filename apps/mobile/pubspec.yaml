@@ -45,6 +45,8 @@ dependencies:
   share_plus: ^13.3.0
   # Decodes the API's thumbhash placeholders (pure Dart, tiny).
   thumbhash: ^0.1.0+1
+  # The seller dashboard's charts (ADR 057), as the request named it.
+  fl_chart: ^1.2.0
 
 dev_dependencies:
   flutter_test:

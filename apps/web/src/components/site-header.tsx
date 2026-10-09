@@ -86,6 +86,9 @@ export async function SiteHeader({
                   <a href="/me/posts" className="rounded-md px-2 py-1 hover:bg-muted">
                     {tNav('myPosts')}
                   </a>
+                  <Link href="/seller" className="rounded-md px-2 py-1 hover:bg-muted">
+                    {tNav('seller')}
+                  </Link>
                   <LogoutButton label={tNav('logout')} />
                 </>
               ) : (

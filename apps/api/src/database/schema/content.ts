@@ -28,6 +28,7 @@ import {
   postDeletionReasons,
   postStatuses,
   priceTypes,
+  stockStatuses,
 } from './enums';
 import { users } from './identity';
 import { tenants } from './tenancy';
@@ -158,6 +159,10 @@ export const posts = pgTable('posts', {
   // 0050: its store is not active (suspended, closed, deleted); kept by
   // posts_c_maintain_store_hidden and stores_propagate_hidden.
   storeHidden: boolean('store_hidden').notNull().default(false),
+  // 0053: a store product's stock; null on a store post = in stock, none on a personal post.
+  stockStatusCode: text('stock_status_code').references(() => stockStatuses.code, {
+    onDelete: 'restrict',
+  }),
   scrubbedAt: timestamptz('scrubbed_at'),
   scrubReason: text('scrub_reason'),
   deletionReasonCode: text('deletion_reason_code').references(() => postDeletionReasons.code, {

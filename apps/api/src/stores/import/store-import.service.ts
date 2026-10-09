@@ -1,24 +1,15 @@
 import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
 import type { Queue } from 'bullmq';
-import { sql } from 'drizzle-orm';
-import { z } from 'zod';
-import { UnauthenticatedException } from '../../auth/exceptions/auth.exceptions';
 import { parseFieldSchema, parseUiSchema } from '../../categories/field-schema';
 import { toCsv } from '../../common/files/csv';
 import { writeXlsx } from '../../common/files/xlsx';
 import type { DatabaseTransaction } from '../../database/database.client';
-import { TenantContext } from '../../database/tenant-context';
 import { TenantDb } from '../../database/tenant-db';
 import { PostOwnershipService } from '../../posts/post-ownership.service';
-import { PostsRepository } from '../../posts/posts.repository';
 import { JOB_RUN_STORE_IMPORT, QUEUE_IMPORTS, type StoreImportJob } from '../../queue/queue.types';
 import { SettingsService } from '../../settings/settings.service';
-import {
-  StoreMembershipRequiredException,
-  StoreNotActiveException,
-  StoreNotFoundException,
-} from '../stores.exceptions';
+import { StoreScope } from '../store-scope';
 import type {
   ImportList,
   ImportTemplateQuery,
@@ -54,9 +45,8 @@ export interface TemplateFile {
 export class StoreImportService {
   constructor(
     private readonly tenantDb: TenantDb,
-    private readonly context: TenantContext,
     private readonly repo: StoreImportRepository,
-    private readonly posts: PostsRepository,
+    private readonly scope: StoreScope,
     private readonly ownership: PostOwnershipService,
     private readonly settings: SettingsService,
     @InjectQueue(QUEUE_IMPORTS) private readonly queue: Queue<StoreImportJob>,
@@ -64,7 +54,7 @@ export class StoreImportService {
 
   /** The category's template: Bengali headers, an example row, one column per photo. */
   async template(storeId: string, query: ImportTemplateQuery): Promise<TemplateFile> {
-    const { tenantId } = await this.asPoster(storeId);
+    const { tenantId } = await this.scope.asPoster(storeId);
     const maxImages = await this.settings.get('post_max_media', tenantId);
     const form = await this.inStore(tenantId, (tx) => this.repo.categoryForm(tx, query.categoryId));
     if (!form) throw new ImportCategoryUnavailableException();
@@ -94,7 +84,7 @@ export class StoreImportService {
   }
 
   async start(storeId: string, input: StartImportInput): Promise<ImportView> {
-    const { tenantId } = await this.asPoster(storeId);
+    const { tenantId } = await this.scope.asPoster(storeId);
     const importId = await this.ownership.inTenant(tenantId, 'lookup', ({ memberId }) =>
       this.tenantDb.transaction(async (tx) => {
         if (!(await this.repo.categoryForm(tx, input.categoryId)))
@@ -141,7 +131,7 @@ export class StoreImportService {
   }
 
   async get(storeId: string, importId: string, withRows = true): Promise<ImportView> {
-    const tenantId = await this.storeTenant(storeId);
+    const tenantId = await this.scope.tenantOf(storeId);
     const found = await this.inStore(tenantId, async (tx) => {
       const row = await this.repo.find(tx, importId);
       if (!row || row.store_id !== storeId) return undefined;
@@ -152,7 +142,7 @@ export class StoreImportService {
   }
 
   async list(storeId: string): Promise<ImportList> {
-    const tenantId = await this.storeTenant(storeId);
+    const tenantId = await this.scope.tenantOf(storeId);
     const rows = await this.inStore(tenantId, (tx) => this.repo.list(tx, storeId, RECENT_IMPORTS));
     return { items: rows.map((row) => this.toView(row, undefined)) };
   }
@@ -207,37 +197,7 @@ export class StoreImportService {
     };
   }
 
-  /** The caller may post as this active store (member_may_post_as_store): its tenant. */
-  private async asPoster(storeId: string): Promise<{ tenantId: string }> {
-    const tenantId = await this.storeTenant(storeId);
-    const facts = await this.inStore(tenantId, (tx) => this.posts.storePostingFacts(tx, storeId));
-    if (!facts) throw new StoreNotFoundException();
-    if (!facts.mayPost) throw new StoreMembershipRequiredException();
-    if (facts.status !== 'active') throw new StoreNotActiveException(facts.status);
-    return { tenantId };
-  }
-
-  private async storeTenant(storeId: string): Promise<string> {
-    if (!this.context.require().userId) throw new UnauthenticatedException();
-    const tenantId = await this.tenantDb.transaction(
-      async (tx) => {
-        const rows = await tx.execute(
-          sql`select public.item_tenant_of('store', ${storeId}::uuid) as tenant_id`,
-        );
-        return (
-          z.array(z.object({ tenant_id: z.string().nullable() })).parse([...rows])[0]?.tenant_id ??
-          null
-        );
-      },
-      { accessMode: 'read only' },
-    );
-    if (!tenantId) throw new StoreNotFoundException();
-    return tenantId;
-  }
-
   private inStore<T>(tenantId: string, work: (tx: DatabaseTransaction) => Promise<T>): Promise<T> {
-    return this.ownership.inTenant(tenantId, 'lookup', () =>
-      this.tenantDb.transaction(work, { accessMode: 'read only' }),
-    );
+    return this.scope.read(tenantId, work);
   }
 }

@@ -8,6 +8,7 @@ import { TenantDb } from '../../database/tenant-db';
 import { TenantRequiredException } from '../../database/tenant.exceptions';
 import { ShareService } from '../../engagement/share.service';
 import { parseVariants } from '../../media/media.types';
+import { stockStatusOf, type StockStatus } from '../../posts/post-stock';
 import { storeCardPng } from '../../seo/og-image/og-image.service';
 import { PostOwnershipService } from '../../posts/post-ownership.service';
 import { SettingsService } from '../../settings/settings.service';
@@ -24,6 +25,8 @@ const PRODUCT_ROW = z.object({
   price: z.string().nullable(),
   price_type_code: z.string().nullable(),
   condition: z.string().nullable(),
+  store_id: z.string(),
+  stock_status_code: z.string().nullable(),
   variants: z.unknown(),
   thumbhash: z.string().nullable(),
 });
@@ -52,6 +55,13 @@ const FEED_CONDITION: Record<string, 'new' | 'used' | 'refurbished'> = {
   old: 'used',
   like_new: 'used',
   refurbished: 'refurbished',
+};
+
+/** Our stock → the Commerce Manager feed's availability. */
+const FEED_AVAILABILITY: Record<StockStatus, string> = {
+  in_stock: 'in stock',
+  out_of_stock: 'out of stock',
+  on_order: 'preorder',
 };
 
 // settings-exempt: the feed's currency code; prices are stored in taka (BDT)
@@ -103,6 +113,7 @@ export class StoreCatalogService {
         title: p.title,
         price: p.price,
         priceType: p.price_type_code,
+        stockStatus: stockStatusOf(p.store_id, p.stock_status_code) ?? 'in_stock',
         photo: this.photo(p),
       })),
       shareImagePath: `/stores/${store.slug}/og.png`,
@@ -164,7 +175,7 @@ export class StoreCatalogService {
       p.id,
       p.title,
       (p.description ?? p.title).replace(/\s+/g, ' ').trim(),
-      'in stock',
+      FEED_AVAILABILITY[stockStatusOf(p.store_id, p.stock_status_code) ?? 'in_stock'],
       FEED_CONDITION[p.condition ?? ''] ?? 'new',
       p.price ? `${p.price} ${CURRENCY}` : '',
       this.share.urlFor(store.tenant_slug, codes.get(p.id)!),
@@ -212,7 +223,8 @@ export class StoreCatalogService {
   ): Promise<ProductRow[]> {
     const rows = await tx.execute(sql`
       select p.id, p.title, p.description, p.price::text as price, p.price_type_code,
-             p.fields ->> 'condition' as condition, cover.variants, cover.thumbhash
+             p.fields ->> 'condition' as condition, p.store_id, p.stock_status_code,
+             cover.variants, cover.thumbhash
       from public.posts p
       left join lateral (
         select m.variants, m.thumbhash

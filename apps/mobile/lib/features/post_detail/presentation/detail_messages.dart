@@ -16,6 +16,7 @@ String detailErrorMessage(
       localizeDigits('${_max(error)}', locale),
     ),
     'CONTACT_CHANNEL_UNAVAILABLE' => l10n.detailContactUnavailable,
+    'CONTACT_OWN_STORE' => l10n.storeContactOwn,
     'CONTACT_POST_NOT_LIVE' => l10n.detailContactNotLive,
     'REPORT_OWN_POST' => l10n.detailReportOwn,
     'REPORT_LIMIT_REACHED' => l10n.detailReportLimit,

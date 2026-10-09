@@ -5254,6 +5254,19 @@ is; written by the system role only. The downloadable report is these rows.
 (`store_catalog_max_<tier>`), not by its staff's personal limits. Lookups: media kind `import`, lead source
 `store_catalog`.
 
+### `stock_statuses` and `posts.stock_status_code` (0053, ADR 057)
+
+Lookup `stock_statuses`: `in_stock`, `out_of_stock`, `on_order` (code, label_key, sort_order, is_active, timestamps),
+read by all, written by platform admins. `posts.stock_status_code` references it; null on a store's post reads as
+in stock, and a personal post has none. Set by `POST /posts/:id/stock`; shown as card badges, in the catalog, and as
+the Commerce Manager export's `availability`.
+
+**Store managers on posts (0053).** RLS `posts_store_manager_read` / `posts_store_manager_update`: the owner and
+accepted managers of `posts.store_id` (`can_manage_store`) read and update every post of the store, never a legal
+hold; the row must stay a post of a store they manage. No insert or delete policy for them. `file_moderation_item()`
+accepts them, so their edits are re-reviewed like the author's. Settings: `store_counter_card_dpi`,
+`store_counter_sticker_mm`.
+
 ## 14. Open questions
 
 Each has my recommendation. Items marked **⚠ before first migration** are expensive to change later.

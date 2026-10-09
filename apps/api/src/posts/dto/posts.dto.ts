@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { MONEY_PATTERN } from '../../categories/field-schema/money';
 import { createZodDto } from '../../common/pipes/zod-dto';
 import { POST_STATUSES } from '../post-state-machine';
+import { STOCK_STATUSES } from '../post-stock';
 
 // settings-exempt: latitude/longitude ranges, facts of the coordinate system.
 const MAX_LAT = 90;
@@ -74,6 +75,10 @@ export const markSoldSchema = z
   .strict();
 export type MarkSoldInput = z.infer<typeof markSoldSchema>;
 export class MarkSoldDto extends createZodDto(markSoldSchema) {}
+
+export const setStockSchema = z.object({ stockStatus: z.enum(STOCK_STATUSES) }).strict();
+export type SetStockInput = z.infer<typeof setStockSchema>;
+export class SetStockDto extends createZodDto(setStockSchema) {}
 
 export const postIdParamSchema = z.object({ id: z.string().uuid() });
 export class PostIdParamDto extends createZodDto(postIdParamSchema) {}
@@ -166,6 +171,8 @@ export const postSchema = z.object({
   bumpedAt: z.string().nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
+  /** A store product's stock (ADR 057); null on a personal post. */
+  stockStatus: z.enum(STOCK_STATUSES).nullable(),
   /** Only in the owner's and staff's view. */
   hiddenByOwner: z.boolean().optional(),
   moderationReason: z.string().nullable().optional(),

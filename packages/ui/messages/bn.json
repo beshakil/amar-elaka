@@ -1,0 +1,17 @@
+{
+  "dataTable": {
+    "searchPlaceholder": "তালিকায় খুঁজুন",
+    "columns": "কলাম",
+    "exportCsv": "CSV ডাউনলোড",
+    "selectAll": "সব সারি নির্বাচন করুন",
+    "selectRow": "এই সারিটি নির্বাচন করুন",
+    "selectedCount": "{count, number}টি সারি নির্বাচিত",
+    "clearSelection": "নির্বাচন বাতিল",
+    "empty": "কোনো তথ্য নেই",
+    "rowCount": "মোট {count, number}টি সারি",
+    "rowsPerPage": "প্রতি পাতায় সারি",
+    "pageOf": "পাতা {page, number} / {total, number}",
+    "previous": "আগের",
+    "next": "পরের"
+  }
+}

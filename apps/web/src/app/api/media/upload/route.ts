@@ -1,19 +1,14 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { apiFetch } from '@/lib/api/fetch';
 import { routeError } from '@/lib/api/route-errors';
-import { mediaStatusSchema, presignedMediaSchema } from '@/lib/api/schemas';
 import { readSession } from '@/lib/auth/session';
 import { ACCEPTED_IMAGE_TYPES } from '@/lib/media/compress-image';
+import { uploadThroughApi } from '@/lib/media/server-upload';
 import { currentTenantId } from '@/lib/tenant';
 
-// Transport tuning, not business rules (the API owns the real upload limit,
+// Transport tuning, not a business rule (the API owns the real upload limit,
 // media_max_upload_bytes, and refuses at presign): a body cap so this server
-// never buffers something absurd, and how long to wait for the worker to make
-// a confirmed photo ready.
+// never buffers something absurd.
 const MAX_BODY_BYTES = 15 * 1024 * 1024;
-const PUT_TIMEOUT_MS = 30_000;
-const READY_POLL_MS = 500;
-const READY_MAX_POLLS = 40;
 
 /**
  * One photo, uploaded in one browser request: the browser sends the
@@ -51,48 +46,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 
   try {
-    const presigned = await apiFetch({
-      path: '/media/presign',
-      method: 'POST',
-      schema: presignedMediaSchema,
-      ...auth,
-      body: { kind: 'image', contentType, byteSize: body.byteLength, checksumSha256: sha256 },
+    const result = await uploadThroughApi(auth, {
+      kind: 'image',
+      contentType,
+      bytes: body,
+      sha256,
     });
-
-    const put = await fetch(presigned.upload.url, {
-      method: 'PUT',
-      headers: presigned.upload.headers,
-      body,
-      signal: AbortSignal.timeout(PUT_TIMEOUT_MS),
-    }).catch(() => null);
-    if (!put?.ok) {
-      const retryable = !put || put.status >= 500;
-      return NextResponse.json(
-        { code: retryable ? 'NETWORK' : 'UPLOAD_REJECTED' },
-        { status: retryable ? 503 : 400 },
-      );
-    }
-
-    let status = await apiFetch({
-      path: `/media/${presigned.id}/confirm`,
-      method: 'POST',
-      schema: mediaStatusSchema,
-      ...auth,
-    });
-    for (let poll = 0; status.status === 'processing' && poll < READY_MAX_POLLS; poll++) {
-      await new Promise((resolve) => setTimeout(resolve, READY_POLL_MS));
-      status = await apiFetch({
-        path: `/media/${presigned.id}`,
-        schema: mediaStatusSchema,
-        ...auth,
-      });
-    }
-    if (status.status === 'ready') return NextResponse.json({ mediaId: presigned.id });
-    if (status.status === 'processing') {
-      // Taking unusually long: worth another try later, not a refused photo.
-      return NextResponse.json({ code: 'PROCESSING_TIMEOUT' }, { status: 503 });
-    }
-    return NextResponse.json({ code: 'UPLOAD_REJECTED' }, { status: 422 });
+    return result.ok
+      ? NextResponse.json({ mediaId: result.mediaId })
+      : NextResponse.json({ code: result.code }, { status: result.status });
   } catch (error) {
     return routeError(error);
   }

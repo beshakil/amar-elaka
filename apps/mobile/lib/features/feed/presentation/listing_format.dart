@@ -45,6 +45,8 @@ abstract final class ListingFormat {
     'highlighted' => l10n.feedBadgeHighlighted,
     'verified_store' => l10n.feedBadgeVerifiedStore,
     'negotiable' => l10n.feedBadgeNegotiable,
+    'out_of_stock' => l10n.feedBadgeOutOfStock,
+    'on_order' => l10n.feedBadgeOnOrder,
     _ => null,
   };
 }

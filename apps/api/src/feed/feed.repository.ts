@@ -81,6 +81,8 @@ export const postCardRow = z.object({
   area_bn: nullableText,
   area_en: nullableText,
   store_verified: z.boolean().nullable(),
+  store_id: nullableText,
+  stock_status_code: nullableText,
   cover_thumbhash: nullableText,
   cover_variants: z.unknown(),
 });
@@ -273,7 +275,7 @@ export class FeedRepository {
     const rows = await tx.execute(sql`
       select p.id, p.tenant_id, p.title, p.price::text as price, p.price_type_code, p.created_at,
              coalesce(l.name_bn, ga.name_bn) as area_bn, coalesce(l.name_en, ga.name_en) as area_en,
-             st.is_verified as store_verified,
+             st.is_verified as store_verified, p.store_id, p.stock_status_code,
              cover.thumbhash as cover_thumbhash, cover.variants as cover_variants
       from public.posts p
       left join public.localities l on l.tenant_id = p.tenant_id and l.id = p.locality_id

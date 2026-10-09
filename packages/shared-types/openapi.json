@@ -1697,6 +1697,46 @@
         ]
       }
     },
+    "/posts/{id}/stock": {
+      "post": {
+        "operationId": "PostsController_setStock",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetStockDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PostDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Posts"
+        ]
+      }
+    },
     "/locations": {
       "get": {
         "operationId": "LocationsController_children",
@@ -5846,6 +5886,129 @@
         ]
       }
     },
+    "/stores/{id}/products": {
+      "get": {
+        "operationId": "StoreProductsController_list",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {}
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreProductsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "StoreProducts"
+        ]
+      }
+    },
+    "/stores/{id}/counter-card.pdf": {
+      "get": {
+        "operationId": "CounterCardController_pdf",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "size",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "a5",
+                "sticker"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A print-ready PDF: A5, or a square sticker."
+          }
+        },
+        "tags": [
+          "CounterCard"
+        ]
+      }
+    },
+    "/stores/{id}/counter-card.png": {
+      "get": {
+        "operationId": "CounterCardController_png",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "size",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "a5",
+                "sticker"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The same card as a PNG, for previewing."
+          }
+        },
+        "tags": [
+          "CounterCard"
+        ]
+      }
+    },
     "/stores/{id}/analytics": {
       "get": {
         "operationId": "StoreAnalyticsController_store",
@@ -7908,6 +8071,15 @@
           "updatedAt": {
             "type": "string"
           },
+          "stockStatus": {
+            "type": "string",
+            "enum": [
+              "in_stock",
+              "out_of_stock",
+              "on_order"
+            ],
+            "nullable": true
+          },
           "hiddenByOwner": {
             "type": "boolean"
           },
@@ -7951,6 +8123,7 @@
           "bumpedAt",
           "createdAt",
           "updatedAt",
+          "stockStatus",
           "isMine"
         ]
       },
@@ -8124,6 +8297,15 @@
                 "updatedAt": {
                   "type": "string"
                 },
+                "stockStatus": {
+                  "type": "string",
+                  "enum": [
+                    "in_stock",
+                    "out_of_stock",
+                    "on_order"
+                  ],
+                  "nullable": true
+                },
                 "hiddenByOwner": {
                   "type": "boolean"
                 },
@@ -8167,6 +8349,7 @@
                 "bumpedAt",
                 "createdAt",
                 "updatedAt",
+                "stockStatus",
                 "isMine"
               ]
             }
@@ -8322,6 +8505,22 @@
             "pattern": "^\\d{1,10}\\.\\d{2}$"
           }
         }
+      },
+      "SetStockDto": {
+        "type": "object",
+        "properties": {
+          "stockStatus": {
+            "type": "string",
+            "enum": [
+              "in_stock",
+              "out_of_stock",
+              "on_order"
+            ]
+          }
+        },
+        "required": [
+          "stockStatus"
+        ]
       },
       "LocationAreaDto": {
         "type": "object",
@@ -12463,7 +12662,9 @@
                           "highlighted",
                           "verified_store",
                           "free",
-                          "negotiable"
+                          "negotiable",
+                          "out_of_stock",
+                          "on_order"
                         ]
                       }
                     },
@@ -13302,7 +13503,9 @@
                       "highlighted",
                       "verified_store",
                       "free",
-                      "negotiable"
+                      "negotiable",
+                      "out_of_stock",
+                      "on_order"
                     ]
                   }
                 },
@@ -14350,7 +14553,9 @@
                       "highlighted",
                       "verified_store",
                       "free",
-                      "negotiable"
+                      "negotiable",
+                      "out_of_stock",
+                      "on_order"
                     ]
                   }
                 },
@@ -15891,6 +16096,9 @@
           "slugChangeable": {
             "type": "boolean"
           },
+          "catalogUrl": {
+            "type": "string"
+          },
           "name": {
             "type": "object",
             "properties": {
@@ -16128,6 +16336,7 @@
           "slug",
           "previousSlug",
           "slugChangeable",
+          "catalogUrl",
           "name",
           "description",
           "category",
@@ -16376,6 +16585,23 @@
           },
           "slug": {
             "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "isFollowing": {
+            "type": "boolean"
+          },
+          "contactChannels": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "call",
+                "whatsapp",
+                "sms"
+              ]
+            }
           },
           "name": {
             "type": "object",
@@ -16807,7 +17033,9 @@
                       "highlighted",
                       "verified_store",
                       "free",
-                      "negotiable"
+                      "negotiable",
+                      "out_of_stock",
+                      "on_order"
                     ]
                   }
                 },
@@ -16842,6 +17070,9 @@
           "id",
           "tenantId",
           "slug",
+          "url",
+          "isFollowing",
+          "contactChannels",
           "name",
           "description",
           "category",
@@ -17456,6 +17687,14 @@
                   "type": "string",
                   "nullable": true
                 },
+                "stockStatus": {
+                  "type": "string",
+                  "enum": [
+                    "in_stock",
+                    "out_of_stock",
+                    "on_order"
+                  ]
+                },
                 "photo": {
                   "type": "object",
                   "properties": {
@@ -17487,6 +17726,7 @@
                 "title",
                 "price",
                 "priceType",
+                "stockStatus",
                 "photo"
               ]
             }
@@ -17499,6 +17739,107 @@
           "store",
           "products",
           "shareImagePath"
+        ]
+      },
+      "StoreProductsDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "categoryId": {
+                  "type": "string"
+                },
+                "price": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "priceType": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "draft",
+                    "pending",
+                    "live",
+                    "rejected",
+                    "sold",
+                    "expired",
+                    "removed"
+                  ]
+                },
+                "stockStatus": {
+                  "type": "string",
+                  "enum": [
+                    "in_stock",
+                    "out_of_stock",
+                    "on_order"
+                  ]
+                },
+                "hidden": {
+                  "type": "boolean"
+                },
+                "thumbUrl": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "views": {
+                  "type": "number"
+                },
+                "saves": {
+                  "type": "number"
+                },
+                "expiresAt": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "updatedAt": {
+                  "type": "string"
+                },
+                "isMine": {
+                  "type": "boolean"
+                },
+                "canManage": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "id",
+                "title",
+                "categoryId",
+                "price",
+                "priceType",
+                "status",
+                "stockStatus",
+                "hidden",
+                "thumbUrl",
+                "views",
+                "saves",
+                "expiresAt",
+                "updatedAt",
+                "isMine",
+                "canManage"
+              ]
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
         ]
       },
       "SellerAnalyticsDto": {

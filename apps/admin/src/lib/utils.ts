@@ -1,6 +1,2 @@
-import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
-
-export function cn(...inputs: ClassValue[]): string {
-  return twMerge(clsx(inputs));
-}
+/** Shared with the other app (packages/ui, ADR 057). */
+export { cn } from '@amar-elaka/ui/cn';

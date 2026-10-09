@@ -1,3 +1,4 @@
+import { storeNumberFor } from './store-channels';
 import { Inject, Injectable } from '@nestjs/common';
 import { AnalyticsTracker } from '../analytics/seller/analytics-tracker.service';
 import { APP_CONFIG } from '../config/config.module';
@@ -17,6 +18,7 @@ import {
   ContactLimitReachedException,
   ContactLoginRequiredException,
   ContactOwnPostException,
+  ContactOutOfStockException,
   ContactOwnStoreException,
   ContactPostNotLiveException,
   ContactStoreNotFoundException,
@@ -169,7 +171,7 @@ export class ContactService {
       if (memberId !== undefined && store.owner_member_id === memberId) {
         throw new ContactOwnStoreException();
       }
-      const phone = input.channel === 'whatsapp' ? store.whatsapp_e164 : store.phone_e164;
+      const phone = storeNumberFor(input.channel, store);
       if (phone === null) throw new ContactChannelUnavailableException(input.channel);
 
       await this.countLead(key, input.channel, `store:${storeId}`, async () => {
@@ -236,6 +238,7 @@ export class ContactService {
       if (!target) throw new PostNotFoundException();
       if (memberId !== undefined && target.owner_member_id === memberId)
         throw new ContactOwnStoreException();
+      if (target.out_of_stock) throw new ContactOutOfStockException();
       if (target.number === null) throw new ContactChannelUnavailableException('whatsapp');
       const number = target.number;
 

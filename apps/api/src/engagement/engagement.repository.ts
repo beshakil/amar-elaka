@@ -184,12 +184,13 @@ export class EngagementRepository {
         number: string | null;
         title: string;
         tenant_id: string;
+        out_of_stock: boolean;
       }
     | undefined
   > {
     const rows = await tx.execute(sql`
       select s.id as store_id, s.owner_member_id, coalesce(s.whatsapp_e164, s.phone_e164) as number,
-             p.title, p.tenant_id
+             p.title, p.tenant_id, coalesce(p.stock_status_code = 'out_of_stock', false) as out_of_stock
       from public.stores s
       join public.posts p on p.tenant_id = s.tenant_id and p.store_id = s.id and p.id = ${postId}::uuid
       where s.tenant_id = public.current_tenant_id() and s.slug = ${slug}
@@ -203,6 +204,7 @@ export class EngagementRepository {
           number: z.string().nullable(),
           title: z.string(),
           tenant_id: z.string(),
+          out_of_stock: z.boolean(),
         }),
       )
       .max(1)

@@ -32,7 +32,15 @@ import '../../features/notifications/presentation/notifications_screen.dart';
 import '../../features/offline_map/presentation/offline_map_screen.dart';
 import '../../features/place_detail/presentation/place_detail_screen.dart';
 import '../../features/place_feedback/presentation/place_suggest_screen.dart';
+import '../../features/my_store/presentation/create_store_screen.dart';
+import '../../features/my_store/presentation/edit_store_screen.dart';
+import '../../features/my_store/presentation/hours_editor_screen.dart';
+import '../../features/my_store/presentation/my_store_screen.dart';
+import '../../features/my_store/presentation/staff_screen.dart';
+import '../../features/my_store/presentation/stock_screen.dart';
 import '../../features/saved/presentation/saved_screen.dart';
+import '../../features/seller_dashboard/presentation/seller_dashboard_screen.dart';
+import '../../features/store/presentation/store_screen.dart';
 import 'app_shell.dart';
 import 'redirect_logic.dart';
 import 'route_paths.dart';
@@ -172,6 +180,46 @@ GoRouter appRouter(Ref ref) {
       GoRoute(
         path: RoutePaths.offlineMap,
         builder: (context, state) => const OfflineMapScreen(),
+      ),
+      GoRoute(
+        path: '${RoutePaths.store}/:slug',
+        builder: (context, state) =>
+            StoreScreen(slug: state.pathParameters['slug']!),
+      ),
+      GoRoute(
+        path: RoutePaths.myStore,
+        builder: (context, state) => const MyStoreScreen(),
+        routes: [
+          GoRoute(
+            path: 'new',
+            builder: (context, state) => const CreateStoreScreen(),
+          ),
+          GoRoute(
+            path: ':id/edit',
+            builder: (context, state) =>
+                EditStoreScreen(storeId: state.pathParameters['id']!),
+          ),
+          GoRoute(
+            path: ':id/hours',
+            builder: (context, state) =>
+                HoursEditorScreen(storeId: state.pathParameters['id']!),
+          ),
+          GoRoute(
+            path: ':id/staff',
+            builder: (context, state) =>
+                StaffScreen(storeId: state.pathParameters['id']!),
+          ),
+          GoRoute(
+            path: ':id/stock',
+            builder: (context, state) =>
+                StockScreen(storeId: state.pathParameters['id']!),
+          ),
+          GoRoute(
+            path: ':id/dashboard',
+            builder: (context, state) =>
+                SellerDashboardScreen(storeId: state.pathParameters['id']!),
+          ),
+        ],
       ),
       // Debug-only: `kDebugMode` is a compile-time constant, so this branch
       // (and DesignSystemScreen's tree) is tree-shaken out of release builds.

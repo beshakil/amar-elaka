@@ -35,6 +35,18 @@ const INFRASTRUCTURE_PATHS: ReadonlyArray<{ prefix: string; reason: string }> = 
       'just has to say the same thing in TypeScript for the drift test.',
   },
   {
+    prefix: 'stores/counter-card/counter-card.layout.ts',
+    reason:
+      'Print layout of the shop-counter card: ISO 216 A5 size, margins and font points — ' +
+      'presentation, like the share card layout; its resolution and sticker size are settings.',
+  },
+  {
+    prefix: 'stores/counter-card/counter-card.render.ts',
+    reason:
+      'Draws the counter card from that layout: mm-to-pixel conversion, centring, the RGB ' +
+      'pixel format — geometry, not behaviour.',
+  },
+  {
     prefix: 'stores/import/image-source.ts',
     reason:
       'SSRF guard: the reserved IPv4/IPv6 ranges (RFC 6890) as network/prefix pairs and the ' +

@@ -434,6 +434,7 @@ export const storeCatalogSchema = z.object({
       title: z.string(),
       price: z.string().nullable(),
       priceType: z.string().nullable(),
+      stockStatus: z.enum(['in_stock', 'out_of_stock', 'on_order']),
       photo: z
         .object({
           url: z.string(),
@@ -719,4 +720,146 @@ export type _MapFeaturesContract = [
   Assert<Accepts<MapPreview, Api['MapPreviewResponseDto']>>,
   Assert<Accepts<z.infer<typeof mapDistanceSchema>, Api['MapDistanceResponseDto']>>,
   Assert<Accepts<RouteAnswer, Api['GeoRouteResponseDto']>>,
+];
+
+// ---- the seller panel (ADR 057) ------------------------------------------------
+
+export const STORE_ROLES = ['owner', 'manager', 'editor'] as const;
+export const STOCK_STATUSES = ['in_stock', 'out_of_stock', 'on_order'] as const;
+export type StockStatus = (typeof STOCK_STATUSES)[number];
+
+/** GET /stores/me: the stores the seller owns or staffs (invitations included). */
+export const myStoresSchema = z.object({
+  items: z.array(
+    z.object({
+      id: z.string(),
+      tenantId: z.string(),
+      slug: z.string(),
+      name: localizedText,
+      status: z.enum(['pending_review', 'active', 'suspended', 'closed']),
+      role: z.enum(STORE_ROLES),
+      accepted: z.boolean(),
+    }),
+  ),
+});
+export type MyStores = z.infer<typeof myStoresSchema>;
+
+/** GET /stores/:id/manage, as the panel reads it. */
+export const sellerStoreSchema = z.object({
+  id: z.string(),
+  tenantId: z.string(),
+  slug: z.string(),
+  name: localizedText,
+  status: z.enum(['pending_review', 'active', 'suspended', 'closed']),
+  myRole: z.enum(STORE_ROLES),
+  catalogUrl: z.string(),
+  counts: z.object({ staff: z.number(), catalog: z.number() }),
+  limits: z.object({ staff: z.number(), catalog: z.number() }),
+});
+export type SellerStore = z.infer<typeof sellerStoreSchema>;
+
+const contactsSchema = z.object({
+  total: z.number(),
+  call: z.number(),
+  whatsapp: z.number(),
+  sms: z.number(),
+  chat: z.number(),
+});
+const metricsSchema = z.object({
+  views: z.number(),
+  uniqueViewers: z.number(),
+  contacts: contactsSchema,
+  uniqueContacters: z.number(),
+  saves: z.number(),
+  shares: z.number(),
+  searchAppearances: z.number(),
+  mapTaps: z.number(),
+  conversionRate: z.number(),
+});
+
+/** GET /stores/:id/analytics (ADR 055). */
+export const sellerAnalyticsSchema = z.object({
+  period: z.object({
+    days: z.number(),
+    from: z.string(),
+    to: z.string(),
+    available: z.array(z.number()),
+  }),
+  summary: z.object({ bn: z.string(), en: z.string() }),
+  totals: metricsSchema,
+  trend: z.object({
+    views: z.number().nullable(),
+    contacts: z.number().nullable(),
+    uniqueContacters: z.number().nullable(),
+    saves: z.number().nullable(),
+  }),
+  daily: z.array(z.object({ date: z.string(), views: z.number(), contacts: z.number() })),
+  topPosts: z.array(
+    z.object({ postId: z.string(), title: z.string(), status: z.string(), metrics: metricsSchema }),
+  ),
+  topQueries: z.array(z.object({ query: z.string(), searchers: z.number(), clicks: z.number() })),
+});
+export type SellerAnalytics = z.infer<typeof sellerAnalyticsSchema>;
+
+/** GET /stores/:id/products: the product table (ADR 057). */
+export const storeProductSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  categoryId: z.string(),
+  price: z.string().nullable(),
+  priceType: z.string().nullable(),
+  status: z.enum(POST_STATUSES),
+  stockStatus: z.enum(STOCK_STATUSES),
+  hidden: z.boolean(),
+  thumbUrl: z.string().nullable(),
+  views: z.number(),
+  saves: z.number(),
+  expiresAt: z.string().nullable(),
+  updatedAt: z.string(),
+  isMine: z.boolean(),
+  canManage: z.boolean(),
+});
+export type StoreProduct = z.infer<typeof storeProductSchema>;
+export const storeProductsSchema = z.object({
+  items: z.array(storeProductSchema),
+  nextCursor: z.string().nullable(),
+});
+export type StoreProducts = z.infer<typeof storeProductsSchema>;
+
+/** A bulk import's progress and, when asked, its rows (ADR 056). */
+export const importViewSchema = z.object({
+  id: z.string(),
+  dryRun: z.boolean(),
+  status: z.enum(['queued', 'running', 'succeeded', 'failed']),
+  errorCode: z.string().nullable(),
+  progress: z.object({
+    totalRows: z.number().nullable(),
+    processedRows: z.number(),
+    created: z.number(),
+    skipped: z.number(),
+    failed: z.number(),
+  }),
+  createdAt: z.string(),
+  rows: z
+    .array(
+      z.object({
+        row: z.number(),
+        outcome: z.enum(['created', 'valid', 'skipped', 'failed']),
+        reasonCode: z.string().nullable(),
+        reason: z.string().nullable(),
+        postId: z.string().nullable(),
+      }),
+    )
+    .optional(),
+});
+export type ImportView = z.infer<typeof importViewSchema>;
+export const importListSchema = z.object({ items: z.array(importViewSchema) });
+
+export type _SellerPanelContract = [
+  Assert<Accepts<MyStores, Api['MyStoresDto']>>,
+  Assert<Accepts<SellerStore, Api['StoreViewDto']>>,
+  Assert<Accepts<SellerAnalytics, Api['SellerAnalyticsDto']>>,
+  Assert<Accepts<StoreProducts, Api['StoreProductsDto']>>,
+  Assert<Accepts<ImportView, Api['ImportViewDto']>>,
+  Assert<Accepts<z.infer<typeof importListSchema>, Api['ImportListDto']>>,
 ];

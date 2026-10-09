@@ -1,3 +1,4 @@
+import { STORE_CONTACT_CHANNELS } from '../../engagement/store-channels';
 import { z } from 'zod';
 import { createZodDto } from '../../common/pipes/zod-dto';
 import { postCardSchema } from '../../feed/dto/feed.dto';
@@ -163,6 +164,8 @@ export const storeViewSchema = z.object({
   previousSlug: z.string().nullable(),
   /** The owner hasn't used their one slug change yet. */
   slugChangeable: z.boolean(),
+  /** The WhatsApp catalog on the tenant's site: what the counter card's QR code opens (ADR 057). */
+  catalogUrl: z.string(),
   name: localized,
   description: z.string().nullable(),
   category: categoryRef,
@@ -218,6 +221,12 @@ export const storePageSchema = z.object({
   id: z.string(),
   tenantId: z.string(),
   slug: z.string(),
+  /** The page on the tenant's site, for sharing (ADR 057). */
+  url: z.string(),
+  /** The signed-in viewer follows it; false for a guest. */
+  isFollowing: z.boolean(),
+  /** Which POST /stores/:id/contact channels it takes — never the numbers. */
+  contactChannels: z.array(z.enum(STORE_CONTACT_CHANNELS)),
   name: localized,
   description: z.string().nullable(),
   category: categoryRef,

@@ -36,6 +36,9 @@ class PostDrafts extends Table {
   BoolColumn get allowChat => boolean().withDefault(const Constant(true))();
   BoolColumn get showWhatsapp => boolean().withDefault(const Constant(false))();
 
+  /// Posting as this store (ADR 054/057); null = a personal post. Schema v5.
+  TextColumn get storeId => text().nullable()();
+
   /// Sent as Idempotency-Key: a retried submit can never post twice.
   TextColumn get idempotencyKey => text()();
 

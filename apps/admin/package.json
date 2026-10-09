@@ -19,6 +19,7 @@
     "@amar-elaka/dynamic-form": "workspace:*",
     "@amar-elaka/map-style": "workspace:^",
     "@amar-elaka/shared-types": "workspace:*",
+    "@amar-elaka/ui": "workspace:*",
     "@hookform/resolvers": "^5.9.1",
     "@tanstack/react-table": "^9.2.4",
     "class-variance-authority": "^0.7.1",

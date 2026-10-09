@@ -1,9 +1,11 @@
 import 'package:amar_elaka_api/amar_elaka_api.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/design/tokens/app_spacing.dart';
 import '../../../../core/design/widgets/app_card.dart';
+import '../../../../core/routing/route_paths.dart';
 import '../../../../l10n/app_localizations.dart';
 
 /// Who sells it: name, member since, badges and their store.
@@ -80,25 +82,29 @@ class SellerCardView extends StatelessWidget {
           ],
           if (store != null) ...[
             const Divider(height: AppSpacing.lg),
-            Row(
+            InkWell(
               key: const ValueKey('detail-store'),
-              children: [
-                const Icon(Icons.storefront_outlined, size: 20),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: Text(
-                    store.name.of(locale) ?? store.slug,
-                    style: theme.textTheme.titleSmall,
+              onTap: () => context.push(RoutePaths.storeFor(store.slug)),
+              child: Row(
+                children: [
+                  const Icon(Icons.storefront_outlined, size: 20),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Text(
+                      store.name.of(locale) ?? store.slug,
+                      style: theme.textTheme.titleSmall,
+                    ),
                   ),
-                ),
-                if (store.verified)
-                  Icon(
-                    Icons.verified,
-                    size: 18,
-                    color: theme.colorScheme.primary,
-                    semanticLabel: l10n.detailBadgeVerifiedStore,
-                  ),
-              ],
+                  if (store.verified)
+                    Icon(
+                      Icons.verified,
+                      size: 18,
+                      color: theme.colorScheme.primary,
+                      semanticLabel: l10n.detailBadgeVerifiedStore,
+                    ),
+                  const Icon(Icons.chevron_right, size: 20),
+                ],
+              ),
             ),
           ],
         ],

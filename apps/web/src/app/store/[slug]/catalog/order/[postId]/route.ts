@@ -17,6 +17,7 @@ const REFUSALS: Record<string, string> = {
   CONTACT_LIMIT_REACHED: 'limit',
   CONTACT_CHANNEL_UNAVAILABLE: 'off',
   CONTACT_OWN_STORE: 'own',
+  CONTACT_OUT_OF_STOCK: 'stock',
   POST_NOT_FOUND: 'gone',
 };
 

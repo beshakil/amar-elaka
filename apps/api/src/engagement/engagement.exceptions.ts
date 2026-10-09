@@ -66,6 +66,16 @@ export class ContactOwnStoreException extends DomainException {
   }
 }
 
+/** A catalog order for a product the store marked out of stock (ADR 057). */
+export class ContactOutOfStockException extends DomainException {
+  readonly code = 'CONTACT_OUT_OF_STOCK';
+  readonly httpStatus = HttpStatus.CONFLICT;
+
+  constructor() {
+    super('This product is out of stock.');
+  }
+}
+
 export class ContactStoreNotFoundException extends DomainException {
   readonly code = 'STORE_NOT_FOUND';
   readonly httpStatus = HttpStatus.NOT_FOUND;

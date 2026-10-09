@@ -174,3 +174,6 @@ export const geoProviderStatuses = pgTable('geo_provider_statuses', enumTableCol
 
 // Enum table added by migration 0050 (ADR 054): store plan tiers; limits per tier are settings.
 export const storeTiers = pgTable('store_tiers', enumTableColumns());
+
+// Enum table added by migration 0053 (ADR 057): a store product's stock.
+export const stockStatuses = pgTable('stock_statuses', enumTableColumns());

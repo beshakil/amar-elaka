@@ -146,3 +146,13 @@ export class PostRenewTooEarlyException extends DomainException {
     this.issues = { renewableFrom: renewableFrom.toISOString() };
   }
 }
+
+/** Stock is a store product's (ADR 057); a personal post has none. */
+export class PostNotStoreProductException extends DomainException {
+  readonly code = 'POST_NOT_STORE_PRODUCT';
+  readonly httpStatus = HttpStatus.CONFLICT;
+
+  constructor() {
+    super('Only a store’s product has a stock status.');
+  }
+}

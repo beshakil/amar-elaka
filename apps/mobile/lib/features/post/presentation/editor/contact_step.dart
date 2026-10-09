@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/design/tokens/app_spacing.dart';
 import '../../../../core/design/widgets/app_form_controls.dart';
@@ -6,6 +7,8 @@ import '../../../../core/design/widgets/app_text_field.dart';
 import '../../../../core/dynamic_form/bn_numerals.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../auth/domain/bd_phone.dart';
+import '../../../my_store/application/my_store_providers.dart';
+import '../../../store/data/store_models.dart';
 import '../../application/post_editor.dart';
 import 'step_gate.dart';
 
@@ -91,6 +94,7 @@ class _ContactStepState extends State<ContactStep> {
         return ListView(
           padding: const EdgeInsets.all(AppSpacing.md),
           children: [
+            if (!draft.isEdit) _PostAs(editor: widget.editor),
             Text(l10n.postContactFromProfile, style: theme.textTheme.bodySmall),
             const SizedBox(height: AppSpacing.md),
             AppTextField(
@@ -174,6 +178,60 @@ class _ContactStepState extends State<ContactStep> {
           ],
         );
       },
+    );
+  }
+}
+
+/// "কার নামে পোস্ট করবেন" (ADR 057): personally, or as one of the seller's
+/// active stores — shown only to someone who runs or staffs one.
+class _PostAs extends ConsumerWidget {
+  const _PostAs({required this.editor});
+
+  final PostEditor editor;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+    final locale = Localizations.localeOf(context).languageCode;
+    final stores = [
+      for (final s
+          in ref.watch(myStoresProvider).value ?? const <MyStoreSummary>[])
+        if (s.accepted && s.status == 'active') s,
+    ];
+    if (stores.isEmpty) return const SizedBox.shrink();
+    final current = editor.draft!.storeId;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(l10n.postAsTitle, style: Theme.of(context).textTheme.titleSmall),
+          RadioGroup<String>(
+            groupValue: current ?? '',
+            onChanged: (id) => editor.update(
+              (d) => id == null || id.isEmpty
+                  ? d.copyWith(clearStore: true)
+                  : d.copyWith(storeId: id),
+            ),
+            child: Column(
+              children: [
+                RadioListTile<String>(
+                  key: const ValueKey('post-as-personal'),
+                  value: '',
+                  title: Text(l10n.postAsPersonal),
+                ),
+                for (final s in stores)
+                  RadioListTile<String>(
+                    key: ValueKey('post-as-${s.slug}'),
+                    value: s.id,
+                    secondary: const Icon(Icons.storefront_outlined),
+                    title: Text(s.name.of(locale, fallback: s.slug)),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

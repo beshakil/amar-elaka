@@ -15,6 +15,11 @@ import { TrustModule } from '../trust/trust.module';
 import { StoreCatalogController } from './catalog/store-catalog.controller';
 import { StoreCatalogService } from './catalog/store-catalog.service';
 import { StoreImportController } from './import/store-import.controller';
+import { StoreProductsController } from './products/store-products.controller';
+import { StoreProductsService } from './products/store-products.service';
+import { StoreScope } from './store-scope';
+import { CounterCardController } from './counter-card/counter-card.controller';
+import { CounterCardService } from './counter-card/counter-card.service';
 import { StoreImportRepository } from './import/store-import.repository';
 import { StoreImportService } from './import/store-import.service';
 import { StorePageService } from './store-page.service';
@@ -44,7 +49,13 @@ import { StoresService } from './stores.service';
     AnalyticsCountersModule,
     EngagementModule,
   ],
-  controllers: [StoresController, StoreImportController, StoreCatalogController],
+  controllers: [
+    StoresController,
+    StoreImportController,
+    StoreCatalogController,
+    StoreProductsController,
+    CounterCardController,
+  ],
   providers: [
     StoresService,
     StorePageService,
@@ -52,6 +63,9 @@ import { StoresService } from './stores.service';
     StoreImportService,
     StoreImportRepository,
     StoreCatalogService,
+    StoreScope,
+    StoreProductsService,
+    CounterCardService,
   ],
 })
 export class StoresModule {}

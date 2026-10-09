@@ -48,6 +48,20 @@ abstract final class RoutePaths {
   static const String placeSuggest = '/place-suggest';
   static String placeSuggestFor(String placeId) => '$placeSuggest/$placeId';
 
+  /// A store's public page (ADR 054/057).
+  static const String store = '/stores';
+  static String storeFor(String slug) => '$store/$slug';
+
+  /// "আমার দোকান" and its screens (ADR 057).
+  static const String myStore = '/my-store';
+  static const String myStoreCreate = '/my-store/new';
+  static String myStoreEditFor(String storeId) => '$myStore/$storeId/edit';
+  static String myStoreHoursFor(String storeId) => '$myStore/$storeId/hours';
+  static String myStoreStaffFor(String storeId) => '$myStore/$storeId/staff';
+  static String myStoreStockFor(String storeId) => '$myStore/$storeId/stock';
+  static String sellerDashboardFor(String storeId) =>
+      '$myStore/$storeId/dashboard';
+
   /// "এলাকার ম্যাপ ডাউনলোড" (ADR 050).
   static const String offlineMap = '/offline-map';
 

@@ -43,6 +43,13 @@ class ProfileScreen extends ConsumerWidget {
                 ),
               ),
               ListTile(
+                key: const ValueKey('profile-my-store'),
+                leading: const Icon(Icons.storefront_outlined),
+                title: Text(l10n.myStoreTitle),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => context.push(RoutePaths.myStore),
+              ),
+              ListTile(
                 key: const ValueKey('profile-saved'),
                 leading: const Icon(Icons.bookmark_border),
                 title: Text(l10n.profileSaved),

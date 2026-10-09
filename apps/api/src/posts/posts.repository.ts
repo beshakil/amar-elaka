@@ -3,6 +3,7 @@ import { sql, type SQL } from 'drizzle-orm';
 import { z } from 'zod';
 import type { DatabaseTransaction } from '../database/database.client';
 import { POST_STATUSES, type PostStatus } from './post-state-machine';
+import type { StockStatus } from './post-stock';
 
 const nullableDate = z.coerce.date().nullable();
 
@@ -36,6 +37,7 @@ const POST_ROW = z.object({
   expires_at: nullableDate,
   bumped_at: nullableDate,
   hidden_by_owner: z.boolean(),
+  stock_status_code: z.string().nullable(),
   scrubbed_at: nullableDate,
   deleted_at: nullableDate,
   created_at: z.coerce.date(),
@@ -50,7 +52,7 @@ const POST_COLUMNS = sql`
   p.geo_area_id, p.outside_boundary, p.ownership_resolution_code, p.show_phone, p.allow_chat,
   p.show_whatsapp, p.contact_name, p.contact_phone_e164,
   p.status_code, p.sold_at, p.sold_price::text as sold_price, p.moderation_reason_code,
-  p.published_at, p.expires_at, p.bumped_at, p.hidden_by_owner, p.scrubbed_at, p.deleted_at,
+  p.published_at, p.expires_at, p.bumped_at, p.hidden_by_owner, p.stock_status_code, p.scrubbed_at, p.deleted_at,
   p.created_at, p.updated_at`;
 
 const MEDIA_ROW = z.object({
@@ -121,6 +123,7 @@ export type PostPatch = Partial<{
   soldAt: Date;
   soldPrice: string | null;
   hiddenByOwner: boolean;
+  stockStatus: StockStatus;
   deletedAt: Date;
   deletionReason: 'user_deleted';
   deletedByUserId: string;
@@ -133,6 +136,12 @@ export type PostPatch = Partial<{
  */
 @Injectable()
 export class PostsRepository {
+  /** The caller owns or manages this store (can_manage_store, 0006): they run all of its posts. */
+  async managesStore(tx: DatabaseTransaction, storeId: string): Promise<boolean> {
+    const rows = await tx.execute(sql`select public.can_manage_store(${storeId}::uuid) as manages`);
+    return z.array(z.object({ manages: z.boolean() })).parse([...rows])[0]?.manages ?? false;
+  }
+
   /** Serialises one user's creates/submits, so two taps can't both pass a limit check. */
   async lockUser(tx: DatabaseTransaction, userId: string): Promise<void> {
     await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`posts:${userId}`}, 0))`);
@@ -412,6 +421,7 @@ export class PostsRepository {
     if (patch.soldAt !== undefined) set('sold_at', iso(patch.soldAt));
     if (patch.soldPrice !== undefined) set('sold_price', sql`${patch.soldPrice}::numeric(12,2)`);
     if (patch.hiddenByOwner !== undefined) set('hidden_by_owner', sql`${patch.hiddenByOwner}`);
+    if (patch.stockStatus !== undefined) set('stock_status_code', sql`${patch.stockStatus}`);
     if (patch.deletedAt !== undefined) set('deleted_at', iso(patch.deletedAt));
     if (patch.deletionReason !== undefined)
       set('deletion_reason_code', sql`${patch.deletionReason}`);

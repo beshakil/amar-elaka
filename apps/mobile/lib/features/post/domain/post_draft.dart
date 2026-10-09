@@ -45,6 +45,7 @@ class PostDraft {
     this.showPhone = true,
     this.allowChat = true,
     this.showWhatsapp = false,
+    this.storeId,
     this.submitState = DraftSubmitState.editing,
     this.lastErrorCode,
   });
@@ -77,6 +78,10 @@ class PostDraft {
   final bool showPhone;
   final bool allowChat;
   final bool showWhatsapp;
+
+  /// Posting as this store (ADR 054/057); null = a personal post. Set on
+  /// create only: a post never moves between stores.
+  final String? storeId;
   final DraftSubmitState submitState;
   final String? lastErrorCode;
 
@@ -116,6 +121,8 @@ class PostDraft {
     bool? showPhone,
     bool? allowChat,
     bool? showWhatsapp,
+    String? storeId,
+    bool clearStore = false,
     DraftSubmitState? submitState,
     String? lastErrorCode,
     bool clearError = false,
@@ -141,6 +148,7 @@ class PostDraft {
     showPhone: showPhone ?? this.showPhone,
     allowChat: allowChat ?? this.allowChat,
     showWhatsapp: showWhatsapp ?? this.showWhatsapp,
+    storeId: clearStore ? null : (storeId ?? this.storeId),
     submitState: submitState ?? this.submitState,
     lastErrorCode: clearError ? null : (lastErrorCode ?? this.lastErrorCode),
   );

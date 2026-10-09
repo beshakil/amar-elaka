@@ -81,6 +81,7 @@ async function main(): Promise<void> {
       );
       await seedAnalyticsHistory(tx, tenantIds);
       await seedStoreImport(tx, storeIds[0]!, categoryIds.get('gadgets-electronics')!);
+      await seedStock(tx);
     });
     console.log('Seed complete.');
   } finally {
@@ -121,6 +122,19 @@ async function seedStoreImport(
       (${store.tenant_id}, ${importId}, 4, 'failed', 'missing_title', 'শিরোনাম: লিখতে হবে')
     on conflict (tenant_id, import_id, row_number) do nothing`;
   console.log('store import: 1 demo dry run; first store takes WhatsApp orders');
+}
+
+/** Two stores' products out of stock and on order (ADR 057), so dev shows the badges. */
+async function seedStock(tx: TransactionSql): Promise<void> {
+  const rows = await tx`
+    with picked as (
+      select id, row_number() over (order by id) as n from posts
+      where store_id is not null and status_code = 'live' and deleted_at is null
+      limit 2
+    )
+    update posts p set stock_status_code = case picked.n when 1 then 'out_of_stock' else 'on_order' end
+    from picked where p.id = picked.id`;
+  console.log(`stock: ${rows.count} products out of stock / on order`);
 }
 
 // ---------------------------------------------------------------------------

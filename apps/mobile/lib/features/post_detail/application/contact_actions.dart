@@ -47,39 +47,47 @@ class ContactActions {
   final ExternalApps _apps;
 
   Future<ContactOutcome> call(String postId) =>
-      _reveal(postId, 'call', (reveal) async {
-        final opened = await _apps.open(Uri.parse(reveal.href));
-        return opened ? const ContactOpened() : ContactNotOpened(reveal.phone);
-      });
+      callWith(() => _api.contact(postId, 'call'));
 
   Future<ContactOutcome> sms(String postId) =>
-      _reveal(postId, 'sms', (reveal) async {
-        final opened = await _apps.open(Uri.parse(reveal.href));
-        return opened ? const ContactOpened() : ContactNotOpened(reveal.phone);
-      });
+      smsWith(() => _api.contact(postId, 'sms'));
 
   /// The WhatsApp app itself (whatsapp://send), so the chat opens with the
   /// message typed; if it isn't installed, the caller offers alternatives.
   Future<ContactOutcome> whatsapp(String postId) =>
-      _reveal(postId, 'whatsapp', (reveal) async {
-        final app = whatsappAppUri(reveal);
-        if (await _apps.canOpen(app) && await _apps.open(app)) {
-          return const ContactOpened();
-        }
-        return WhatsAppMissing(reveal);
+      whatsappWith(() => _api.contact(postId, 'whatsapp'));
+
+  /// The same three for any reveal — a store's page reveals through
+  /// POST /stores/:id/contact (ADR 054), which records its own lead.
+  Future<ContactOutcome> callWith(Future<ContactReveal> Function() reveal) =>
+      _reveal(reveal, (reveal) async {
+        final opened = await _apps.open(Uri.parse(reveal.href));
+        return opened ? const ContactOpened() : ContactNotOpened(reveal.phone);
       });
+
+  Future<ContactOutcome> smsWith(Future<ContactReveal> Function() reveal) =>
+      callWith(reveal);
+
+  Future<ContactOutcome> whatsappWith(
+    Future<ContactReveal> Function() reveal,
+  ) => _reveal(reveal, (reveal) async {
+    final app = whatsappAppUri(reveal);
+    if (await _apps.canOpen(app) && await _apps.open(app)) {
+      return const ContactOpened();
+    }
+    return WhatsAppMissing(reveal);
+  });
 
   /// wa.me in the browser: WhatsApp Web, or its "get the app" page.
   Future<bool> openWhatsappWeb(ContactReveal reveal) =>
       _apps.open(Uri.parse(reveal.href));
 
   Future<ContactOutcome> _reveal(
-    String postId,
-    String channel,
+    Future<ContactReveal> Function() fetch,
     Future<ContactOutcome> Function(ContactReveal reveal) open,
   ) async {
     try {
-      return await open(await _api.contact(postId, channel));
+      return await open(await fetch());
     } on AppException catch (error) {
       return ContactFailed(error);
     }

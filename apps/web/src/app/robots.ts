@@ -8,7 +8,15 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
       userAgent: '*',
       allow: '/',
       // Seller pages, sign-in and this site's own endpoints aren't content.
-      disallow: ['/api/', '/me/', '/post/', '/login', '/gone', '/store/*/catalog/order/'],
+      disallow: [
+        '/api/',
+        '/me/',
+        '/post/',
+        '/seller',
+        '/login',
+        '/gone',
+        '/store/*/catalog/order/',
+      ],
     },
     sitemap: new URL('/sitemap.xml', await currentOrigin()).toString(),
   };

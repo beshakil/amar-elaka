@@ -23,6 +23,7 @@ import {
   CreatePostDto,
   idempotencyKeySchema,
   MarkSoldDto,
+  SetStockDto,
   MyPostCountsDto,
   MyPostsDto,
   MyPostsQueryDto,
@@ -152,6 +153,15 @@ export class PostsController {
   @ApiOkResponse({ type: PostDto })
   unhide(@Param() params: PostIdParamDto): Promise<PostView> {
     return this.posts.setHidden(params.id, false);
+  }
+
+  /** A store product's stock (ADR 057): its author, or the store's owner and managers. */
+  @Post(':id/stock')
+  @HttpCode(HttpStatus.OK)
+  @RequirePermission('posts', 'write')
+  @ApiOkResponse({ type: PostDto })
+  setStock(@Param() params: PostIdParamDto, @Body() body: SetStockDto): Promise<PostView> {
+    return this.posts.setStock(params.id, body.stockStatus);
   }
 
   @Delete(':id')
