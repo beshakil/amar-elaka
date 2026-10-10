@@ -47,6 +47,13 @@ dependencies:
   thumbhash: ^0.1.0+1
   # The seller dashboard's charts (ADR 057), as the request named it.
   fl_chart: ^1.2.0
+  # Realtime chat (ADR 058/060): the API's Socket.IO server on /chat; REST
+  # stays the fallback for everything.
+  socket_io_client: ^3.1.6
+  # Push (FCM, ADR 059/060). Options come from --dart-define, never a
+  # committed google-services.json; a build without them has no push.
+  firebase_core: ^4.15.0
+  firebase_messaging: ^16.7.0
 
 dev_dependencies:
   flutter_test:

@@ -5,6 +5,7 @@ import type { Sql } from 'postgres';
 import { AppModule } from '../src/app.module';
 import { TokenService } from '../src/auth/tokens/token.service';
 import { resolveTestDatabaseUrl, testSqlClient } from './db/test-database';
+import { startNotificationWorker, type NotificationWorker } from './support/notification-worker';
 
 /**
  * Map-specific reporting and moderation end to end (ADR 051): members report
@@ -60,6 +61,8 @@ interface SuggestionQueueItem {
 }
 
 describe('Place reports and edit suggestions (e2e)', () => {
+  /** Notifications are queued (ADR 059): dispatched here before a test looks. */
+  let queued: NotificationWorker;
   let app: NestFastifyApplication;
   let admin: Sql;
   const tokens: Record<number, string> = {};
@@ -119,6 +122,7 @@ describe('Place reports and edit suggestions (e2e)', () => {
   }
 
   beforeAll(async () => {
+    queued = await startNotificationWorker();
     admin = testSqlClient(1, resolveTestDatabaseUrl());
     await cleanUp();
     for (const i of [1, 2, 3, 4, MOD]) {
@@ -172,6 +176,7 @@ describe('Place reports and edit suggestions (e2e)', () => {
   }, 60_000);
 
   afterAll(async () => {
+    await queued?.close();
     await app.close();
     try {
       await cleanUp();
@@ -381,6 +386,7 @@ describe('Place reports and edit suggestions (e2e)', () => {
       expect(trust!.components.approved_edits).toBe(2);
       expect(trust!.score).toBe(before + 2);
 
+      await queued.dispatch((n) => n.userId === user(1));
       const [note] = await admin<{ type_code: string }[]>`
         select type_code from notifications where user_id = ${user(1)} and entity_id = ${id}`;
       expect(note!.type_code).toBe('place_edit_approved');
@@ -407,6 +413,7 @@ describe('Place reports and edit suggestions (e2e)', () => {
       });
       expect(rejected.body).toMatchObject({ status: 'rejected' });
       expect((await call<Place>('GET', `/places/${id}`, 3)).body.phones).toEqual([SHOP_PHONE]);
+      await queued.dispatch((n) => n.userId === user(2));
       const [note] = await admin<{ type_code: string; params: Record<string, string> }[]>`
         select type_code, params from notifications where user_id = ${user(2)} and entity_id = ${id}`;
       expect(note).toMatchObject({

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:amar_elaka_api/amar_elaka_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,6 +10,7 @@ import '../../../../core/design/widgets/app_button.dart';
 import '../../../../core/dynamic_form/bn_numerals.dart';
 import '../../../../core/routing/route_paths.dart';
 import '../../../../l10n/app_localizations.dart';
+import '../../../notifications/presentation/push_rationale.dart';
 import '../../application/current_tenant.dart';
 
 class PostResultArgs {
@@ -19,13 +22,33 @@ class PostResultArgs {
 
 /// Step 7's outcome, said plainly: live now, or under review with how long
 /// review usually takes here (moderation_typical_review_hours).
-class PostResultScreen extends ConsumerWidget {
+///
+/// A first post (not an edit) is a meaningful moment to offer push (ADR 060):
+/// buyers will message about it.
+class PostResultScreen extends ConsumerStatefulWidget {
   const PostResultScreen({required this.args, super.key});
 
   final PostResultArgs args;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<PostResultScreen> createState() => _PostResultScreenState();
+}
+
+class _PostResultScreenState extends ConsumerState<PostResultScreen> {
+  PostResultArgs get args => widget.args;
+
+  @override
+  void initState() {
+    super.initState();
+    if (!args.wasEdit) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) unawaited(offerPushAtMeaningfulMoment(context, ref));
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final locale = Localizations.localeOf(context).languageCode;
     final theme = Theme.of(context);

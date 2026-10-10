@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/chat/presentation/chat_button.dart';
 import '../../features/auth/application/auth_controller.dart';
 import '../../features/auth/domain/auth_session_state.dart';
 import '../../features/notifications/presentation/notifications_screen.dart';
@@ -42,8 +43,10 @@ class AppShell extends ConsumerWidget {
       appBar: AppBar(
         title: Text(titles[navigationShell.currentIndex]),
         actions: [
-          if (ref.watch(authControllerProvider) is AuthSessionAuthenticated)
+          if (ref.watch(authControllerProvider) is AuthSessionAuthenticated) ...[
+            const ChatInboxButton(),
             const NotificationsBell(),
+          ],
           if (tenantName != null)
             TextButton.icon(
               onPressed: () => _showTenantSwitcher(context, ref, tenantName),

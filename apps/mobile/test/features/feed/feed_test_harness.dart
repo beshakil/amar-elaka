@@ -6,6 +6,7 @@ import 'package:amar_elaka_app/core/design/app_theme.dart';
 import 'package:amar_elaka_app/core/design/widgets/network_photo.dart';
 import 'package:amar_elaka_app/core/network/api_exception.dart';
 import 'package:amar_elaka_app/core/platform/external_apps.dart';
+import 'package:amar_elaka_app/core/routing/app_router.dart';
 import 'package:amar_elaka_app/core/routing/route_paths.dart';
 import 'package:amar_elaka_app/core/storage/app_database.dart';
 import 'package:amar_elaka_app/core/storage/app_database_provider.dart';
@@ -23,6 +24,7 @@ import 'package:amar_elaka_app/features/tenant_bootstrap/data/location_service.d
 import 'package:amar_elaka_app/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:thumbhash/thumbhash.dart' as th;
@@ -400,6 +402,8 @@ Future<FeedTestApp> pumpFeedApp(
   Size physicalSize = const Size(1080, 2400),
   Widget Function(String url, Widget placeholder)? photos,
   bool settle = true,
+  List<Override> overrides = const [],
+  List<RouteBase> routes = const [],
 }) async {
   tester.view.physicalSize = physicalSize;
   tester.view.devicePixelRatio = 2.5;
@@ -426,6 +430,7 @@ Future<FeedTestApp> pumpFeedApp(
         path: RoutePaths.login,
         builder: (_, _) => const Scaffold(body: Text('login-screen')),
       ),
+      ...routes,
     ],
   );
   addTearDown(router.dispose);
@@ -445,6 +450,9 @@ Future<FeedTestApp> pumpFeedApp(
         viewerPositionProvider.overrideWith(
           (ref) async => const LocationGranted(23.8069, 90.3687),
         ),
+        // What navigates from outside a screen (a tapped push) uses this router too.
+        appRouterProvider.overrideWithValue(router),
+        ...overrides,
       ],
       child: NetworkPhotoOverride(
         builder: photos ?? loadedPhoto,

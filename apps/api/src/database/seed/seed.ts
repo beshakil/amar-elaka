@@ -82,11 +82,117 @@ async function main(): Promise<void> {
       await seedAnalyticsHistory(tx, tenantIds);
       await seedStoreImport(tx, storeIds[0]!, categoryIds.get('gadgets-electronics')!);
       await seedStock(tx);
+      await seedChat(tx, memberIds, storeIds[0]!);
     });
     console.log('Seed complete.');
   } finally {
     await sql.end();
   }
+}
+
+// ---------------------------------------------------------------------------
+// Chat (ADR 058)
+// ---------------------------------------------------------------------------
+
+/**
+ * The Mirpur buyer's two conversations — about another member's live post
+ * (with the seller's reply, so the chat lead exists) and with the first
+ * store — the store's quick replies, and one open conversation report with
+ * its transcript, so the inbox, the composer and the moderators' chat queue
+ * all show something in dev. Messages go in through the 0054 trigger like
+ * real ones (unread counts, watermarks).
+ */
+async function seedChat(tx: TransactionSql, memberIds: MemberIds, storeId: string): Promise<void> {
+  const buyer = memberIds.mirpur.buyer;
+  const [post] = await tx<
+    { id: string; tenant_id: string; author_member_id: string; title: string }[]
+  >`
+    select id, tenant_id, author_member_id, title from posts
+    where tenant_id = (select tenant_id from tenant_members where id = ${buyer})
+      and status_code = 'live' and author_member_id is not null and author_member_id <> ${buyer}
+      and store_id is null
+    order by id limit 1`;
+  const [store] = await tx<{ tenant_id: string; owner_member_id: string }[]>`
+    select tenant_id, owner_member_id from stores where id = ${storeId}`;
+  if (!post || !store) return;
+
+  const aboutPost = seedId('conversation:post');
+  const withStore = seedId('conversation:store');
+  await tx`
+    insert into conversations (id, tenant_id, kind_code, post_id, store_id, dedupe_key, created_by_member_id,
+                               origin_source_code, first_seller_reply_at)
+    values
+      (${aboutPost}, ${post.tenant_id}, 'post_inquiry', ${post.id}, null, ${`post:${post.id}:${buyer}`}, ${buyer},
+       'post_detail', now()),
+      (${withStore}, ${store.tenant_id}, 'store_inquiry', null, ${storeId}, ${`store:${storeId}:${buyer}`}, ${buyer},
+       'store_page', null)
+    on conflict (id) do nothing`;
+  await tx`
+    insert into conversation_participants (tenant_id, conversation_id, member_id, role_code) values
+      (${post.tenant_id}, ${aboutPost}, ${buyer}, 'buyer'),
+      (${post.tenant_id}, ${aboutPost}, ${post.author_member_id}, 'seller'),
+      (${store.tenant_id}, ${withStore}, ${buyer}, 'buyer'),
+      (${store.tenant_id}, ${withStore}, ${store.owner_member_id}, 'seller')
+    on conflict do nothing`;
+  const tenantOf = new Map([
+    [aboutPost, post.tenant_id],
+    [withStore, store.tenant_id],
+  ]);
+  const lines: [string, string, string, string][] = [
+    [aboutPost, buyer, 'seed-chat-1', 'আসসালামু আলাইকুম, এটা কি এখনো আছে?'],
+    [aboutPost, post.author_member_id, 'seed-chat-2', 'জি আছে। দেখতে আসতে পারেন।'],
+    [aboutPost, buyer, 'seed-chat-3', 'দাম কি একটু কমবে?'],
+    [withStore, buyer, 'seed-chat-4', 'আপনারা কি হোম ডেলিভারি দেন?'],
+  ];
+  for (const [conversationId, sender, clientId, body] of lines) {
+    await tx`
+      insert into messages (id, tenant_id, conversation_id, sender_member_id, kind_code, body, client_message_id)
+      values (${seedId(`message:${clientId}`)}, ${tenantOf.get(conversationId)!}, ${conversationId}, ${sender}, 'text', ${body}, ${clientId})
+      on conflict do nothing`;
+  }
+  // lead_events takes inserts only in its own tenant's context (0009).
+  await tx`select set_config('app.tenant_id', ${post.tenant_id}, true)`;
+  await tx`
+    insert into lead_events (tenant_id, channel_code, source_code, post_id, target_member_id, actor_member_id)
+    select ${post.tenant_id}, 'chat_started', 'post_detail', ${post.id}, ${post.author_member_id}, ${buyer}
+    where not exists (
+      select 1 from lead_events where channel_code = 'chat_started' and post_id = ${post.id} and actor_member_id = ${buyer})`;
+  await tx`select set_config('app.tenant_id', '', true)`;
+
+  const replies = [
+    'জি, আছে। কবে আসবেন?',
+    'দাম ফিক্সড, তবে ডেলিভারি ফ্রি।',
+    'সকাল ১০টা থেকে রাত ৯টা খোলা।',
+  ];
+  for (const [i, body] of replies.entries()) {
+    await tx`
+      insert into store_quick_replies (id, tenant_id, store_id, body, sort_order, created_by_member_id)
+      values (${seedId(`quick-reply:${i}`)}, ${store.tenant_id}, ${storeId}, ${body}, ${i}, ${store.owner_member_id})
+      on conflict (id) do nothing`;
+  }
+
+  const reportId = seedId('report:conversation');
+  await tx`
+    insert into reports (id, tenant_id, reporter_member_id, conversation_id, reason_code, details)
+    values (${reportId}, ${post.tenant_id}, ${post.author_member_id}, ${aboutPost}, 'spam', 'বারবার একই কথা লিখছে')
+    on conflict (id) do nothing`;
+  await tx`
+    insert into conversation_report_snapshots (tenant_id, report_id, conversation_id, transcript, message_count)
+    select ${post.tenant_id}, ${reportId}, ${aboutPost},
+           jsonb_agg(jsonb_build_object(
+             'id', m.id, 'senderMemberId', m.sender_member_id, 'senderRole', cp.role_code, 'kind', m.kind_code,
+             'body', m.body, 'mediaAssetId', null, 'location', null, 'listing', null, 'systemEvent', null,
+             'flaggedByFilter', m.flagged_by_filter, 'createdAt', m.created_at, 'deletedAt', m.deleted_at)
+             order by m.id),
+           count(*)
+    from messages m
+    join conversation_participants cp
+      on cp.tenant_id = m.tenant_id and cp.conversation_id = m.conversation_id and cp.member_id = m.sender_member_id
+    where m.conversation_id = ${aboutPost}
+    on conflict (report_id) do nothing`;
+  console.log(
+    'chat: 2 conversations, 4 messages, 1 chat lead, 3 quick replies, 1 conversation report',
+  );
 }
 
 // ---------------------------------------------------------------------------

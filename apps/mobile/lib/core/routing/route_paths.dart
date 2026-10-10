@@ -40,6 +40,18 @@ abstract final class RoutePaths {
   /// The in-app notification inbox.
   static const String notifications = '/notifications';
 
+  /// Notification settings per type and channel (ADR 059/060).
+  static const String notificationPreferences = '/notifications/settings';
+
+  /// The chat inbox, its archive, and one conversation (also the push's
+  /// deep links, `/chat` and `/chat/<id>`, ADR 058/060).
+  static const String chat = '/chat';
+  static const String chatArchive = '/chat/archived';
+  static String conversationFor(String conversationId) => '$chat/$conversationId';
+
+  /// Why we'd like to send notifications, before Android's own prompt (ADR 060).
+  static const String pushRationale = '/push-rationale';
+
   /// A place's own screen.
   static const String place = '/places';
   static String placeFor(String placeId) => '$place/$placeId';

@@ -13,6 +13,7 @@ import {
   QUEUE_MAIL,
   QUEUE_MAINTENANCE,
   QUEUE_MEDIA,
+  QUEUE_NOTIFICATIONS,
   QUEUE_POSTS,
   QUEUE_SAVED_SEARCHES,
   QUEUE_SEARCH,
@@ -36,6 +37,17 @@ const SEARCH_JOB_OPTIONS = {
   removeOnComplete: true,
   // settings-exempt: failed-job history kept in Redis for debugging (ops tuning)
   removeOnFail: 100,
+} as const;
+
+/**
+ * Notifications are many and small: a finished one is dropped (the
+ * database keeps the record); failures keep a short history.
+ */
+const NOTIFICATION_JOB_OPTIONS = {
+  ...DEFAULT_JOB_OPTIONS,
+  removeOnComplete: true,
+  // settings-exempt: failed-job history kept in Redis for debugging (ops tuning)
+  removeOnFail: 1000,
 } as const;
 
 /**
@@ -73,6 +85,8 @@ const SEARCH_JOB_OPTIONS = {
       { name: deadLetterQueueName(QUEUE_MAP) },
       { name: QUEUE_IMPORTS, defaultJobOptions: DEFAULT_JOB_OPTIONS },
       { name: deadLetterQueueName(QUEUE_IMPORTS) },
+      { name: QUEUE_NOTIFICATIONS, defaultJobOptions: NOTIFICATION_JOB_OPTIONS },
+      { name: deadLetterQueueName(QUEUE_NOTIFICATIONS) },
     ),
   ],
   providers: [MailQueueEventsListener, MaintenanceQueueEventsListener],

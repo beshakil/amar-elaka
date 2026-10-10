@@ -18,6 +18,8 @@ import '../../../core/platform/external_apps.dart';
 import '../../../core/routing/auth_gate.dart';
 import '../../../core/routing/route_paths.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../chat/data/chat_api.dart';
+import '../../chat/presentation/open_chat.dart';
 import '../../post_detail/application/contact_actions.dart';
 import '../../post_detail/presentation/detail_messages.dart';
 import '../../post_detail/presentation/widgets/detail_sheets.dart';
@@ -228,6 +230,19 @@ class _StoreBodyState extends ConsumerState<_StoreBody> {
                           label: Text(l10n.storeFollow),
                           onPressed: () => unawaited(_toggleFollow()),
                         ),
+                  FilledButton.icon(
+                    key: const ValueKey('store-chat'),
+                    icon: const Icon(Icons.chat_bubble_outline),
+                    label: Text(l10n.chatMessageButton),
+                    onPressed: () => unawaited(
+                      openChat(
+                        context,
+                        ref,
+                        storeId: page.id,
+                        source: ChatSource.storePage,
+                      ),
+                    ),
+                  ),
                   if (page.contactChannels.contains('call'))
                     FilledButton.icon(
                       key: const ValueKey('store-call'),

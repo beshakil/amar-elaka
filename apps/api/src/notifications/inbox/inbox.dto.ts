@@ -15,13 +15,18 @@ export const notificationIdParamSchema = z.object({ id: z.string().uuid() }).str
 export class NotificationIdParamDto extends createZodDto(notificationIdParamSchema) {}
 
 /**
- * One notification. Texts are not sent: the clients render them per locale
- * from `type` + `params` (no hardcoded user-facing strings server side).
+ * One notification. `title` and `body` are rendered on the server from
+ * notification_templates in the user's locale (ADR 059); `type` + `params`
+ * stay for clients that lay a notification out themselves.
  */
 export const inboxItemSchema = z.object({
   id: z.string().uuid(),
   /** notification_types code, e.g. post_approved, place_edit_rejected. */
   type: z.string(),
+  title: z.string().nullable(),
+  body: z.string().nullable(),
+  /** Events folded into this one ("৪টি নতুন মেসেজ" = 4); 1 for a single event. */
+  count: z.number().int(),
   params: z.record(z.string().nullable()),
   /** In-app route, e.g. /posts/<id>; null when there is nothing to open. */
   deepLink: z.string().nullable(),

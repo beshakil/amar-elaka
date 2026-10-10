@@ -21,8 +21,8 @@ import {
 import { InboxService } from './inbox.service';
 
 /**
- * The signed-in user's notifications, newest first, with the unread badge.
- * The clients word each one from its type and params.
+ * The signed-in user's notifications, newest first, with the unread badge;
+ * each carries its rendered title and body (ADR 059).
  */
 @Controller({ path: 'notifications', version: '1' })
 @UseGuards(JwtAuthGuard)

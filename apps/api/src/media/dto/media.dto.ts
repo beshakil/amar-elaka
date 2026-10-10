@@ -1,10 +1,10 @@
 import { z } from 'zod';
-import { MEDIA_KINDS } from '../../storage/media-kind.constants';
+import { MEDIA_KINDS, PRESIGNABLE_MEDIA_KINDS } from '../../storage/media-kind.constants';
 import { createZodDto } from '../../common/pipes/zod-dto';
 
 export const presignMediaSchema = z
   .object({
-    kind: z.enum(MEDIA_KINDS),
+    kind: z.enum(PRESIGNABLE_MEDIA_KINDS),
     contentType: z.string().min(1),
     byteSize: z.number().int().positive(),
     // settings-exempt: a sha256 hex digest is always 64 characters — a protocol constant.

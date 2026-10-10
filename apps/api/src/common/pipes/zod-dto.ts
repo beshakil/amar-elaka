@@ -49,9 +49,16 @@ export function createZodDto<T extends ZodSchema>(schema: T): ZodDtoClass<T> {
   if (shape) {
     for (const [key, value] of Object.entries(shape.shape)) {
       const field = describeZodField(value);
+      // A union (oneOf, no `type`) would send Swagger to reflected design
+      // types, which fails as a circular dependency: document it as an object.
+      const isUnion = field.schema.type === undefined && 'oneOf' in field.schema;
       const options: ApiPropertyOptions =
-        field.schema.type === 'object'
-          ? ({ ...field.schema, selfRequired: field.required } as ApiPropertyOptions)
+        field.schema.type === 'object' || isUnion
+          ? ({
+              type: 'object',
+              ...field.schema,
+              selfRequired: field.required,
+            } as ApiPropertyOptions)
           : ({ ...field.schema, required: field.required } as ApiPropertyOptions);
       ApiProperty(options)(ZodDto.prototype, key);
     }

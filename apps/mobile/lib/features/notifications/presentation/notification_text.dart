@@ -1,5 +1,4 @@
 import '../../../core/dynamic_form/bn_numerals.dart';
-import '../../../core/routing/route_paths.dart';
 import '../../../l10n/app_localizations.dart';
 import '../data/notifications_api.dart';
 
@@ -82,10 +81,3 @@ String? _reason(String? code, String? text, AppLocalizations l10n) {
     _ => l10n.noteReasonPolicy,
   };
 }
-
-/// Routes the app has for a notification's deep link; others only mark it read.
-bool canOpenDeepLink(String? link) =>
-    link != null &&
-    (link.startsWith('${RoutePaths.postDetail}/') ||
-        link.startsWith('${RoutePaths.savedSearches}/') ||
-        link.startsWith('${RoutePaths.place}/'));

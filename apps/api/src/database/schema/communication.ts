@@ -53,6 +53,12 @@ export const conversations = pgTable('conversations', {
   lockedReasonCode: text('locked_reason_code').references(() => moderationReasons.code, {
     onDelete: 'restrict',
   }),
+  // Where the buyer opened it (0054): the chat lead's source.
+  originSourceCode: text('origin_source_code').references(() => leadSources.code, {
+    onDelete: 'restrict',
+  }),
+  // The first seller-side reply (0054): that reply is the chat lead.
+  firstSellerReplyAt: timestamptz('first_seller_reply_at'),
   ...auditColumns(),
 });
 
@@ -78,6 +84,9 @@ export const conversationParticipants = pgTable(
     isMuted: boolean('is_muted').notNull().default(false),
     isArchived: boolean('is_archived').notNull().default(false),
     leftAt: timestamptz('left_at'),
+    // Watermarks (0054): composite FKs (tenant_id, …) -> messages, SET NULL.
+    lastDeliveredMessageId: uuid('last_delivered_message_id'),
+    lastReadMessageId: uuid('last_read_message_id'),
     ...auditColumns(),
   },
   (table) => [primaryKey({ columns: [table.tenantId, table.conversationId, table.memberId] })],
@@ -113,6 +122,23 @@ export const messages = pgTable('messages', {
   ...softDeleteColumns(),
 });
 
+// ---- conversation_report_snapshots (0054): TENANT-SCOPED, append-only ----
+
+export const conversationReportSnapshots = pgTable('conversation_report_snapshots', {
+  id: id(),
+  tenantId: uuid('tenant_id')
+    .notNull()
+    .references(() => tenants.id, { onDelete: 'restrict' }),
+  // Composite FK (tenant_id, report_id) -> reports, RESTRICT; unique.
+  reportId: uuid('report_id').notNull(),
+  // Composite FK (tenant_id, conversation_id) -> conversations, RESTRICT.
+  conversationId: uuid('conversation_id').notNull(),
+  transcript: jsonb('transcript').$type<Record<string, unknown>[]>().notNull(),
+  messageCount: integer('message_count').notNull(),
+  capturedAt: timestamptz('captured_at').notNull().defaultNow(),
+  ...auditColumns(),
+});
+
 // ---- notification_templates (§8.4): GLOBAL ---------------------------------
 
 export const notificationTemplates = pgTable('notification_templates', {
@@ -133,10 +159,12 @@ export const notificationTemplates = pgTable('notification_templates', {
     .default(sql`'{}'::text[]`),
   maxSmsSegments: smallint('max_sms_segments'),
   isActive: boolean('is_active').notNull().default(true),
+  // single | collapsed ("৪টি নতুন মেসেজ") — 0055.
+  variant: text('variant').notNull().default('single'),
   ...auditColumns(),
 });
 
-// ---- notifications (§8.5): GLOBAL, no tenant_id ----------------------------
+// ---- notifications (§8.5): GLOBAL (per user, one inbox across tenants) ---
 
 export const notifications = pgTable('notifications', {
   id: id(),
@@ -156,6 +184,18 @@ export const notifications = pgTable('notifications', {
   readAt: timestamptz('read_at'),
   archivedAt: timestamptz('archived_at'),
   expiresAt: timestamptz('expires_at'),
+  // 0055 (ADR 059): where it happened (null = platform), the rendered text,
+  // the channels that delivered it, and collapse state.
+  tenantId: uuid('tenant_id').references(() => tenants.id, { onDelete: 'set null' }),
+  title: text('title'),
+  body: text('body'),
+  channelsSent: text('channels_sent')
+    .array()
+    .notNull()
+    .default(sql`'{}'::text[]`),
+  collapseKey: text('collapse_key'),
+  collapseCount: integer('collapse_count').notNull().default(1),
+  lastEventAt: timestamptz('last_event_at').notNull().defaultNow(),
   ...auditColumns(),
 });
 
@@ -187,6 +227,8 @@ export const notificationDeliveries = pgTable('notification_deliveries', {
   costAmount: numeric('cost_amount', { precision: 12, scale: 2 }),
   sentAt: timestamptz('sent_at'),
   deliveredAt: timestamptz('delivered_at'),
+  // A push held back by quiet hours goes out then (0055).
+  scheduledFor: timestamptz('scheduled_for'),
   ...auditColumns(),
 });
 

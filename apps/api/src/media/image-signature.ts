@@ -1,3 +1,5 @@
+import type { MediaKind } from '../storage/media-kind.constants';
+
 /**
  * Identifies an image by its first bytes ("magic bytes"), never by the
  * Content-Type a client declared: a script renamed to .jpg, or an HTML page
@@ -68,13 +70,11 @@ function looksLikeText(bytes: Uint8Array): boolean {
  * The type a media kind's bytes really are, or undefined when they aren't
  * something that kind accepts (media-kind.constants.ts).
  */
-export function sniffMediaType(
-  kind: 'image' | 'video' | 'document' | 'import',
-  bytes: Uint8Array,
-): SniffedMediaType | undefined {
+export function sniffMediaType(kind: MediaKind, bytes: Uint8Array): SniffedMediaType | undefined {
   const image = sniffImageType(bytes);
   switch (kind) {
     case 'image':
+    case 'chat_image':
       return image;
     case 'document':
       if (startsWith(bytes, PDF)) return 'application/pdf';

@@ -8,6 +8,7 @@ import {
   QUEUE_GEO,
   QUEUE_PLACES,
   QUEUE_MAP,
+  QUEUE_NOTIFICATIONS,
   QUEUE_MEDIA,
   QUEUE_POSTS,
   QUEUE_SAVED_SEARCHES,
@@ -39,6 +40,7 @@ export class PlatformJobsService {
     @InjectQueue(QUEUE_GEO) geoQueue: Queue<ScheduledJobData>,
     @InjectQueue(QUEUE_PLACES) placesQueue: Queue<ScheduledJobData>,
     @InjectQueue(QUEUE_MAP) mapQueue: Queue<ScheduledJobData>,
+    @InjectQueue(QUEUE_NOTIFICATIONS) notificationsQueue: Queue<ScheduledJobData>,
   ) {
     this.queues = {
       [QUEUE_POSTS]: postsQueue,
@@ -47,6 +49,7 @@ export class PlatformJobsService {
       [QUEUE_GEO]: geoQueue,
       [QUEUE_PLACES]: placesQueue,
       [QUEUE_MAP]: mapQueue,
+      [QUEUE_NOTIFICATIONS]: notificationsQueue,
     };
   }
 

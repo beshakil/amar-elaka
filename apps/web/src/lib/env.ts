@@ -9,6 +9,12 @@ const EnvSchema = z.object({
   SITE_ORIGIN: z.string().url(),
   /** Public base URL for stored objects; a storage key is appended to it. */
   STORAGE_PUBLIC_URL: z.string().url(),
+  /**
+   * The API's public origin for the browser's chat socket (ADR 060), when it
+   * differs from API_BASE_URL's (an internal hostname). Handed to the browser
+   * by /api/chat-token, so it isn't baked into the build.
+   */
+  CHAT_SOCKET_URL: z.string().url().optional(),
 });
 
 type Env = z.infer<typeof EnvSchema>;
@@ -27,6 +33,7 @@ export function env(): Env {
     APP_ROOT_DOMAIN: process.env.APP_ROOT_DOMAIN,
     SITE_ORIGIN: process.env.SITE_ORIGIN,
     STORAGE_PUBLIC_URL: process.env.STORAGE_PUBLIC_URL,
+    CHAT_SOCKET_URL: process.env.CHAT_SOCKET_URL || undefined,
   });
   return validated;
 }

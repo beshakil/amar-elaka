@@ -3622,6 +3622,102 @@
         ]
       }
     },
+    "/me/notification-preferences": {
+      "get": {
+        "operationId": "NotificationPreferencesController_get",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreferencesDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "NotificationPreferences"
+        ]
+      },
+      "put": {
+        "operationId": "NotificationPreferencesController_update",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePreferencesDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreferencesDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "NotificationPreferences"
+        ]
+      }
+    },
+    "/me/devices/push-token": {
+      "put": {
+        "operationId": "NotificationPreferencesController_register",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PushTokenDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "NotificationPreferences"
+        ]
+      },
+      "delete": {
+        "operationId": "NotificationPreferencesController_forget",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForgetPushTokenDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "NotificationPreferences"
+        ]
+      }
+    },
     "/search": {
       "get": {
         "operationId": "SearchController_find",
@@ -5196,7 +5292,9 @@
                 "refresh-unmet-demand",
                 "purge-geo-provider-calls",
                 "detect-duplicates",
-                "build-offline-maps"
+                "build-offline-maps",
+                "relay-notification-outbox",
+                "send-saved-search-digests"
               ],
               "type": "string"
             }
@@ -5244,7 +5342,9 @@
                 "refresh-unmet-demand",
                 "purge-geo-provider-calls",
                 "detect-duplicates",
-                "build-offline-maps"
+                "build-offline-maps",
+                "relay-notification-outbox",
+                "send-saved-search-digests"
               ],
               "type": "string"
             }
@@ -6076,6 +6176,896 @@
         },
         "tags": [
           "MyPostsAnalytics"
+        ]
+      }
+    },
+    "/posts/{id}/conversations": {
+      "post": {
+        "operationId": "ChatController_openForPost",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OpenConversationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenConversationResultDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Chat"
+        ]
+      }
+    },
+    "/stores/{id}/conversations": {
+      "post": {
+        "operationId": "ChatController_openForStore",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OpenConversationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenConversationResultDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Chat"
+        ]
+      }
+    },
+    "/conversations": {
+      "get": {
+        "operationId": "ChatController_inbox",
+        "parameters": [
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "archived",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "true",
+                "false"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatInboxPageDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Chat"
+        ]
+      }
+    },
+    "/conversations/{id}": {
+      "get": {
+        "operationId": "ChatController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationViewDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Chat"
+        ]
+      }
+    },
+    "/conversations/{id}/messages": {
+      "get": {
+        "operationId": "ChatController_history",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "before",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "after",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoryPageDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Chat"
+        ]
+      },
+      "post": {
+        "operationId": "ChatController_send",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendMessageDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SendResultDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Chat"
+        ]
+      }
+    },
+    "/conversations/{id}/delivered": {
+      "post": {
+        "operationId": "ChatController_delivered",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReceiptDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceiptResultDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Chat"
+        ]
+      }
+    },
+    "/conversations/{id}/read": {
+      "post": {
+        "operationId": "ChatController_read",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReceiptDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceiptResultDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Chat"
+        ]
+      }
+    },
+    "/conversations/{id}/archive": {
+      "post": {
+        "operationId": "ChatController_archive",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationViewDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Chat"
+        ]
+      },
+      "delete": {
+        "operationId": "ChatController_unarchive",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationViewDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Chat"
+        ]
+      }
+    },
+    "/conversations/{id}/block": {
+      "post": {
+        "operationId": "ChatController_block",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationViewDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Chat"
+        ]
+      },
+      "delete": {
+        "operationId": "ChatController_unblock",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationViewDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Chat"
+        ]
+      }
+    },
+    "/conversations/{id}/report": {
+      "post": {
+        "operationId": "ChatController_report",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportConversationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatReportResultDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Chat"
+        ]
+      }
+    },
+    "/conversations/{id}/images": {
+      "post": {
+        "operationId": "ChatController_presignImage",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatImagePresignDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatImagePresignedDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Chat"
+        ]
+      }
+    },
+    "/conversations/{id}/images/{mediaId}/confirm": {
+      "post": {
+        "operationId": "ChatController_confirmImage",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "mediaId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatImageStatusDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Chat"
+        ]
+      }
+    },
+    "/conversations/{id}/images/{mediaId}": {
+      "get": {
+        "operationId": "ChatController_imageStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "mediaId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatImageStatusDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Chat"
+        ]
+      }
+    },
+    "/conversations/{id}/quick-replies": {
+      "get": {
+        "operationId": "ChatController_composerQuickReplies",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuickReplyListDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Chat"
+        ]
+      }
+    },
+    "/stores/{id}/quick-replies": {
+      "get": {
+        "operationId": "StoreQuickRepliesController_list",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuickReplyListDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "StoreQuickReplies"
+        ]
+      },
+      "post": {
+        "operationId": "StoreQuickRepliesController_create",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuickReplyBodyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuickReplyViewDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "StoreQuickReplies"
+        ]
+      }
+    },
+    "/stores/{id}/quick-replies/{replyId}": {
+      "patch": {
+        "operationId": "StoreQuickRepliesController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "replyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuickReplyBodyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuickReplyViewDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "StoreQuickReplies"
+        ]
+      },
+      "delete": {
+        "operationId": "StoreQuickRepliesController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "replyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "StoreQuickReplies"
+        ]
+      }
+    },
+    "/chat-reports/queue": {
+      "get": {
+        "operationId": "ChatReportsController_queue",
+        "parameters": [
+          {
+            "name": "before",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatReportQueueDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "ChatReports"
+        ]
+      }
+    },
+    "/chat-reports/{id}": {
+      "get": {
+        "operationId": "ChatReportsController_detail",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatReportDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "ChatReports"
+        ]
+      }
+    },
+    "/chat-reports/{id}/decision": {
+      "post": {
+        "operationId": "ChatReportsController_decide",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatReportDecisionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatReportDecisionResultDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "ChatReports"
         ]
       }
     }
@@ -7731,7 +8721,8 @@
               "image",
               "video",
               "document",
-              "import"
+              "import",
+              "chat_image"
             ]
           },
           "mimeType": {
@@ -11720,6 +12711,17 @@
                 "type": {
                   "type": "string"
                 },
+                "title": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "body": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "count": {
+                  "type": "integer"
+                },
                 "params": {
                   "type": "object",
                   "additionalProperties": {
@@ -11745,6 +12747,9 @@
               "required": [
                 "id",
                 "type",
+                "title",
+                "body",
+                "count",
                 "params",
                 "deepLink",
                 "entityId",
@@ -11776,6 +12781,132 @@
         },
         "required": [
           "unreadCount"
+        ]
+      },
+      "PreferencesDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string"
+                },
+                "urgent": {
+                  "type": "boolean"
+                },
+                "channels": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "channel": {
+                        "type": "string",
+                        "enum": [
+                          "in_app",
+                          "push",
+                          "sms",
+                          "email"
+                        ]
+                      },
+                      "enabled": {
+                        "type": "boolean"
+                      },
+                      "locked": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "channel",
+                      "enabled",
+                      "locked"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "type",
+                "urgent",
+                "channels"
+              ]
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "UpdatePreferencesDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "channel": {
+                  "type": "string",
+                  "enum": [
+                    "push",
+                    "sms",
+                    "email"
+                  ]
+                },
+                "enabled": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "type",
+                "channel",
+                "enabled"
+              ]
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "PushTokenDto": {
+        "type": "object",
+        "properties": {
+          "platform": {
+            "type": "string",
+            "enum": [
+              "android",
+              "ios",
+              "web"
+            ]
+          },
+          "token": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          }
+        },
+        "required": [
+          "platform",
+          "token"
+        ]
+      },
+      "ForgetPushTokenDto": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          }
+        },
+        "required": [
+          "token"
         ]
       },
       "SearchResponseDto": {
@@ -15699,7 +16830,9 @@
               "refresh-unmet-demand",
               "purge-geo-provider-calls",
               "detect-duplicates",
-              "build-offline-maps"
+              "build-offline-maps",
+              "relay-notification-outbox",
+              "send-saved-search-digests"
             ]
           },
           "queue": {
@@ -15967,7 +17100,9 @@
               "refresh-unmet-demand",
               "purge-geo-provider-calls",
               "detect-duplicates",
-              "build-offline-maps"
+              "build-offline-maps",
+              "relay-notification-outbox",
+              "send-saved-search-digests"
             ]
           },
           "queue": {
@@ -18240,6 +19375,2344 @@
           "topPosts",
           "topQueries",
           "generatedAt"
+        ]
+      },
+      "OpenConversationDto": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string",
+            "enum": [
+              "post_detail",
+              "search_result",
+              "store_page",
+              "boosted_slot"
+            ]
+          }
+        }
+      },
+      "OpenConversationResultDto": {
+        "type": "object",
+        "properties": {
+          "conversation": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "tenantId": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "post_inquiry",
+                  "store_inquiry",
+                  "direct"
+                ]
+              },
+              "post": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "price": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "cover": {
+                    "type": "object",
+                    "properties": {
+                      "url": {
+                        "type": "string"
+                      },
+                      "thumbhash": {
+                        "type": "string",
+                        "nullable": true
+                      }
+                    },
+                    "required": [
+                      "url",
+                      "thumbhash"
+                    ],
+                    "nullable": true
+                  }
+                },
+                "required": [
+                  "id",
+                  "title",
+                  "price",
+                  "cover"
+                ],
+                "nullable": true
+              },
+              "postRemoved": {
+                "type": "boolean"
+              },
+              "store": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "slug": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "object",
+                    "properties": {
+                      "bn": {
+                        "type": "string"
+                      },
+                      "en": {
+                        "type": "string",
+                        "nullable": true
+                      }
+                    },
+                    "required": [
+                      "bn",
+                      "en"
+                    ]
+                  }
+                },
+                "required": [
+                  "id",
+                  "slug",
+                  "name"
+                ],
+                "nullable": true
+              },
+              "counterpart": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "buyer",
+                      "seller",
+                      "store"
+                    ]
+                  },
+                  "name": {
+                    "type": "string",
+                    "nullable": true
+                  }
+                },
+                "required": [
+                  "kind",
+                  "name"
+                ]
+              },
+              "me": {
+                "type": "object",
+                "properties": {
+                  "memberId": {
+                    "type": "string"
+                  },
+                  "role": {
+                    "type": "string",
+                    "enum": [
+                      "buyer",
+                      "seller",
+                      "store_staff"
+                    ]
+                  }
+                },
+                "required": [
+                  "memberId",
+                  "role"
+                ]
+              },
+              "unreadCount": {
+                "type": "number"
+              },
+              "isArchived": {
+                "type": "boolean"
+              },
+              "isLocked": {
+                "type": "boolean"
+              },
+              "isBlocked": {
+                "type": "boolean"
+              },
+              "blockedByMe": {
+                "type": "boolean"
+              },
+              "canSend": {
+                "type": "boolean"
+              },
+              "othersDeliveredUpTo": {
+                "type": "string",
+                "nullable": true
+              },
+              "othersReadUpTo": {
+                "type": "string",
+                "nullable": true
+              },
+              "myReadUpTo": {
+                "type": "string",
+                "nullable": true
+              },
+              "lastMessage": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "conversationId": {
+                    "type": "string"
+                  },
+                  "clientMessageId": {
+                    "type": "string"
+                  },
+                  "senderMemberId": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "senderRole": {
+                    "type": "string",
+                    "enum": [
+                      "buyer",
+                      "seller",
+                      "store_staff"
+                    ],
+                    "nullable": true
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "text",
+                      "image",
+                      "location",
+                      "listing_card",
+                      "system"
+                    ]
+                  },
+                  "body": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "image": {
+                    "type": "object",
+                    "properties": {
+                      "thumb": {
+                        "type": "object",
+                        "properties": {
+                          "url": {
+                            "type": "string"
+                          },
+                          "width": {
+                            "type": "number"
+                          },
+                          "height": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "url",
+                          "width",
+                          "height"
+                        ]
+                      },
+                      "card": {
+                        "type": "object",
+                        "properties": {
+                          "url": {
+                            "type": "string"
+                          },
+                          "width": {
+                            "type": "number"
+                          },
+                          "height": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "url",
+                          "width",
+                          "height"
+                        ]
+                      },
+                      "full": {
+                        "type": "object",
+                        "properties": {
+                          "url": {
+                            "type": "string"
+                          },
+                          "width": {
+                            "type": "number"
+                          },
+                          "height": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "url",
+                          "width",
+                          "height"
+                        ]
+                      },
+                      "thumbhash": {
+                        "type": "string",
+                        "nullable": true
+                      }
+                    },
+                    "required": [
+                      "thumb",
+                      "card",
+                      "full",
+                      "thumbhash"
+                    ],
+                    "nullable": true
+                  },
+                  "location": {
+                    "type": "object",
+                    "properties": {
+                      "lat": {
+                        "type": "number"
+                      },
+                      "lng": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "lat",
+                      "lng"
+                    ],
+                    "nullable": true
+                  },
+                  "listing": {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "state": {
+                            "type": "string",
+                            "enum": [
+                              "shared"
+                            ]
+                          },
+                          "postId": {
+                            "type": "string"
+                          },
+                          "tenantId": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "price": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "cover": {
+                            "type": "object",
+                            "properties": {
+                              "url": {
+                                "type": "string"
+                              },
+                              "thumbhash": {
+                                "type": "string",
+                                "nullable": true
+                              }
+                            },
+                            "required": [
+                              "url",
+                              "thumbhash"
+                            ],
+                            "nullable": true
+                          }
+                        },
+                        "required": [
+                          "state",
+                          "postId",
+                          "tenantId",
+                          "title",
+                          "price",
+                          "cover"
+                        ]
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "state": {
+                            "type": "string",
+                            "enum": [
+                              "listing_removed"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "state"
+                        ]
+                      }
+                    ],
+                    "nullable": true
+                  },
+                  "systemEvent": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "createdAt": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "conversationId",
+                  "clientMessageId",
+                  "senderMemberId",
+                  "senderRole",
+                  "kind",
+                  "body",
+                  "image",
+                  "location",
+                  "listing",
+                  "systemEvent",
+                  "createdAt"
+                ],
+                "nullable": true
+              },
+              "activityAt": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "tenantId",
+              "kind",
+              "post",
+              "postRemoved",
+              "store",
+              "counterpart",
+              "me",
+              "unreadCount",
+              "isArchived",
+              "isLocked",
+              "isBlocked",
+              "blockedByMe",
+              "canSend",
+              "othersDeliveredUpTo",
+              "othersReadUpTo",
+              "myReadUpTo",
+              "lastMessage",
+              "activityAt"
+            ]
+          },
+          "created": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "conversation",
+          "created"
+        ]
+      },
+      "ChatInboxPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "tenantId": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "post_inquiry",
+                    "store_inquiry",
+                    "direct"
+                  ]
+                },
+                "post": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "price": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "cover": {
+                      "type": "object",
+                      "properties": {
+                        "url": {
+                          "type": "string"
+                        },
+                        "thumbhash": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "url",
+                        "thumbhash"
+                      ],
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "title",
+                    "price",
+                    "cover"
+                  ],
+                  "nullable": true
+                },
+                "postRemoved": {
+                  "type": "boolean"
+                },
+                "store": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "slug": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "object",
+                      "properties": {
+                        "bn": {
+                          "type": "string"
+                        },
+                        "en": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "bn",
+                        "en"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "slug",
+                    "name"
+                  ],
+                  "nullable": true
+                },
+                "counterpart": {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "buyer",
+                        "seller",
+                        "store"
+                      ]
+                    },
+                    "name": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "name"
+                  ]
+                },
+                "me": {
+                  "type": "object",
+                  "properties": {
+                    "memberId": {
+                      "type": "string"
+                    },
+                    "role": {
+                      "type": "string",
+                      "enum": [
+                        "buyer",
+                        "seller",
+                        "store_staff"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "memberId",
+                    "role"
+                  ]
+                },
+                "unreadCount": {
+                  "type": "number"
+                },
+                "isArchived": {
+                  "type": "boolean"
+                },
+                "isLocked": {
+                  "type": "boolean"
+                },
+                "isBlocked": {
+                  "type": "boolean"
+                },
+                "blockedByMe": {
+                  "type": "boolean"
+                },
+                "canSend": {
+                  "type": "boolean"
+                },
+                "othersDeliveredUpTo": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "othersReadUpTo": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "myReadUpTo": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "lastMessage": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "conversationId": {
+                      "type": "string"
+                    },
+                    "clientMessageId": {
+                      "type": "string"
+                    },
+                    "senderMemberId": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "senderRole": {
+                      "type": "string",
+                      "enum": [
+                        "buyer",
+                        "seller",
+                        "store_staff"
+                      ],
+                      "nullable": true
+                    },
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "text",
+                        "image",
+                        "location",
+                        "listing_card",
+                        "system"
+                      ]
+                    },
+                    "body": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "image": {
+                      "type": "object",
+                      "properties": {
+                        "thumb": {
+                          "type": "object",
+                          "properties": {
+                            "url": {
+                              "type": "string"
+                            },
+                            "width": {
+                              "type": "number"
+                            },
+                            "height": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "url",
+                            "width",
+                            "height"
+                          ]
+                        },
+                        "card": {
+                          "type": "object",
+                          "properties": {
+                            "url": {
+                              "type": "string"
+                            },
+                            "width": {
+                              "type": "number"
+                            },
+                            "height": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "url",
+                            "width",
+                            "height"
+                          ]
+                        },
+                        "full": {
+                          "type": "object",
+                          "properties": {
+                            "url": {
+                              "type": "string"
+                            },
+                            "width": {
+                              "type": "number"
+                            },
+                            "height": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "url",
+                            "width",
+                            "height"
+                          ]
+                        },
+                        "thumbhash": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "thumb",
+                        "card",
+                        "full",
+                        "thumbhash"
+                      ],
+                      "nullable": true
+                    },
+                    "location": {
+                      "type": "object",
+                      "properties": {
+                        "lat": {
+                          "type": "number"
+                        },
+                        "lng": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "lat",
+                        "lng"
+                      ],
+                      "nullable": true
+                    },
+                    "listing": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "state": {
+                              "type": "string",
+                              "enum": [
+                                "shared"
+                              ]
+                            },
+                            "postId": {
+                              "type": "string"
+                            },
+                            "tenantId": {
+                              "type": "string"
+                            },
+                            "title": {
+                              "type": "string"
+                            },
+                            "price": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "cover": {
+                              "type": "object",
+                              "properties": {
+                                "url": {
+                                  "type": "string"
+                                },
+                                "thumbhash": {
+                                  "type": "string",
+                                  "nullable": true
+                                }
+                              },
+                              "required": [
+                                "url",
+                                "thumbhash"
+                              ],
+                              "nullable": true
+                            }
+                          },
+                          "required": [
+                            "state",
+                            "postId",
+                            "tenantId",
+                            "title",
+                            "price",
+                            "cover"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "state": {
+                              "type": "string",
+                              "enum": [
+                                "listing_removed"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "state"
+                          ]
+                        }
+                      ],
+                      "nullable": true
+                    },
+                    "systemEvent": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "createdAt": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "conversationId",
+                    "clientMessageId",
+                    "senderMemberId",
+                    "senderRole",
+                    "kind",
+                    "body",
+                    "image",
+                    "location",
+                    "listing",
+                    "systemEvent",
+                    "createdAt"
+                  ],
+                  "nullable": true
+                },
+                "activityAt": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "tenantId",
+                "kind",
+                "post",
+                "postRemoved",
+                "store",
+                "counterpart",
+                "me",
+                "unreadCount",
+                "isArchived",
+                "isLocked",
+                "isBlocked",
+                "blockedByMe",
+                "canSend",
+                "othersDeliveredUpTo",
+                "othersReadUpTo",
+                "myReadUpTo",
+                "lastMessage",
+                "activityAt"
+              ]
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ]
+      },
+      "ConversationViewDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "post_inquiry",
+              "store_inquiry",
+              "direct"
+            ]
+          },
+          "post": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "price": {
+                "type": "string",
+                "nullable": true
+              },
+              "cover": {
+                "type": "object",
+                "properties": {
+                  "url": {
+                    "type": "string"
+                  },
+                  "thumbhash": {
+                    "type": "string",
+                    "nullable": true
+                  }
+                },
+                "required": [
+                  "url",
+                  "thumbhash"
+                ],
+                "nullable": true
+              }
+            },
+            "required": [
+              "id",
+              "title",
+              "price",
+              "cover"
+            ],
+            "nullable": true
+          },
+          "postRemoved": {
+            "type": "boolean"
+          },
+          "store": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "slug": {
+                "type": "string"
+              },
+              "name": {
+                "type": "object",
+                "properties": {
+                  "bn": {
+                    "type": "string"
+                  },
+                  "en": {
+                    "type": "string",
+                    "nullable": true
+                  }
+                },
+                "required": [
+                  "bn",
+                  "en"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "slug",
+              "name"
+            ],
+            "nullable": true
+          },
+          "counterpart": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "buyer",
+                  "seller",
+                  "store"
+                ]
+              },
+              "name": {
+                "type": "string",
+                "nullable": true
+              }
+            },
+            "required": [
+              "kind",
+              "name"
+            ]
+          },
+          "me": {
+            "type": "object",
+            "properties": {
+              "memberId": {
+                "type": "string"
+              },
+              "role": {
+                "type": "string",
+                "enum": [
+                  "buyer",
+                  "seller",
+                  "store_staff"
+                ]
+              }
+            },
+            "required": [
+              "memberId",
+              "role"
+            ]
+          },
+          "unreadCount": {
+            "type": "number"
+          },
+          "isArchived": {
+            "type": "boolean"
+          },
+          "isLocked": {
+            "type": "boolean"
+          },
+          "isBlocked": {
+            "type": "boolean"
+          },
+          "blockedByMe": {
+            "type": "boolean"
+          },
+          "canSend": {
+            "type": "boolean"
+          },
+          "othersDeliveredUpTo": {
+            "type": "string",
+            "nullable": true
+          },
+          "othersReadUpTo": {
+            "type": "string",
+            "nullable": true
+          },
+          "myReadUpTo": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastMessage": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "conversationId": {
+                "type": "string"
+              },
+              "clientMessageId": {
+                "type": "string"
+              },
+              "senderMemberId": {
+                "type": "string",
+                "nullable": true
+              },
+              "senderRole": {
+                "type": "string",
+                "enum": [
+                  "buyer",
+                  "seller",
+                  "store_staff"
+                ],
+                "nullable": true
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "text",
+                  "image",
+                  "location",
+                  "listing_card",
+                  "system"
+                ]
+              },
+              "body": {
+                "type": "string",
+                "nullable": true
+              },
+              "image": {
+                "type": "object",
+                "properties": {
+                  "thumb": {
+                    "type": "object",
+                    "properties": {
+                      "url": {
+                        "type": "string"
+                      },
+                      "width": {
+                        "type": "number"
+                      },
+                      "height": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "url",
+                      "width",
+                      "height"
+                    ]
+                  },
+                  "card": {
+                    "type": "object",
+                    "properties": {
+                      "url": {
+                        "type": "string"
+                      },
+                      "width": {
+                        "type": "number"
+                      },
+                      "height": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "url",
+                      "width",
+                      "height"
+                    ]
+                  },
+                  "full": {
+                    "type": "object",
+                    "properties": {
+                      "url": {
+                        "type": "string"
+                      },
+                      "width": {
+                        "type": "number"
+                      },
+                      "height": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "url",
+                      "width",
+                      "height"
+                    ]
+                  },
+                  "thumbhash": {
+                    "type": "string",
+                    "nullable": true
+                  }
+                },
+                "required": [
+                  "thumb",
+                  "card",
+                  "full",
+                  "thumbhash"
+                ],
+                "nullable": true
+              },
+              "location": {
+                "type": "object",
+                "properties": {
+                  "lat": {
+                    "type": "number"
+                  },
+                  "lng": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "lat",
+                  "lng"
+                ],
+                "nullable": true
+              },
+              "listing": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "state": {
+                        "type": "string",
+                        "enum": [
+                          "shared"
+                        ]
+                      },
+                      "postId": {
+                        "type": "string"
+                      },
+                      "tenantId": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      },
+                      "price": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "cover": {
+                        "type": "object",
+                        "properties": {
+                          "url": {
+                            "type": "string"
+                          },
+                          "thumbhash": {
+                            "type": "string",
+                            "nullable": true
+                          }
+                        },
+                        "required": [
+                          "url",
+                          "thumbhash"
+                        ],
+                        "nullable": true
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "postId",
+                      "tenantId",
+                      "title",
+                      "price",
+                      "cover"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "state": {
+                        "type": "string",
+                        "enum": [
+                          "listing_removed"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "state"
+                    ]
+                  }
+                ],
+                "nullable": true
+              },
+              "systemEvent": {
+                "type": "string",
+                "nullable": true
+              },
+              "createdAt": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "conversationId",
+              "clientMessageId",
+              "senderMemberId",
+              "senderRole",
+              "kind",
+              "body",
+              "image",
+              "location",
+              "listing",
+              "systemEvent",
+              "createdAt"
+            ],
+            "nullable": true
+          },
+          "activityAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "tenantId",
+          "kind",
+          "post",
+          "postRemoved",
+          "store",
+          "counterpart",
+          "me",
+          "unreadCount",
+          "isArchived",
+          "isLocked",
+          "isBlocked",
+          "blockedByMe",
+          "canSend",
+          "othersDeliveredUpTo",
+          "othersReadUpTo",
+          "myReadUpTo",
+          "lastMessage",
+          "activityAt"
+        ]
+      },
+      "HistoryPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "conversationId": {
+                  "type": "string"
+                },
+                "clientMessageId": {
+                  "type": "string"
+                },
+                "senderMemberId": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "senderRole": {
+                  "type": "string",
+                  "enum": [
+                    "buyer",
+                    "seller",
+                    "store_staff"
+                  ],
+                  "nullable": true
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "text",
+                    "image",
+                    "location",
+                    "listing_card",
+                    "system"
+                  ]
+                },
+                "body": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "image": {
+                  "type": "object",
+                  "properties": {
+                    "thumb": {
+                      "type": "object",
+                      "properties": {
+                        "url": {
+                          "type": "string"
+                        },
+                        "width": {
+                          "type": "number"
+                        },
+                        "height": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "url",
+                        "width",
+                        "height"
+                      ]
+                    },
+                    "card": {
+                      "type": "object",
+                      "properties": {
+                        "url": {
+                          "type": "string"
+                        },
+                        "width": {
+                          "type": "number"
+                        },
+                        "height": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "url",
+                        "width",
+                        "height"
+                      ]
+                    },
+                    "full": {
+                      "type": "object",
+                      "properties": {
+                        "url": {
+                          "type": "string"
+                        },
+                        "width": {
+                          "type": "number"
+                        },
+                        "height": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "url",
+                        "width",
+                        "height"
+                      ]
+                    },
+                    "thumbhash": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "thumb",
+                    "card",
+                    "full",
+                    "thumbhash"
+                  ],
+                  "nullable": true
+                },
+                "location": {
+                  "type": "object",
+                  "properties": {
+                    "lat": {
+                      "type": "number"
+                    },
+                    "lng": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "lat",
+                    "lng"
+                  ],
+                  "nullable": true
+                },
+                "listing": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "state": {
+                          "type": "string",
+                          "enum": [
+                            "shared"
+                          ]
+                        },
+                        "postId": {
+                          "type": "string"
+                        },
+                        "tenantId": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "price": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "cover": {
+                          "type": "object",
+                          "properties": {
+                            "url": {
+                              "type": "string"
+                            },
+                            "thumbhash": {
+                              "type": "string",
+                              "nullable": true
+                            }
+                          },
+                          "required": [
+                            "url",
+                            "thumbhash"
+                          ],
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "state",
+                        "postId",
+                        "tenantId",
+                        "title",
+                        "price",
+                        "cover"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "state": {
+                          "type": "string",
+                          "enum": [
+                            "listing_removed"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "state"
+                      ]
+                    }
+                  ],
+                  "nullable": true
+                },
+                "systemEvent": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "createdAt": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "conversationId",
+                "clientMessageId",
+                "senderMemberId",
+                "senderRole",
+                "kind",
+                "body",
+                "image",
+                "location",
+                "listing",
+                "systemEvent",
+                "createdAt"
+              ]
+            }
+          },
+          "hasMore": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "items",
+          "hasMore"
+        ]
+      },
+      "SendMessageDto": {
+        "type": "object",
+        "properties": {
+          "clientMessageId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{8,64}$"
+          },
+          "content": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "text"
+                    ]
+                  },
+                  "body": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "kind",
+                  "body"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "image"
+                    ]
+                  },
+                  "mediaId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "mediaId"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "location"
+                    ]
+                  },
+                  "lat": {
+                    "type": "number",
+                    "minimum": -90,
+                    "maximum": 90
+                  },
+                  "lng": {
+                    "type": "number",
+                    "minimum": -180,
+                    "maximum": 180
+                  }
+                },
+                "required": [
+                  "kind",
+                  "lat",
+                  "lng"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "listing_card"
+                    ]
+                  },
+                  "postId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "postId"
+                ]
+              }
+            ]
+          }
+        },
+        "required": [
+          "clientMessageId",
+          "content"
+        ]
+      },
+      "SendResultDto": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "conversationId": {
+                "type": "string"
+              },
+              "clientMessageId": {
+                "type": "string"
+              },
+              "senderMemberId": {
+                "type": "string",
+                "nullable": true
+              },
+              "senderRole": {
+                "type": "string",
+                "enum": [
+                  "buyer",
+                  "seller",
+                  "store_staff"
+                ],
+                "nullable": true
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "text",
+                  "image",
+                  "location",
+                  "listing_card",
+                  "system"
+                ]
+              },
+              "body": {
+                "type": "string",
+                "nullable": true
+              },
+              "image": {
+                "type": "object",
+                "properties": {
+                  "thumb": {
+                    "type": "object",
+                    "properties": {
+                      "url": {
+                        "type": "string"
+                      },
+                      "width": {
+                        "type": "number"
+                      },
+                      "height": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "url",
+                      "width",
+                      "height"
+                    ]
+                  },
+                  "card": {
+                    "type": "object",
+                    "properties": {
+                      "url": {
+                        "type": "string"
+                      },
+                      "width": {
+                        "type": "number"
+                      },
+                      "height": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "url",
+                      "width",
+                      "height"
+                    ]
+                  },
+                  "full": {
+                    "type": "object",
+                    "properties": {
+                      "url": {
+                        "type": "string"
+                      },
+                      "width": {
+                        "type": "number"
+                      },
+                      "height": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "url",
+                      "width",
+                      "height"
+                    ]
+                  },
+                  "thumbhash": {
+                    "type": "string",
+                    "nullable": true
+                  }
+                },
+                "required": [
+                  "thumb",
+                  "card",
+                  "full",
+                  "thumbhash"
+                ],
+                "nullable": true
+              },
+              "location": {
+                "type": "object",
+                "properties": {
+                  "lat": {
+                    "type": "number"
+                  },
+                  "lng": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "lat",
+                  "lng"
+                ],
+                "nullable": true
+              },
+              "listing": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "state": {
+                        "type": "string",
+                        "enum": [
+                          "shared"
+                        ]
+                      },
+                      "postId": {
+                        "type": "string"
+                      },
+                      "tenantId": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      },
+                      "price": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "cover": {
+                        "type": "object",
+                        "properties": {
+                          "url": {
+                            "type": "string"
+                          },
+                          "thumbhash": {
+                            "type": "string",
+                            "nullable": true
+                          }
+                        },
+                        "required": [
+                          "url",
+                          "thumbhash"
+                        ],
+                        "nullable": true
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "postId",
+                      "tenantId",
+                      "title",
+                      "price",
+                      "cover"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "state": {
+                        "type": "string",
+                        "enum": [
+                          "listing_removed"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "state"
+                    ]
+                  }
+                ],
+                "nullable": true
+              },
+              "systemEvent": {
+                "type": "string",
+                "nullable": true
+              },
+              "createdAt": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "conversationId",
+              "clientMessageId",
+              "senderMemberId",
+              "senderRole",
+              "kind",
+              "body",
+              "image",
+              "location",
+              "listing",
+              "systemEvent",
+              "createdAt"
+            ]
+          },
+          "created": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "message",
+          "created"
+        ]
+      },
+      "ReceiptDto": {
+        "type": "object",
+        "properties": {
+          "upToMessageId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "upToMessageId"
+        ]
+      },
+      "ReceiptResultDto": {
+        "type": "object",
+        "properties": {
+          "conversationId": {
+            "type": "string"
+          },
+          "memberId": {
+            "type": "string"
+          },
+          "deliveredUpTo": {
+            "type": "string",
+            "nullable": true
+          },
+          "readUpTo": {
+            "type": "string",
+            "nullable": true
+          },
+          "unreadCount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "conversationId",
+          "memberId",
+          "deliveredUpTo",
+          "readUpTo",
+          "unreadCount"
+        ]
+      },
+      "ReportConversationDto": {
+        "type": "object",
+        "properties": {
+          "reasonCode": {
+            "type": "string",
+            "enum": [
+              "scam",
+              "harassment",
+              "spam",
+              "prohibited_item",
+              "other"
+            ]
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "reasonCode"
+        ]
+      },
+      "ChatReportResultDto": {
+        "type": "object",
+        "properties": {
+          "reportId": {
+            "type": "string"
+          },
+          "created": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "reportId",
+          "created"
+        ]
+      },
+      "ChatImagePresignDto": {
+        "type": "object",
+        "properties": {
+          "contentType": {
+            "type": "string",
+            "minLength": 1
+          },
+          "byteSize": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "checksumSha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "required": [
+          "contentType",
+          "byteSize",
+          "checksumSha256"
+        ]
+      },
+      "ChatImagePresignedDto": {
+        "type": "object",
+        "properties": {
+          "mediaId": {
+            "type": "string"
+          },
+          "upload": {
+            "type": "object",
+            "properties": {
+              "url": {
+                "type": "string"
+              },
+              "method": {
+                "type": "string",
+                "enum": [
+                  "PUT"
+                ]
+              },
+              "headers": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                }
+              },
+              "expiresInSeconds": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "url",
+              "method",
+              "headers",
+              "expiresInSeconds"
+            ]
+          }
+        },
+        "required": [
+          "mediaId",
+          "upload"
+        ]
+      },
+      "ChatImageStatusDto": {
+        "type": "object",
+        "properties": {
+          "mediaId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending_upload",
+              "processing",
+              "ready",
+              "rejected",
+              "quarantined"
+            ]
+          }
+        },
+        "required": [
+          "mediaId",
+          "status"
+        ]
+      },
+      "QuickReplyListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "body": {
+                  "type": "string"
+                },
+                "sortOrder": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "id",
+                "body",
+                "sortOrder"
+              ]
+            }
+          },
+          "max": {
+            "type": "number"
+          },
+          "maxLength": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "items",
+          "max",
+          "maxLength"
+        ]
+      },
+      "QuickReplyBodyDto": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sortOrder": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "body"
+        ]
+      },
+      "QuickReplyViewDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "sortOrder": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "body",
+          "sortOrder"
+        ]
+      },
+      "ChatReportQueueDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "reportId": {
+                  "type": "string"
+                },
+                "conversationId": {
+                  "type": "string"
+                },
+                "reasonCode": {
+                  "type": "string"
+                },
+                "details": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "status": {
+                  "type": "string"
+                },
+                "reporterMemberId": {
+                  "type": "string"
+                },
+                "messageCount": {
+                  "type": "number"
+                },
+                "createdAt": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "reportId",
+                "conversationId",
+                "reasonCode",
+                "details",
+                "status",
+                "reporterMemberId",
+                "messageCount",
+                "createdAt"
+              ]
+            }
+          },
+          "nextBefore": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "items",
+          "nextBefore"
+        ]
+      },
+      "ChatReportDetailDto": {
+        "type": "object",
+        "properties": {
+          "reportId": {
+            "type": "string"
+          },
+          "conversationId": {
+            "type": "string"
+          },
+          "reasonCode": {
+            "type": "string"
+          },
+          "details": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string"
+          },
+          "reporterMemberId": {
+            "type": "string"
+          },
+          "messageCount": {
+            "type": "number"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "capturedAt": {
+            "type": "string"
+          },
+          "transcript": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "senderMemberId": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "senderRole": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "body": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "mediaAssetId": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "location": {
+                  "type": "object",
+                  "properties": {
+                    "lat": {
+                      "type": "number"
+                    },
+                    "lng": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "lat",
+                    "lng"
+                  ],
+                  "nullable": true
+                },
+                "listing": {
+                  "type": "object",
+                  "additionalProperties": {},
+                  "nullable": true
+                },
+                "systemEvent": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "flaggedByFilter": {
+                  "type": "boolean"
+                },
+                "createdAt": {
+                  "type": "string"
+                },
+                "deletedAt": {
+                  "type": "string",
+                  "nullable": true
+                }
+              },
+              "required": [
+                "id",
+                "senderMemberId",
+                "senderRole",
+                "kind",
+                "body",
+                "mediaAssetId",
+                "location",
+                "listing",
+                "systemEvent",
+                "flaggedByFilter",
+                "createdAt",
+                "deletedAt"
+              ]
+            }
+          }
+        },
+        "required": [
+          "reportId",
+          "conversationId",
+          "reasonCode",
+          "details",
+          "status",
+          "reporterMemberId",
+          "messageCount",
+          "createdAt",
+          "capturedAt",
+          "transcript"
+        ]
+      },
+      "ChatReportDecisionDto": {
+        "type": "object",
+        "properties": {
+          "decision": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "decision": {
+                    "type": "string",
+                    "enum": [
+                      "lock"
+                    ]
+                  },
+                  "reasonCode": {
+                    "type": "string",
+                    "enum": [
+                      "harassment",
+                      "scam_suspected",
+                      "spam",
+                      "contact_info_exposed",
+                      "policy_violation",
+                      "illegal_content",
+                      "credible_threat"
+                    ]
+                  },
+                  "note": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "decision",
+                  "reasonCode"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "decision": {
+                    "type": "string",
+                    "enum": [
+                      "dismiss"
+                    ]
+                  },
+                  "reasonCode": {
+                    "type": "string",
+                    "enum": [
+                      "report_unfounded"
+                    ]
+                  },
+                  "note": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "decision"
+                ]
+              }
+            ]
+          }
+        },
+        "required": [
+          "decision"
+        ]
+      },
+      "ChatReportDecisionResultDto": {
+        "type": "object",
+        "properties": {
+          "reportId": {
+            "type": "string"
+          },
+          "conversationId": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "lock",
+              "dismiss"
+            ]
+          },
+          "moderationActionId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "reportId",
+          "conversationId",
+          "decision",
+          "moderationActionId"
         ]
       }
     }

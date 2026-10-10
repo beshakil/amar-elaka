@@ -190,6 +190,19 @@ export class StoreImportRepository {
   // ---- the worker (system role) ---------------------------------------------------
 
   /** The importer, as the import job runs: their user and role in the tenant. */
+  /** The store's name, for the "upload finished" notification. */
+  async storeName(tx: DatabaseTransaction, storeId: string): Promise<string | null> {
+    const rows = await tx.execute(
+      sql`select name_bn from public.stores where id = ${storeId}::uuid`,
+    );
+    return (
+      z
+        .array(z.object({ name_bn: z.string() }))
+        .max(1)
+        .parse([...rows])[0]?.name_bn ?? null
+    );
+  }
+
   async importer(
     tx: DatabaseTransaction,
     memberId: string,

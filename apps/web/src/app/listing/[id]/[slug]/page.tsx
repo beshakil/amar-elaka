@@ -1,12 +1,14 @@
-import type { Metadata } from 'next';
+import type { Metadata, Route } from 'next';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, getTranslations } from 'next-intl/server';
-import { BadgeCheck, MapPin } from 'lucide-react';
+import { BadgeCheck, MapPin, MessageSquare } from 'lucide-react';
 import { localizeDigits } from '@amar-elaka/dynamic-form';
 import { NoCoverage } from '@/components/no-coverage';
 import { Breadcrumbs } from '@/components/listings/breadcrumbs';
 import { ContactActions } from '@/components/listings/contact-actions';
+import { buttonVariants } from '@/components/ui/button';
 import { ListingGrid } from '@/components/listings/listing-grid';
 import { SaveButton } from '@/components/listings/save-button';
 import { ViewBeacon } from '@/components/listings/view-beacon';
@@ -97,6 +99,7 @@ export default async function ListingPage({ params }: Props) {
   if (!loaded) return <NoCoverage />;
   const { tenant, post, origin } = loaded;
   const t = await getTranslations('listing');
+  const tChat = await getTranslations('chat');
   const words = await priceWords();
   const messages = await getMessages();
   const path = listingPath(post.id, post.title);
@@ -182,6 +185,19 @@ export default async function ListingPage({ params }: Props) {
             />
             <SaveButton postId={post.id} loginPath={loginPath} />
           </NextIntlClientProvider>
+
+          {/* Chat (ADR 060): sign-in, if needed, comes first (middleware) and returns here. */}
+          {post.contact.allowChat && !post.isSold && (
+            <Link
+              href={`/inbox/new?post=${post.id}` as Route}
+              className={buttonVariants({ variant: 'outline' })}
+              data-testid="listing-chat"
+              rel="nofollow"
+            >
+              <MessageSquare className="size-4" aria-hidden />
+              {tChat('messageButton')}
+            </Link>
+          )}
 
           <Seller post={post} tenant={tenant} />
         </div>

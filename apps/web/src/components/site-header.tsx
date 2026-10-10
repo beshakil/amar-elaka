@@ -4,6 +4,7 @@ import { Suspense } from 'react';
 import { MapPin } from 'lucide-react';
 import { SearchBox } from '@/components/search/search-box';
 import { LogoutButton } from '@/components/logout-button';
+import { NotificationBell } from '@/components/notifications/notification-bell';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { readSession } from '@/lib/auth/session';
 import type { TenantConfig } from '@/lib/api/schemas';
@@ -83,12 +84,16 @@ export async function SiteHeader({
               </Link>
               {signedIn ? (
                 <>
+                  <Link href="/inbox" className="rounded-md px-2 py-1 hover:bg-muted">
+                    {tNav('inbox')}
+                  </Link>
                   <a href="/me/posts" className="rounded-md px-2 py-1 hover:bg-muted">
                     {tNav('myPosts')}
                   </a>
                   <Link href="/seller" className="rounded-md px-2 py-1 hover:bg-muted">
                     {tNav('seller')}
                   </Link>
+                  <NotificationBell />
                   <LogoutButton label={tNav('logout')} />
                 </>
               ) : (

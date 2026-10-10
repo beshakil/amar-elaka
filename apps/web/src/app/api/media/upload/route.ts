@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { z } from 'zod';
 import { routeError } from '@/lib/api/route-errors';
 import { readSession } from '@/lib/auth/session';
 import { ACCEPTED_IMAGE_TYPES } from '@/lib/media/compress-image';
@@ -21,13 +22,18 @@ const MAX_BODY_BYTES = 15 * 1024 * 1024;
  * — so a photo reported done is one a post can attach (the API refuses
  * photos still `processing`). Never an open proxy: the only URL this
  * forwards to is the one the API returned a moment ago.
+ *
+ * `?conversation=<id>`: a photo for that chat (ADR 060), through the
+ * conversation's own image endpoints — the API checks the sender is in it.
  */
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const contentType = request.headers.get('content-type') ?? '';
   const sha256 = request.headers.get('x-content-sha256') ?? '';
+  const conversation = request.nextUrl.searchParams.get('conversation');
   if (
     !(ACCEPTED_IMAGE_TYPES as readonly string[]).includes(contentType) ||
-    !/^[0-9a-f]{64}$/.test(sha256)
+    !/^[0-9a-f]{64}$/.test(sha256) ||
+    (conversation !== null && !z.string().uuid().safeParse(conversation).success)
   ) {
     return NextResponse.json({ code: 'UPLOAD_REJECTED' }, { status: 400 });
   }
@@ -51,6 +57,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       contentType,
       bytes: body,
       sha256,
+      conversationId: conversation ?? undefined,
     });
     return result.ok
       ? NextResponse.json({ mediaId: result.mediaId })

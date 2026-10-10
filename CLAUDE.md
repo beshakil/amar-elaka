@@ -80,25 +80,6 @@ infra/ (docker, migrations), docs/specs, docs/decisions
 - Do not write migrations that drop or rename columns without flagging it
 - Do not scaffold features that were not requested
 
-## Current Phase
-
-Month 2 (weeks 5–9) — Core marketplace: posts, feed, search UX, map.
-
-- Schema is complete (migrations 0001–0021). It changes only through new
-  migrations, never by editing an existing one.
-- Boost RANKING hooks may exist (a boosted post ranks higher), but there is
-  no purchase flow.
-- Do NOT build yet (months 3–5): payments, credit purchase, boost purchase,
-  subscriptions, chat, reviews, admin dashboards beyond the moderation queue.
-
-Week 6 focus: feed ranking, post detail, contact actions, lead tracking, saved items.
-
-Week 7 focus: search UX, suggestions, saved searches (in-app delivery only),
-unmet demand analytics.
-
-Week 8 focus: self-hosted OSM tiles, Barikoi geo provider behind our API,
-geo query layer, server-side clustering, map screens.
-
 ## Map rules
 
 - Base map tiles: our own PMTiles file built from OSM data. Never
@@ -113,3 +94,27 @@ geo query layer, server-side clustering, map screens.
 - Request only the reverse-geocode parameters a screen actually needs;
   every extra parameter is an extra billed call.
 - Route/ETA only on explicit user action, never while panning.
+
+## Current Phase
+
+Month 3 (weeks 10–14) — Stores and seller tools, chat, notifications, reviews,
+trust and bans, first production deployment, local information services,
+field agent mode.
+Do NOT build: credit purchase, boost purchase, subscriptions billing, payment
+gateways, revenue share, partner dashboards beyond moderation. Months 4–5.
+
+## Rules carried forward
+
+- No duration, limit, threshold or price hardcoded — SettingsService only.
+- Discovery is radius-based; boundaries decide ownership only.
+- Every purge / scrub / anonymize path checks legal_holds first.
+- Every takedown, ban, verification decision writes moderation_actions.
+- Phone numbers are only returned from the contact endpoint, which writes a
+  lead_event. Never in detail responses, HTML, chat payloads or exports.
+- One implementation per rule (filters, open-now, tenant assignment,
+  visibility, trust score). Reuse, never re-implement.
+
+  Week 10 focus: stores, seller dashboard, bulk upload, WhatsApp catalog, seller web panel.
+
+  Week 11 focus: realtime chat, notification infrastructure (push, SMS, email,
+  in-app), and wiring every pending notification from weeks 5–10 into it.

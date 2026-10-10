@@ -5,6 +5,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
 import { SearchCoreModule } from '../search/search-core.module';
 import { SettingsModule } from '../settings/settings.module';
 import { SavedSearchAutoPauseService } from './matching/saved-search-auto-pause.service';
+import { SavedSearchDigestService } from './matching/saved-search-digest.service';
 import { SavedSearchMatcherService } from './matching/saved-search-matcher.service';
 import { SavedSearchNotifierService } from './matching/saved-search-notifier.service';
 import { SavedSearchesRepository } from './saved-searches.repository';
@@ -30,9 +31,15 @@ import { SavedSearchesSchedule } from './saved-searches.schedule';
     SavedSearchMatcherService,
     SavedSearchNotifierService,
     SavedSearchAutoPauseService,
+    SavedSearchDigestService,
     SavedSearchesProcessor,
     SavedSearchesSchedule,
   ],
-  exports: [SavedSearchMatcherService, SavedSearchNotifierService, SavedSearchAutoPauseService],
+  exports: [
+    SavedSearchMatcherService,
+    SavedSearchNotifierService,
+    SavedSearchAutoPauseService,
+    SavedSearchDigestService,
+  ],
 })
 export class SavedSearchesWorkerModule {}

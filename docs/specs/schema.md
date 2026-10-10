@@ -5267,6 +5267,70 @@ hold; the row must stay a post of a store they manage. No insert or delete polic
 accepts them, so their edits are re-reviewed like the author's. Settings: `store_counter_card_dpi`,
 `store_counter_sticker_mm`.
 
+### Chat (0054, ADR 058)
+
+On top of §8.1–8.3 and §8.10, all additive:
+
+- `conversations` + `origin_source_code → lead_sources` (where the buyer opened it: the chat lead's source) and
+  `first_seller_reply_at` (set once by `claim_first_seller_reply()`: the first seller-side reply after the buyer wrote is
+  the chat lead, `lead_events.channel_code = 'chat_started'`). Index `(tenant_id, store_id) where store_id is not null`.
+- `conversation_participants` + `last_delivered_message_id`, `last_read_message_id` (→ `messages (T)` SET NULL): per
+  participant watermarks, uuid v7 = time order. A message's delivery state is its id against the other participants'
+  watermarks — one row update per receipt, not one per message. Only move forward.
+- `messages`: CHECK `messages_content_ck` replaced — a `listing_card` carries only `listing_snapshot` (a body holding the
+  title would survive a scrub). `listing_snapshot` = `{"state":"shared","postId","tenantId","title","price","cover"}`,
+  built by the API from the feed's post card, never by the client; never a seller or phone. Trigger
+  `messages_sync_conversation` (AFTER INSERT): last activity and preview, `unread_count + 1` for the others, the sender's
+  own watermarks. Indexes on `(tenant_id, media_asset_id)` and `(listing_snapshot ->> 'postId') where kind_code =
+'listing_card'`.
+- `posts` trigger `posts_scrub_listing_cards` (scrubbed_at set): every listing card of the post, in any conversation,
+  becomes `{"state":"listing_removed"}` (Q46; `scrub_post` itself covers only the post's own conversations).
+- `reports` + `conversation_id` target; `moderation_actions` + `conversation_id` target (both CHECKs and
+  `reports_open_per_target_uq` recreated with it). Action type `conversation_locked`; moderation reason `harassment`.
+- `conversation_report_snapshots` (T): the transcript a conversation report attaches as evidence (the last
+  `chat_report_transcript_max_messages`, sender-deleted ones included; their images get `evidence_hold`). Staff of the
+  tenant read; written only by `report_conversation()`; no UPDATE or DELETE grant. Staff see a conversation only
+  through this (Q13).
+- `store_quick_replies` (T): a store's canned replies (`body`, `sort_order`, `created_by_member_id`); RLS
+  `can_manage_store(store_id)`. Count and length are settings, enforced by the API under a per-store advisory lock.
+- `media_assets`: kind `chat_image` (private bucket); RLS `media_assets_chat_participant_read` lets the conversation's
+  participants read the row; files are shown only through short-lived signed URLs.
+- Trigger `store_members_sync_chat`: an accepted manager joins the store's conversations as `store_staff`; a removed,
+  demoted or unaccepted one leaves (`left_at`).
+- Functions (SECURITY DEFINER, owner `ae_rls_bypass`): `conversation_tenant_of`, `open_conversation`,
+  `my_conversations` (the cross-tenant inbox), `claim_first_seller_reply`, `report_conversation`,
+  `decide_conversation_report`.
+- Settings: `chat_contact_filter_first_messages` (tenant_admin), `chat_messages_per_user_per_minute`,
+  `chat_new_conversations_per_user_per_day`, `chat_message_max_length`, `chat_quick_replies_per_store_max`,
+  `chat_quick_reply_max_length`, `chat_history_page_size_max`, `chat_inbox_page_size_max`,
+  `chat_report_transcript_max_messages`, `chat_token_grace_seconds`, `chat_presence_ttl_seconds`,
+  `chat_typing_ttl_seconds`, `chat_media_url_ttl_seconds`.
+- Fix: `GRANT SELECT ON ad_creatives TO ae_rls_bypass` — `scrub_post` failed in any tenant holding other media.
+
+### Notifications (0055, ADR 059)
+
+All additive, on §8.4–8.7:
+
+- `notification_types` + `default_channels text[]` (always includes `in_app`), `is_urgent` (no quiet hours, no caps),
+  `sms_eligible`, `collapsible`, `user_configurable`, `audience` (`member` | `platform`). New types
+  `saved_post_price_drop`, `store_import_finished`, `saved_search_weekly_digest`.
+- `notifications` + `tenant_id → tenants` SET NULL (where it happened: quiet hours, SMS billing), `title`, `body`
+  (rendered in the user's locale), `channels_sent text[]`, `collapse_key`, `collapse_count` (≥ 1), `last_event_at`.
+  Index `(user_id, type_code, collapse_key, last_event_at desc) where read_at is null and collapse_key is not null`
+  (collapse) and `(user_id, type_code, created_at)`. RLS `notifications_system_update` (the worker collapses).
+- `notification_templates` + `variant` (`single` | `collapsed`); `notification_templates_version_uq` and
+  `_active_uq` recreated with it. Seeded Bengali and English for every type sent. Syntax: `{{x}}`, `{{x|number}}`,
+  `{{x|taka}}`, `{{x|date}}`, `{{#x}}…{{/x}}`, `{{^x}}…{{/x}}`.
+- `notification_deliveries` + `scheduled_for` (a push or SMS held by quiet hours); index `(user_id, created_at) where
+channel_code <> 'in_app'` (the daily cap).
+- `moderation_reasons` + `label_bn`, `label_en` (the reason in a notification's words).
+- `user_notification_preferences` + RLS `..._system_read`.
+- `register_push_token(platform, token)` (SECURITY DEFINER): the caller's device, moving the token from anyone.
+- Scheduled jobs `relay-notification-outbox` (price drops), `send-saved-search-digests`.
+- Settings: `notification_daily_cap`, `notification_type_daily_caps` (json), `notification_quiet_hours_start` /
+  `_end` (tenant_admin), `notification_collapse_window_minutes`, `notification_sms_extra_types`,
+  `notification_outbox_max_attempts`, `saved_search_weekly_digest_weekday` / `_hour`.
+
 ## 14. Open questions
 
 Each has my recommendation. Items marked **⚠ before first migration** are expensive to change later.
@@ -5383,6 +5447,13 @@ Each has my recommendation. Items marked **⚠ before first migration** are expe
 
 CLAUDE.md rule 7: every table needs a migration, RLS policy, seed and test. This section
 states how that's satisfied for the whole schema, so no table falls through.
+
+### Chat inbox archive (0056, ADR 060)
+
+- `my_conversations(uuid, timestamptz, uuid, integer)` replaced by `my_conversations(uuid, timestamptz, uuid,
+integer, boolean)`: `p_archived` — `false` the inbox, `true` the archive, `NULL` both (a single conversation's
+  lookup). Still SECURITY DEFINER, owner `ae_rls_bypass`; dropped and recreated as that role, `EXECUTE` re-granted
+  to `ae_app`. No table changes: archiving writes `conversation_participants.is_archived` (0054).
 
 ### 15.1 Creation order
 

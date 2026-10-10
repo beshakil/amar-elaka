@@ -5,7 +5,7 @@ import '../../../../core/design/tokens/app_spacing.dart';
 import '../../../../core/dynamic_form/bn_numerals.dart';
 import '../../../../l10n/app_localizations.dart';
 
-/// The sticky bottom bar: Call · WhatsApp · Save · Share. The owner gets
+/// The sticky bottom bar: Message (when chat is on) · Call · WhatsApp · Save · Share. The owner gets
 /// their post's numbers instead of ways to contact themselves.
 class ContactBar extends StatelessWidget {
   const ContactBar({
@@ -15,6 +15,7 @@ class ContactBar extends StatelessWidget {
     required this.onWhatsapp,
     required this.onToggleSaved,
     required this.onShare,
+    this.onChat,
     super.key,
   });
 
@@ -26,6 +27,9 @@ class ContactBar extends StatelessWidget {
   final VoidCallback onWhatsapp;
   final VoidCallback onToggleSaved;
   final VoidCallback onShare;
+
+  /// "মেসেজ দিন" (ADR 060): shown when the seller allows chat.
+  final VoidCallback? onChat;
 
   @override
   Widget build(BuildContext context) {
@@ -60,45 +64,65 @@ class ContactBar extends StatelessWidget {
     final canCall = detail.contact.channels.contains('call') && !detail.isSold;
     final canWhatsapp =
         detail.contact.channels.contains('whatsapp') && !detail.isSold;
+    final canChat =
+        detail.contact.allowChat && onChat != null && !detail.isSold;
+    final actions = Row(
+      children: [
+        Expanded(
+          child: FilledButton.icon(
+            key: const ValueKey('detail-call'),
+            onPressed: canCall && busy == null ? onCall : null,
+            icon: busy == 'call' ? const _Spinner() : const Icon(Icons.call),
+            label: Text(l10n.detailCall),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: FilledButton.tonalIcon(
+            key: const ValueKey('detail-whatsapp'),
+            onPressed: canWhatsapp && busy == null ? onWhatsapp : null,
+            icon: busy == 'whatsapp'
+                ? const _Spinner()
+                : const Icon(Icons.chat_outlined),
+            label: Text(l10n.detailWhatsapp),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.xs),
+        IconButton(
+          key: const ValueKey('detail-save'),
+          tooltip: detail.isSaved ? l10n.detailSaved : l10n.detailSave,
+          isSelected: detail.isSaved,
+          onPressed: onToggleSaved,
+          icon: const Icon(Icons.favorite_border),
+          selectedIcon: Icon(Icons.favorite, color: theme.colorScheme.error),
+        ),
+        IconButton(
+          key: const ValueKey('detail-share'),
+          tooltip: l10n.detailShare,
+          onPressed: detail.share == null ? null : onShare,
+          icon: const Icon(Icons.share_outlined),
+        ),
+      ],
+    );
+    // With chat on, "মেসেজ দিন" gets its own full-width row: three labelled
+    // buttons side by side break their Bengali labels mid-word on a phone.
     return _BarFrame(
-      child: Row(
-        children: [
-          Expanded(
-            child: FilledButton.icon(
-              key: const ValueKey('detail-call'),
-              onPressed: canCall && busy == null ? onCall : null,
-              icon: busy == 'call' ? const _Spinner() : const Icon(Icons.call),
-              label: Text(l10n.detailCall),
-            ),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: FilledButton.tonalIcon(
-              key: const ValueKey('detail-whatsapp'),
-              onPressed: canWhatsapp && busy == null ? onWhatsapp : null,
-              icon: busy == 'whatsapp'
-                  ? const _Spinner()
-                  : const Icon(Icons.chat_outlined),
-              label: Text(l10n.detailWhatsapp),
-            ),
-          ),
-          const SizedBox(width: AppSpacing.xs),
-          IconButton(
-            key: const ValueKey('detail-save'),
-            tooltip: detail.isSaved ? l10n.detailSaved : l10n.detailSave,
-            isSelected: detail.isSaved,
-            onPressed: onToggleSaved,
-            icon: const Icon(Icons.favorite_border),
-            selectedIcon: Icon(Icons.favorite, color: theme.colorScheme.error),
-          ),
-          IconButton(
-            key: const ValueKey('detail-share'),
-            tooltip: l10n.detailShare,
-            onPressed: detail.share == null ? null : onShare,
-            icon: const Icon(Icons.share_outlined),
-          ),
-        ],
-      ),
+      child: canChat
+          ? Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                FilledButton.icon(
+                  key: const ValueKey('detail-chat'),
+                  onPressed: busy == null ? onChat : null,
+                  icon: const Icon(Icons.chat_bubble_outline),
+                  label: Text(l10n.chatMessageButton),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                actions,
+              ],
+            )
+          : actions,
     );
   }
 }

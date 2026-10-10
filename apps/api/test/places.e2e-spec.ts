@@ -6,6 +6,7 @@ import { AppModule } from '../src/app.module';
 import { SMS_PROVIDER, type SmsProvider } from '../src/auth/otp/sms/sms-provider.interface';
 import { TokenService } from '../src/auth/tokens/token.service';
 import { resolveTestDatabaseUrl, testSqlClient } from './db/test-database';
+import { startNotificationWorker, type NotificationWorker } from './support/notification-worker';
 
 /**
  * User-contributed places and the claim flow end to end (ADR 047), on real
@@ -103,6 +104,8 @@ const TENANT_OF: Record<As, string> = {
 };
 
 describe('Places and claims (e2e)', () => {
+  /** Notifications are queued (ADR 059): dispatched here before a test looks. */
+  let queued: NotificationWorker;
   let app: NestFastifyApplication;
   let admin: Sql;
   let sms: FakeSmsProvider;
@@ -146,6 +149,7 @@ describe('Places and claims (e2e)', () => {
   }
 
   beforeAll(async () => {
+    queued = await startNotificationWorker();
     admin = testSqlClient(1, resolveTestDatabaseUrl());
     await cleanUp();
 
@@ -230,6 +234,7 @@ describe('Places and claims (e2e)', () => {
   }, 60_000);
 
   afterAll(async () => {
+    await queued?.close();
     await app.close();
     try {
       await cleanUp();
@@ -279,9 +284,11 @@ describe('Places and claims (e2e)', () => {
               ${'a'.repeat(64)}, 'ready')`;
     return id;
   };
-  const notificationsOf = (userId: string) =>
-    admin<{ type_code: string; params: Record<string, string | null> }[]>`
+  const notificationsOf = async (userId: string) => {
+    await queued.dispatch((n) => n.userId === userId);
+    return admin<{ type_code: string; params: Record<string, string | null> }[]>`
       select type_code, params from notifications where user_id = ${userId} order by created_at`;
+  };
   const actionsOfClaim = (claimId: string) =>
     admin<{ action_code: string; reason_code: string }[]>`
       select action_code, reason_code from moderation_actions where place_claim_id = ${claimId} order by id`;

@@ -12,7 +12,7 @@ interface ApiRequest<TSchema extends z.ZodTypeAny> {
   /** Path below the API base URL, e.g. `/tenants`. */
   path: string;
   schema: TSchema;
-  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   body?: unknown;
   query?: Record<string, string>;
   tenantId?: string | undefined;

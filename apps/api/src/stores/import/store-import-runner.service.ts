@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { basename } from 'node:path';
 import { Inject, Injectable } from '@nestjs/common';
 import { PinoLogger } from 'nestjs-pino';
+import { NotificationService } from '../../notifications/notification.service';
 import { parseFieldSchema, parseUiSchema, type UiSchema } from '../../categories/field-schema';
 import { DomainException } from '../../common/exceptions/domain-exception';
 import { parseCsv } from '../../common/files/csv';
@@ -95,6 +96,7 @@ export class StoreImportRunner {
     private readonly media: MediaProcessingService,
     private readonly settings: SettingsService,
     @Inject(STORAGE_SERVICE) private readonly storage: StorageService,
+    private readonly notifications: NotificationService,
     private readonly logger: PinoLogger,
   ) {
     this.logger.setContext(StoreImportRunner.name);
@@ -136,6 +138,45 @@ export class StoreImportRunner {
         this.tenantDb.transaction((tx) => this.repo.finish(tx, importId, 'failed', code)),
       );
     }
+    if (!job.row.dry_run)
+      await this.notifyFinished(tenantId, importId, job.importer.user_id, system);
+  }
+
+  /**
+   * Tells the importer it's done (ADR 059): how many products went in and
+   * how many didn't, or that the file couldn't be read at all. A dry run is
+   * a preview the seller is watching: no notification.
+   */
+  private async notifyFinished(
+    tenantId: string,
+    importId: string,
+    userId: string,
+    system: <T>(work: () => Promise<T>) => Promise<T>,
+  ): Promise<void> {
+    const done = await system(() =>
+      this.tenantDb.transaction(async (tx) => {
+        const row = await this.repo.find(tx, importId);
+        return row ? { row, storeName: await this.repo.storeName(tx, row.store_id) } : undefined;
+      }),
+    );
+    if (!done) return;
+    await this.notifications.send({
+      userId,
+      type: 'store_import_finished',
+      tenantId,
+      params: {
+        importId,
+        storeId: done.row.store_id,
+        storeName: done.storeName,
+        created: String(done.row.created_count),
+        failed: String(done.row.failed_count),
+        skipped: String(done.row.skipped_count),
+        importFailed: done.row.status_code === 'failed' ? 'true' : null,
+      },
+      deepLink: `/stores/${done.row.store_id}/imports/${importId}`,
+      entityId: importId,
+      dedupeKey: `store_import_finished:${importId}`,
+    });
   }
 
   private async process(

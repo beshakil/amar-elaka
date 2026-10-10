@@ -379,6 +379,27 @@
       "when": 1791514935659,
       "tag": "0053_store_seller_tools",
       "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1791617282072,
+      "tag": "0054_chat",
+      "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1791621982957,
+      "tag": "0055_notifications",
+      "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1791635535764,
+      "tag": "0056_chat_inbox",
+      "breakpoints": true
     }
   ]
 }

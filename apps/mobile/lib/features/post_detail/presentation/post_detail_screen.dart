@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:amar_elaka_api/amar_elaka_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -13,6 +15,7 @@ import '../../../core/platform/external_apps.dart';
 import '../../../core/routing/auth_gate.dart';
 import '../../../core/routing/route_paths.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../chat/presentation/open_chat.dart';
 import '../../feed/presentation/listing_format.dart';
 import '../../feed/presentation/widgets/post_listing_card.dart';
 import '../application/contact_actions.dart';
@@ -160,6 +163,7 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
           : ContactBar(
               detail: detail,
               busy: _busy,
+              onChat: () => unawaited(openChat(context, ref, postId: widget.postId)),
               onCall: () {
                 if (_mayContact(detail)) {
                   _contact('call', () => actions.call(widget.postId));

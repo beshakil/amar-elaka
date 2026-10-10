@@ -9,7 +9,7 @@ import { TenantDb } from '../database/tenant-db';
 import { TenantRequiredException } from '../database/tenant.exceptions';
 import { JOB_PROCESS_MEDIA, QUEUE_MEDIA, type ProcessMediaJob } from '../queue/queue.types';
 import { SettingsService } from '../settings/settings.service';
-import { MEDIA_KIND_POLICIES, type MediaKind } from '../storage/media-kind.constants';
+import { isImageKind, MEDIA_KIND_POLICIES, type MediaKind } from '../storage/media-kind.constants';
 import {
   MediaAssetNotFoundException,
   UnsupportedContentTypeException,
@@ -54,7 +54,10 @@ export class MediaService {
     private readonly tenantContext: TenantContext,
   ) {}
 
-  async presign(input: PresignMediaInput): Promise<PresignedMedia> {
+  /** `kind` may also be chat_image, for the chat's own upload path (ADR 058). */
+  async presign(
+    input: Omit<PresignMediaInput, 'kind'> & { kind: MediaKind },
+  ): Promise<PresignedMedia> {
     const { tenantId, userId } = this.requireUser();
 
     const policy = MEDIA_KIND_POLICIES[input.kind];
@@ -119,7 +122,7 @@ export class MediaService {
       // Not what it claims to be: remove it now. The row goes with the
       // orphan sweep (a member can't delete rows).
       await this.storage.delete(bucket, row.storageKey);
-      throw new UploadRejectedException(row.kindCode === 'image' ? 'not_an_image' : 'wrong_type');
+      throw new UploadRejectedException(isImageKind(row.kindCode) ? 'not_an_image' : 'wrong_type');
     }
 
     await this.queue.add(

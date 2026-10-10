@@ -236,6 +236,8 @@ export const reports = pgTable('reports', {
   noticeId: uuid('notice_id'),
   // Composite FK (tenant_id, blood_request_id) -> blood_requests, RESTRICT (0011).
   bloodRequestId: uuid('blood_request_id'),
+  // Composite FK (tenant_id, conversation_id) -> conversations, RESTRICT (0054).
+  conversationId: uuid('conversation_id'),
   reasonCode: text('reason_code')
     .notNull()
     .references(() => reportReasons.code, { onDelete: 'restrict' }),
@@ -371,13 +373,15 @@ export const moderationActions = pgTable('moderation_actions', {
   tenantId: uuid('tenant_id')
     .notNull()
     .references(() => tenants.id, { onDelete: 'restrict' }),
-  // Exactly one target (0042, 0050): composite FKs (tenant_id, post_id) ->
+  // Exactly one target (0042, 0050, 0054): composite FKs (tenant_id, post_id) ->
   // posts, (tenant_id, place_id) -> places, (tenant_id, place_claim_id) ->
-  // place_claims, (tenant_id, store_id) -> stores, all RESTRICT.
+  // place_claims, (tenant_id, store_id) -> stores, (tenant_id, conversation_id)
+  // -> conversations, all RESTRICT.
   postId: uuid('post_id'),
   placeId: uuid('place_id'),
   placeClaimId: uuid('place_claim_id'),
   storeId: uuid('store_id'),
+  conversationId: uuid('conversation_id'),
   actorUserId: uuid('actor_user_id').references(() => users.id, { onDelete: 'restrict' }),
   actionCode: text('action_code')
     .notNull()

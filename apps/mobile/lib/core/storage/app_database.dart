@@ -11,6 +11,7 @@ import 'json_list_converter.dart';
 import 'tables/emergency_contact_table.dart';
 import 'tables/feed_cache_table.dart';
 import 'tables/offline_map_tables.dart';
+import 'tables/pending_chat_messages_table.dart';
 import 'tables/post_drafts_table.dart';
 import 'tables/tenant_config_table.dart';
 
@@ -21,6 +22,7 @@ part 'app_database.g.dart';
 /// refreshed on bootstrap. The one exception is `PostDrafts`, the source of
 /// truth for posts not yet on the server. `OfflineMaps` / `OfflinePoints`:
 /// the downloaded map area and its essential points (ADR 050).
+/// `PendingChatMessages`: chat messages not yet on the server (ADR 060).
 @DriftDatabase(
   tables: [
     TenantConfigCache,
@@ -29,6 +31,7 @@ part 'app_database.g.dart';
     PostDrafts,
     OfflineMaps,
     OfflinePoints,
+    PendingChatMessages,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -38,7 +41,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -59,6 +62,9 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 5) {
         await m.addColumn(postDrafts, postDrafts.storeId);
+      }
+      if (from < 6) {
+        await m.createTable(pendingChatMessages);
       }
     },
   );

@@ -199,3 +199,18 @@ export const storeImportRows = pgTable('store_import_rows', {
   postId: uuid('post_id'),
   ...auditColumns(),
 });
+
+/** 0054 A store's canned chat replies, for its owner and managers (count and length are settings). */
+export const storeQuickReplies = pgTable('store_quick_replies', {
+  id: id(),
+  tenantId: uuid('tenant_id')
+    .notNull()
+    .references(() => tenants.id, { onDelete: 'restrict' }),
+  // Composite FK (tenant_id, store_id) -> stores, CASCADE.
+  storeId: uuid('store_id').notNull(),
+  body: text('body').notNull(),
+  sortOrder: integer('sort_order').notNull().default(0),
+  // Composite FK (tenant_id, created_by_member_id) -> tenant_members, RESTRICT.
+  createdByMemberId: uuid('created_by_member_id').notNull(),
+  ...auditColumns(),
+});

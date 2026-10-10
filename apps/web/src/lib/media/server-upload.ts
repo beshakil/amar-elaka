@@ -1,5 +1,10 @@
 import { apiFetch } from '../api/fetch';
-import { mediaStatusSchema, presignedMediaSchema } from '../api/schemas';
+import {
+  chatImagePresignedSchema,
+  chatImageStatusSchema,
+  mediaStatusSchema,
+  presignedMediaSchema,
+} from '../api/schemas';
 
 // Transport tuning, not business rules (the API owns the real upload limits
 // and refuses at presign): how long the PUT may take, and how long to wait
@@ -26,20 +31,34 @@ export async function uploadThroughApi(
     contentType: string;
     bytes: Uint8Array<ArrayBuffer>;
     sha256: string;
+    /**
+     * A chat photo (ADR 058/060): through the conversation's own endpoints,
+     * so it lands in that conversation's tenant and is attached nowhere else.
+     */
+    conversationId?: string | undefined;
   },
 ): Promise<ServerUploadResult> {
-  const presigned = await apiFetch({
-    path: '/media/presign',
-    method: 'POST',
-    schema: presignedMediaSchema,
-    ...auth,
-    body: {
-      kind: file.kind,
-      contentType: file.contentType,
-      byteSize: file.bytes.byteLength,
-      checksumSha256: file.sha256,
-    },
-  });
+  const base = file.conversationId ? `/conversations/${file.conversationId}/images` : '/media';
+  const checksum = {
+    contentType: file.contentType,
+    byteSize: file.bytes.byteLength,
+    checksumSha256: file.sha256,
+  };
+  const presigned = file.conversationId
+    ? await apiFetch({
+        path: base,
+        method: 'POST',
+        schema: chatImagePresignedSchema,
+        ...auth,
+        body: checksum,
+      }).then((p) => ({ id: p.mediaId, upload: p.upload }))
+    : await apiFetch({
+        path: '/media/presign',
+        method: 'POST',
+        schema: presignedMediaSchema,
+        ...auth,
+        body: { kind: file.kind, ...checksum },
+      });
 
   const put = await fetch(presigned.upload.url, {
     method: 'PUT',
@@ -54,15 +73,17 @@ export async function uploadThroughApi(
       : { ok: false, code: 'UPLOAD_REJECTED', status: 400 };
   }
 
-  let status = await apiFetch({
-    path: `/media/${presigned.id}/confirm`,
+  // Both answer { status } (a chat photo's has no other fields worth reading here).
+  const statusSchema = file.conversationId ? chatImageStatusSchema : mediaStatusSchema;
+  let status: { status: string } = await apiFetch({
+    path: `${base}/${presigned.id}/confirm`,
     method: 'POST',
-    schema: mediaStatusSchema,
+    schema: statusSchema,
     ...auth,
   });
   for (let poll = 0; status.status === 'processing' && poll < READY_MAX_POLLS; poll++) {
     await new Promise((resolve) => setTimeout(resolve, READY_POLL_MS));
-    status = await apiFetch({ path: `/media/${presigned.id}`, schema: mediaStatusSchema, ...auth });
+    status = await apiFetch({ path: `${base}/${presigned.id}`, schema: statusSchema, ...auth });
   }
   if (status.status === 'ready') return { ok: true, mediaId: presigned.id };
   // Taking unusually long: worth another try later, not a refused file.

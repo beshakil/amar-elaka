@@ -42,7 +42,8 @@ const COUNTS_ROW = z.object({
 export type EngagementCounts = z.infer<typeof COUNTS_ROW>;
 
 export interface NewLead {
-  channel: 'call_click' | 'whatsapp_click' | 'sms_click';
+  /** chat_started: the first seller reply in a chat (ADR 058), written by the chat module. */
+  channel: 'call_click' | 'whatsapp_click' | 'sms_click' | 'chat_started';
   source: string;
   /** Null for a store's own contact (POST /stores/:id/contact). */
   postId: string | null;

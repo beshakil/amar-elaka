@@ -93,6 +93,9 @@ function toItem(row: InboxRow): InboxPage['items'][number] {
   return {
     id: row.id,
     type: row.type_code,
+    title: row.title,
+    body: row.body,
+    count: row.collapse_count,
     params,
     deepLink: row.deep_link,
     entityId: row.entity_id,

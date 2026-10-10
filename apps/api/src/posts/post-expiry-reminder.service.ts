@@ -10,6 +10,7 @@ import { SettingsService } from '../settings/settings.service';
 
 const DUE = z.object({
   id: z.string(),
+  tenant_id: z.string(),
   title: z.string(),
   expires_at: z.coerce.date(),
   user_id: z.string(),
@@ -24,7 +25,7 @@ const DUE = z.object({
  *
  * Send, then mark: a crash in between resends on the next run, and the
  * notification's dedupe key (post + expires_at) keeps that to one. A post is
- * marked only once a channel delivered, so a failed send is retried.
+ * marked once its notification is queued (durable; the queue retries the delivery).
  */
 @Injectable()
 export class PostExpiryReminderService {
@@ -41,24 +42,30 @@ export class PostExpiryReminderService {
     let failed = 0;
     const outcome = await inBatches(budget, async (limit) => {
       const due = await this.asSystem((tx) => this.due(tx, days, limit));
-      const delivered: z.infer<typeof DUE>[] = [];
-      for (const post of due) {
-        const expiresAt = post.expires_at.toISOString();
-        const result = await this.notifications.send({
-          userId: post.user_id,
-          type: 'post_expiring',
-          params: { postId: post.id, postTitle: post.title, expiresAt, action: 'repost' },
-          deepLink: `/posts/${post.id}?action=repost`,
-          entityId: post.id,
-          dedupeKey: `post_expiring:${post.id}:${expiresAt}`,
-        });
-        if (result.delivered > 0) delivered.push(post);
+      // Queued is durable (Redis, retried with backoff): mark once it's on
+      // the queue. A send that throws (Redis down) stops the batch; the
+      // rest stay due for the next run.
+      const queued: z.infer<typeof DUE>[] = [];
+      try {
+        for (const post of due) {
+          const expiresAt = post.expires_at.toISOString();
+          await this.notifications.send({
+            userId: post.user_id,
+            type: 'post_expiring',
+            tenantId: post.tenant_id,
+            params: { postId: post.id, postTitle: post.title, expiresAt, action: 'repost' },
+            deepLink: `/posts/${post.id}?action=repost`,
+            entityId: post.id,
+            dedupeKey: `post_expiring:${post.id}:${expiresAt}`,
+          });
+          queued.push(post);
+        }
+      } finally {
+        await this.asSystem((tx) => this.markReminded(tx, queued));
       }
-      await this.asSystem((tx) => this.markReminded(tx, delivered));
-      sent += delivered.length;
-      failed += due.length - delivered.length;
-      // Unsent posts stay due and would head the next batch again: stop, the next run retries.
-      return delivered.length < due.length ? 0 : due.length;
+      sent += queued.length;
+      failed += due.length - queued.length;
+      return queued.length < due.length ? 0 : due.length;
     });
     return { rows: sent, capped: outcome.capped, details: { failed } };
   }
@@ -69,7 +76,7 @@ export class PostExpiryReminderService {
     limit: number,
   ): Promise<z.infer<typeof DUE>[]> {
     const rows = await tx.execute(sql`
-      select p.id, p.title, p.expires_at, tm.user_id
+      select p.id, p.tenant_id, p.title, p.expires_at, tm.user_id
       from public.posts p
       join public.tenant_members tm on tm.tenant_id = p.tenant_id and tm.id = p.author_member_id
       where public.post_is_listed(p.status_code, p.deleted_at, p.scrubbed_at, p.hidden_by_owner, p.store_hidden, p.expires_at, now())

@@ -23,6 +23,7 @@ import {
   type StorageService,
   type StoredObjectInfo,
 } from '../storage.ports';
+import { downloadSigningKey, signDownloadToken, verifyDownloadToken } from './download-token';
 import { signUploadToken, uploadSigningKey, verifyUploadToken } from './upload-token';
 
 // settings-exempt: milliseconds-to-seconds, a unit conversion
@@ -33,6 +34,8 @@ const META_SUFFIX = '.meta.json';
 const SAFE_KEY = /^[A-Za-z0-9][A-Za-z0-9._-]*(?:\/[A-Za-z0-9][A-Za-z0-9._-]*)*$/;
 // The route LocalStorageRoutes serves uploads on (outside Nest, see there).
 export const LOCAL_UPLOAD_PATH = '/api/v1/storage/uploads';
+// …and signed reads of either bucket (presignDownload).
+export const LOCAL_DOWNLOAD_PATH = '/api/v1/storage/files';
 
 const metaSchema = z.object({
   contentType: z.string(),
@@ -69,14 +72,18 @@ export class LocalStorageService implements StorageService {
   private readonly root: string;
   private readonly publicBaseUrl: string;
   private readonly uploadBaseUrl: string;
+  private readonly downloadBaseUrl: string;
   private readonly signingKey: Buffer;
+  private readonly downloadKey: Buffer;
 
   constructor(@Inject(APP_CONFIG) env: LocalStorageEnv) {
     this.root = resolve(env.STORAGE_LOCAL_PATH);
     this.publicBaseUrl = env.STORAGE_PUBLIC_URL.replace(/\/+$/, '');
     if (!env.API_PUBLIC_URL) throw new StorageMisconfiguredException('API_PUBLIC_URL');
     this.uploadBaseUrl = `${env.API_PUBLIC_URL.replace(/\/+$/, '')}${LOCAL_UPLOAD_PATH}`;
+    this.downloadBaseUrl = `${env.API_PUBLIC_URL.replace(/\/+$/, '')}${LOCAL_DOWNLOAD_PATH}`;
     this.signingKey = uploadSigningKey(env.JWT_SECRET);
+    this.downloadKey = downloadSigningKey(env.JWT_SECRET);
   }
 
   presignUpload(
@@ -195,6 +202,36 @@ export class LocalStorageService implements StorageService {
   getPublicUrl(bucket: StorageBucket, key: string): string {
     if (bucket !== 'media') throw new PrivateBucketException(bucket);
     return `${this.publicBaseUrl}/${key}`;
+  }
+
+  presignDownload(bucket: StorageBucket, key: string, ttlSeconds: number): Promise<string> {
+    this.pathOf(bucket, key); // validates the key before handing out a grant
+    const expiresAt = Math.floor(Date.now() / MS_PER_SECOND) + ttlSeconds;
+    const token = signDownloadToken(this.downloadKey, { bucket, key, expiresAt });
+    return Promise.resolve(`${this.downloadBaseUrl}/${token}`);
+  }
+
+  /**
+   * The object a download token grants, for the files route; undefined (404)
+   * when the token is malformed, forged or expired, or the object is gone.
+   */
+  async openGranted(token: string): Promise<PublicObject | undefined> {
+    const check = verifyDownloadToken(
+      this.downloadKey,
+      token,
+      Math.floor(Date.now() / MS_PER_SECOND),
+    );
+    if (!check.ok) return undefined;
+    const path = this.pathOf(check.grant.bucket, check.grant.key);
+    const info = await stat(path).catch(notFoundToUndefined);
+    if (!info?.isFile()) return undefined;
+    const meta = await this.readMeta(path);
+    return {
+      stream: createReadStream(path),
+      byteSize: info.size,
+      contentType: meta?.contentType ?? 'application/octet-stream',
+      cacheControl: meta?.cacheControl,
+    };
   }
 
   /** A public media object for the `/media/*` route, or undefined (404). Never documents. */

@@ -52,10 +52,16 @@ export class MailProcessor extends WorkerHost {
     if (job.name !== JOB_SEND_EMAIL) return;
     const { to, template, params } = job.data;
     const html = await renderMailTemplate(template, params);
+    // Every email needs a subject (it went out without one before ADR 059):
+    // the caller's, else the template's heading.
+    const subject = params.subject ?? params.heading ?? '';
 
     try {
       await withRetry(() =>
-        withTimeout(this.transport.sendMail({ from: this.fromAddress, to, html }), SEND_TIMEOUT_MS),
+        withTimeout(
+          this.transport.sendMail({ from: this.fromAddress, to, subject, html }),
+          SEND_TIMEOUT_MS,
+        ),
       );
     } catch (error) {
       throw new MailSendFailedException(error);

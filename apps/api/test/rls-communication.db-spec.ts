@@ -183,8 +183,9 @@ describe('Row level security: communication domain (0009)', () => {
         (${MESSAGE_1}, ${TENANT_A}, ${CONVERSATION_1}, ${MEMBER_ALICE}, 'hello', 'rls-comm-client-msg-1')`;
 
     await admin`
-      insert into notification_templates (id, type_code, channel_code, locale, body_template) values
-        (${NOTIFICATION_TEMPLATE_1}, 'new_message', 'in_app', 'en', 'You have a new message from {{sender}}')`;
+      insert into notification_templates (id, type_code, channel_code, locale, body_template, version, is_active) values
+        -- 0055 seeds the live templates: this fixture is an inactive, far-off version beside them.
+        (${NOTIFICATION_TEMPLATE_1}, 'new_message', 'in_app', 'en', 'You have a new message from {{sender}}', 98, false)`;
     await admin`
       insert into notifications (id, user_id, type_code) values
         (${NOTIFICATION_1}, ${USER_ALICE}, 'new_message')`;
@@ -493,7 +494,7 @@ describe('Row level security: communication domain (0009)', () => {
         app,
         AS_PLATFORM_ADMIN,
         (tx) =>
-          tx`update notification_templates set version = 2 where id = ${NOTIFICATION_TEMPLATE_1}`,
+          tx`update notification_templates set version = 99 where id = ${NOTIFICATION_TEMPLATE_1}`,
       );
       expect(result.count).toBe(1);
     });

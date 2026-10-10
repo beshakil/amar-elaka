@@ -14,6 +14,8 @@ const decimal = z.number().nonnegative();
 const money = z.string().regex(/^\d+\.\d{2}$/);
 const textArray = z.array(z.string());
 const flag = z.boolean();
+/** A clock time, HH:MM (24 h). */
+const clockTime = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
 /**
  * Optional Barikoi reverse-geocode fields a purpose may ask for (ADR 044).
  * Each one is an extra billed call; the base answer already has the English
@@ -439,6 +441,30 @@ export const SETTING_DEFINITIONS = {
   store_catalog_page_max: wholeNumber,
   store_counter_card_dpi: wholeNumber,
   store_counter_sticker_mm: wholeNumber,
+  // Chat (ADR 058, migration 0054)
+  chat_contact_filter_first_messages: wholeNumber,
+  chat_messages_per_user_per_minute: wholeNumber,
+  chat_new_conversations_per_user_per_day: wholeNumber,
+  chat_message_max_length: wholeNumber,
+  chat_quick_replies_per_store_max: wholeNumber,
+  chat_quick_reply_max_length: wholeNumber,
+  chat_history_page_size_max: wholeNumber,
+  chat_inbox_page_size_max: wholeNumber,
+  chat_report_transcript_max_messages: wholeNumber,
+  chat_token_grace_seconds: wholeNumber,
+  chat_presence_ttl_seconds: wholeNumber,
+  chat_typing_ttl_seconds: wholeNumber,
+  chat_media_url_ttl_seconds: wholeNumber,
+  // Notifications (ADR 059, migration 0055)
+  notification_daily_cap: wholeNumber,
+  notification_type_daily_caps: z.record(z.string(), wholeNumber),
+  notification_quiet_hours_start: clockTime,
+  notification_quiet_hours_end: clockTime,
+  notification_collapse_window_minutes: wholeNumber,
+  notification_sms_extra_types: textArray,
+  notification_outbox_max_attempts: wholeNumber,
+  saved_search_weekly_digest_weekday: wholeNumber,
+  saved_search_weekly_digest_hour: wholeNumber,
 } as const satisfies Record<string, z.ZodTypeAny>;
 
 export type SettingKey = keyof typeof SETTING_DEFINITIONS;

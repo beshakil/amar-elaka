@@ -17,8 +17,9 @@ import { dhakaTime, notificationDue } from './notification-policy';
  * (notifications/notification-channel.ts). When to send is
  * notification-policy.ts (frequency, daily digest hour, per-day cap).
  *
- * A match is marked notified only once a channel delivered it; a failed
- * delivery is retried on the next run, with anything newer grouped in.
+ * A match is marked notified once its notification is queued (durable;
+ * the queue retries the delivery — ADR 059). If queueing throws, nothing is
+ * marked and the next run sends it, with anything newer grouped in.
  */
 @Injectable()
 export class SavedSearchNotifierService {
@@ -48,7 +49,7 @@ export class SavedSearchNotifierService {
         held += 1;
         continue;
       }
-      const { delivered } = await this.notifications.send({
+      await this.notifications.send({
         userId: search.user_id,
         type: 'saved_search_match',
         params: { savedSearchId: search.id, name: search.name, count: String(search.pending) },
@@ -57,7 +58,6 @@ export class SavedSearchNotifierService {
         // A retry of the same group can't notify twice.
         dedupeKey: `saved_search_match:${search.id}:${search.max_match_id}`,
       });
-      if (delivered === 0) continue;
       await this.asSystem((tx) =>
         this.repo.markNotified(tx, search.id, search.max_match_id, today),
       );

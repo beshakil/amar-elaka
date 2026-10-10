@@ -10,6 +10,7 @@ import { SearchIndexer } from '../src/search/indexing/search-indexer.service';
 import { SearchOutboxRelay } from '../src/search/indexing/search-outbox.relay';
 import { SettingsModule } from '../src/settings/settings.module';
 import { resolveTestDatabaseUrl, testSqlClient } from './db/test-database';
+import { startNotificationWorker, type NotificationWorker } from './support/notification-worker';
 
 /**
  * The stores module end to end (ADR 054): create (slug, pin, hours), the
@@ -72,6 +73,8 @@ interface StoreView {
 }
 
 describe('Stores (e2e)', () => {
+  /** Notifications are queued (ADR 059): dispatched here before a test looks. */
+  let queued: NotificationWorker;
   let app: NestFastifyApplication;
   let worker: TestingModule;
   let relay: SearchOutboxRelay;
@@ -146,6 +149,7 @@ describe('Stores (e2e)', () => {
   }
 
   beforeAll(async () => {
+    queued = await startNotificationWorker();
     admin = testSqlClient(1, resolveTestDatabaseUrl());
     await cleanUp();
     await admin`
@@ -248,6 +252,7 @@ describe('Stores (e2e)', () => {
   }, 120_000);
 
   afterAll(async () => {
+    await queued?.close();
     try {
       await cleanUp();
       if (relay) await drain();
@@ -386,6 +391,7 @@ describe('Stores (e2e)', () => {
     expect(mine.items).toContainEqual(
       expect.objectContaining({ id: store.id, role: 'editor', accepted: false }),
     );
+    await queued.dispatch((n) => n.userId === EDITOR);
     const [note] = await admin<{ n: string }[]>`
       select count(*) as n from notifications where user_id = ${EDITOR} and type_code = 'store_staff_invited'`;
     expect(Number(note!.n)).toBe(1);

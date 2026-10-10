@@ -211,4 +211,9 @@ export class S3StorageService implements StorageService {
     if (bucket !== 'media') throw new PrivateBucketException(bucket);
     return `${this.publicBaseUrl}/${key}`;
   }
+
+  presignDownload(bucket: StorageBucket, key: string, ttlSeconds: number): Promise<string> {
+    const command = new GetObjectCommand({ Bucket: this.buckets[bucket], Key: key });
+    return getSignedUrl(this.client, command, { expiresIn: ttlSeconds });
+  }
 }

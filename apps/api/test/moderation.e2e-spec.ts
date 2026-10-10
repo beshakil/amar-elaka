@@ -5,6 +5,7 @@ import type { Sql } from 'postgres';
 import { AppModule } from '../src/app.module';
 import { TokenService } from '../src/auth/tokens/token.service';
 import { resolveTestDatabaseUrl, testSqlClient } from './db/test-database';
+import { startNotificationWorker, type NotificationWorker } from './support/notification-worker';
 
 /**
  * Trust-based moderation end to end (ADR 030) on real Postgres + Redis:
@@ -48,6 +49,8 @@ interface QueueItem {
 }
 
 describe('Moderation (e2e)', () => {
+  /** Notifications are queued (ADR 059): dispatched here before a test looks. */
+  let queued: NotificationWorker;
   let app: NestFastifyApplication;
   let admin: Sql;
   const tokens: Record<string, string> = {};
@@ -78,6 +81,7 @@ describe('Moderation (e2e)', () => {
   }
 
   beforeAll(async () => {
+    queued = await startNotificationWorker();
     admin = testSqlClient(1, resolveTestDatabaseUrl());
     await cleanUp();
 
@@ -162,6 +166,7 @@ describe('Moderation (e2e)', () => {
   });
 
   afterAll(async () => {
+    await queued?.close();
     await app.close();
     try {
       await cleanUp();
@@ -200,9 +205,11 @@ describe('Moderation (e2e)', () => {
   const actions = (postId: string) =>
     admin<{ action_code: string; reason_code: string }[]>`
       select action_code, reason_code from moderation_actions where post_id = ${postId} order by created_at`;
-  const notificationsOf = (userId: string) =>
-    admin<{ type_code: string; params: Record<string, string> }[]>`
+  const notificationsOf = async (userId: string) => {
+    await queued.dispatch((n) => n.userId === userId);
+    return admin<{ type_code: string; params: Record<string, string> }[]>`
       select type_code, params from notifications where user_id = ${userId} order by created_at`;
+  };
 
   describe('the submission decision', () => {
     it("a new member's post waits in the queue (low trust)", async () => {

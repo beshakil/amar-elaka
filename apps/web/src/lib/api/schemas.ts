@@ -863,3 +863,185 @@ export type _SellerPanelContract = [
   Assert<Accepts<ImportView, Api['ImportViewDto']>>,
   Assert<Accepts<z.infer<typeof importListSchema>, Api['ImportListDto']>>,
 ];
+
+// ---- chat (ADR 058/060) -----------------------------------------------------
+
+const chatCoverSchema = z.object({ url: z.string(), thumbhash: z.string().nullable() });
+const chatImageVariantSchema = z.object({ url: z.string(), width: z.number(), height: z.number() });
+const participantRoleSchema = z.enum(['buyer', 'seller', 'store_staff']);
+
+export const chatMessageSchema = z.object({
+  id: z.string(),
+  conversationId: z.string(),
+  clientMessageId: z.string(),
+  senderMemberId: z.string().nullable(),
+  senderRole: participantRoleSchema.nullable(),
+  kind: z.enum(['text', 'image', 'location', 'listing_card', 'system']),
+  body: z.string().nullable(),
+  image: z
+    .object({
+      thumb: chatImageVariantSchema,
+      card: chatImageVariantSchema,
+      full: chatImageVariantSchema,
+      thumbhash: z.string().nullable(),
+    })
+    .nullable(),
+  location: z.object({ lat: z.number(), lng: z.number() }).nullable(),
+  listing: z
+    .discriminatedUnion('state', [
+      z.object({
+        state: z.literal('shared'),
+        postId: z.string(),
+        tenantId: z.string(),
+        title: z.string(),
+        price: z.string().nullable(),
+        cover: chatCoverSchema.nullable(),
+      }),
+      z.object({ state: z.literal('listing_removed') }),
+    ])
+    .nullable(),
+  systemEvent: z.string().nullable(),
+  createdAt: z.string(),
+});
+export type ChatMessage = z.infer<typeof chatMessageSchema>;
+
+export const conversationSchema = z.object({
+  id: z.string(),
+  tenantId: z.string(),
+  kind: z.enum(['post_inquiry', 'store_inquiry', 'direct']),
+  post: z
+    .object({
+      id: z.string(),
+      title: z.string(),
+      price: z.string().nullable(),
+      cover: chatCoverSchema.nullable(),
+    })
+    .nullable(),
+  postRemoved: z.boolean(),
+  store: z
+    .object({
+      id: z.string(),
+      slug: z.string(),
+      name: z.object({ bn: z.string(), en: z.string().nullable() }),
+    })
+    .nullable(),
+  counterpart: z.object({
+    kind: z.enum(['buyer', 'seller', 'store']),
+    name: z.string().nullable(),
+  }),
+  me: z.object({ memberId: z.string(), role: participantRoleSchema }),
+  unreadCount: z.number(),
+  isArchived: z.boolean(),
+  isLocked: z.boolean(),
+  isBlocked: z.boolean(),
+  blockedByMe: z.boolean(),
+  canSend: z.boolean(),
+  othersDeliveredUpTo: z.string().nullable(),
+  othersReadUpTo: z.string().nullable(),
+  myReadUpTo: z.string().nullable(),
+  lastMessage: chatMessageSchema.nullable(),
+  activityAt: z.string(),
+});
+export type Conversation = z.infer<typeof conversationSchema>;
+
+export const chatInboxSchema = z.object({
+  items: z.array(conversationSchema),
+  nextCursor: z.string().nullable(),
+});
+export type ChatInbox = z.infer<typeof chatInboxSchema>;
+export const openConversationSchema = z.object({
+  conversation: conversationSchema,
+  created: z.boolean(),
+});
+export const chatHistorySchema = z.object({
+  items: z.array(chatMessageSchema),
+  hasMore: z.boolean(),
+});
+export type ChatHistory = z.infer<typeof chatHistorySchema>;
+export const sendResultSchema = z.object({ message: chatMessageSchema, created: z.boolean() });
+export type SendResult = z.infer<typeof sendResultSchema>;
+export const receiptResultSchema = z.object({
+  conversationId: z.string(),
+  memberId: z.string(),
+  deliveredUpTo: z.string().nullable(),
+  readUpTo: z.string().nullable(),
+  unreadCount: z.number(),
+});
+export const chatReportResultSchema = z.object({ reportId: z.string(), created: z.boolean() });
+export const chatImagePresignedSchema = z.object({
+  mediaId: z.string(),
+  upload: z.object({
+    url: z.string(),
+    method: z.literal('PUT'),
+    headers: z.record(z.string()),
+    expiresInSeconds: z.number(),
+  }),
+});
+export type ChatImagePresigned = z.infer<typeof chatImagePresignedSchema>;
+export const chatImageStatusSchema = z.object({
+  mediaId: z.string(),
+  status: z.enum(['pending_upload', 'processing', 'ready', 'rejected', 'quarantined']),
+});
+export const quickReplyListSchema = z.object({
+  items: z.array(z.object({ id: z.string(), body: z.string(), sortOrder: z.number() })),
+  max: z.number(),
+  maxLength: z.number(),
+});
+export type QuickReplyList = z.infer<typeof quickReplyListSchema>;
+
+// ---- notifications (ADR 059/060) ---------------------------------------------
+
+export const notificationInboxSchema = z.object({
+  items: z.array(
+    z.object({
+      id: z.string(),
+      type: z.string(),
+      title: z.string().nullable(),
+      body: z.string().nullable(),
+      count: z.number(),
+      params: z.record(z.string().nullable()),
+      deepLink: z.string().nullable(),
+      entityId: z.string().nullable(),
+      read: z.boolean(),
+      createdAt: z.string(),
+    }),
+  ),
+  nextCursor: z.string().nullable(),
+  unreadCount: z.number(),
+});
+export type NotificationInbox = z.infer<typeof notificationInboxSchema>;
+export type NotificationItem = NotificationInbox['items'][number];
+export const unreadCountSchema = z.object({ unreadCount: z.number() });
+export const notificationPreferencesSchema = z.object({
+  items: z.array(
+    z.object({
+      type: z.string(),
+      urgent: z.boolean(),
+      channels: z.array(
+        z.object({
+          channel: z.enum(['in_app', 'push', 'sms', 'email']),
+          enabled: z.boolean(),
+          locked: z.boolean(),
+        }),
+      ),
+    }),
+  ),
+});
+export type NotificationPreferences = z.infer<typeof notificationPreferencesSchema>;
+
+export type _ChatContract = [
+  Assert<Accepts<ChatMessage, Api['SendResultDto']['message']>>,
+  Assert<Accepts<Conversation, Api['ConversationViewDto']>>,
+  Assert<Accepts<ChatInbox, Api['ChatInboxPageDto']>>,
+  Assert<Accepts<z.infer<typeof openConversationSchema>, Api['OpenConversationResultDto']>>,
+  Assert<Accepts<ChatHistory, Api['HistoryPageDto']>>,
+  Assert<Accepts<SendResult, Api['SendResultDto']>>,
+  Assert<Accepts<z.infer<typeof receiptResultSchema>, Api['ReceiptResultDto']>>,
+  Assert<Accepts<z.infer<typeof chatReportResultSchema>, Api['ChatReportResultDto']>>,
+  Assert<Accepts<ChatImagePresigned, Api['ChatImagePresignedDto']>>,
+  Assert<Accepts<z.infer<typeof chatImageStatusSchema>, Api['ChatImageStatusDto']>>,
+  Assert<Accepts<QuickReplyList, Api['QuickReplyListDto']>>,
+  Assert<Accepts<NotificationInbox, Api['InboxPageDto']>>,
+  Assert<Accepts<z.infer<typeof unreadCountSchema>, Api['UnreadCountDto']>>,
+  Assert<Accepts<NotificationPreferences, Api['PreferencesDto']>>,
+];

@@ -28,7 +28,11 @@ import '../../features/tenant_bootstrap/domain/tenant_bootstrap_state.dart';
 import '../../features/tenant_bootstrap/presentation/location_permission_screen.dart';
 import '../../features/tenant_bootstrap/presentation/tenant_confirm_screen.dart';
 import '../../features/tenant_bootstrap/presentation/tenant_picker_screen.dart';
+import '../../features/chat/presentation/chat_inbox_screen.dart';
+import '../../features/chat/presentation/conversation_screen.dart';
+import '../../features/notifications/presentation/notification_preferences_screen.dart';
 import '../../features/notifications/presentation/notifications_screen.dart';
+import '../../features/notifications/presentation/push_rationale.dart';
 import '../../features/offline_map/presentation/offline_map_screen.dart';
 import '../../features/place_detail/presentation/place_detail_screen.dart';
 import '../../features/place_feedback/presentation/place_suggest_screen.dart';
@@ -166,6 +170,32 @@ GoRouter appRouter(Ref ref) {
       GoRoute(
         path: RoutePaths.notifications,
         builder: (context, state) => const NotificationsScreen(),
+        routes: [
+          GoRoute(
+            path: 'settings',
+            builder: (context, state) => const NotificationPreferencesScreen(),
+          ),
+        ],
+      ),
+      // Chat (ADR 060). `archived` before `:id`, so it isn't read as an id.
+      GoRoute(
+        path: RoutePaths.chat,
+        builder: (context, state) => const ChatInboxScreen(),
+        routes: [
+          GoRoute(
+            path: 'archived',
+            builder: (context, state) => const ChatInboxScreen(archived: true),
+          ),
+          GoRoute(
+            path: ':id',
+            builder: (context, state) =>
+                ConversationScreen(conversationId: state.pathParameters['id']!),
+          ),
+        ],
+      ),
+      GoRoute(
+        path: RoutePaths.pushRationale,
+        builder: (context, state) => const PushRationaleScreen(),
       ),
       GoRoute(
         path: '${RoutePaths.place}/:id',

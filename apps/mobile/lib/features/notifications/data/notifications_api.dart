@@ -4,8 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/network/dio_client.dart';
 
-/// One notification from `GET /notifications`. The server sends no text:
-/// the app words it from [type] and [params] (notification_text.dart).
+/// One notification from `GET /notifications`. The server renders its
+/// title and body in the user's language (ADR 059); for an older row
+/// without them the app words it from [type] and [params]
+/// (notification_text.dart).
 class InboxItem {
   const InboxItem({
     required this.id,
@@ -14,6 +16,9 @@ class InboxItem {
     required this.deepLink,
     required this.read,
     required this.createdAt,
+    this.title,
+    this.body,
+    this.count = 1,
   });
 
   factory InboxItem.fromJson(Map<String, dynamic> json) => InboxItem(
@@ -27,9 +32,17 @@ class InboxItem {
     deepLink: json['deepLink'] as String?,
     read: json['read'] as bool,
     createdAt: DateTime.parse(json['createdAt'] as String),
+    title: json['title'] as String?,
+    body: json['body'] as String?,
+    count: (json['count'] as int?) ?? 1,
   );
 
   final String id;
+  final String? title;
+  final String? body;
+
+  /// Events folded into this one ("৪টি নতুন মেসেজ" = 4).
+  final int count;
   final String type;
   final Map<String, String?> params;
   final String? deepLink;
@@ -43,6 +56,9 @@ class InboxItem {
     deepLink: deepLink,
     read: true,
     createdAt: createdAt,
+    title: title,
+    body: body,
+    count: count,
   );
 }
 

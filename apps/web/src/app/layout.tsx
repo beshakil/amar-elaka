@@ -11,10 +11,10 @@ import './globals.css';
 
 // The only namespaces a client component here reads (theme-toggle, error, the
 // shared category form/filter renderer in packages/dynamic-form, and the photo
-// uploader). The
+// uploader, the header's notification bell). The
 // provider serializes what it is given into every page's payload, so passing
 // the whole catalog would ship all of the site's copy on every request.
-const CLIENT_NAMESPACES = ['theme', 'error', 'dynamicForm', 'mediaUploader'];
+const CLIENT_NAMESPACES = ['theme', 'error', 'dynamicForm', 'mediaUploader', 'notificationBell'];
 
 export async function generateMetadata(): Promise<Metadata> {
   const [tenant, origin, t] = await Promise.all([

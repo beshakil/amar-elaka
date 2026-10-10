@@ -1,3 +1,5 @@
+import 'package:amar_elaka_app/core/routing/deep_links.dart';
+import 'package:amar_elaka_app/core/routing/route_paths.dart';
 import 'package:amar_elaka_app/features/notifications/application/inbox_controller.dart';
 import 'package:amar_elaka_app/features/notifications/data/notifications_api.dart';
 import 'package:amar_elaka_app/features/notifications/presentation/notification_text.dart';
@@ -149,11 +151,12 @@ void main() {
     });
 
     test('only links the app has a screen for are followed', () {
-      expect(canOpenDeepLink('/posts/abc'), isTrue);
-      expect(canOpenDeepLink('/saved-searches/abc'), isTrue);
-      expect(canOpenDeepLink('/places/abc'), isTrue);
-      expect(canOpenDeepLink('/stores/abc'), isFalse);
-      expect(canOpenDeepLink(null), isFalse);
+      expect(appRouteForDeepLink('/posts/abc'), RoutePaths.postDetailFor('abc'));
+      expect(appRouteForDeepLink('/saved-searches/abc'), isNotNull);
+      expect(appRouteForDeepLink('/places/abc'), isNotNull);
+      expect(appRouteForDeepLink('/chat/c1'), RoutePaths.conversationFor('c1'));
+      expect(appRouteForDeepLink('/somewhere-else'), isNull);
+      expect(appRouteForDeepLink(null), isNull);
     });
   });
 

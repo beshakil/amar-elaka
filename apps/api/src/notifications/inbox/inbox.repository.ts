@@ -6,6 +6,9 @@ import type { DatabaseTransaction } from '../../database/database.client';
 const ROW = z.object({
   id: z.string(),
   type_code: z.string(),
+  title: z.string().nullable(),
+  body: z.string().nullable(),
+  collapse_count: z.number(),
   params: z.record(z.unknown()),
   deep_link: z.string().nullable(),
   entity_id: z.string().nullable(),
@@ -22,7 +25,8 @@ const VISIBLE = sql`archived_at is null and (expires_at is null or expires_at > 
 export class InboxRepository {
   async page(tx: DatabaseTransaction, before: string | null, limit: number): Promise<InboxRow[]> {
     const rows = await tx.execute(sql`
-      select id, type_code, params, deep_link, entity_id, read_at, created_at
+      select id, type_code, title, body, collapse_count, params, deep_link, entity_id, read_at,
+             last_event_at as created_at
       from public.notifications
       where user_id = public.current_user_id() and ${VISIBLE}
         ${before ? sql`and id < ${before}::uuid` : sql``}

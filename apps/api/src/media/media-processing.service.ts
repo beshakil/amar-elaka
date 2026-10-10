@@ -5,7 +5,7 @@ import { mediaAssets } from '../database/schema/content';
 import { TenantContext } from '../database/tenant-context';
 import { TenantDb } from '../database/tenant-db';
 import { SettingsService } from '../settings/settings.service';
-import { MEDIA_KIND_POLICIES, type MediaKind } from '../storage/media-kind.constants';
+import { isImageKind, MEDIA_KIND_POLICIES, type MediaKind } from '../storage/media-kind.constants';
 import { STORAGE_SERVICE, type StorageService } from '../storage/storage.ports';
 import { sniffMediaType, type SniffedImageType } from './image-signature';
 import { InvalidImageError, processImage, type ProcessedImage } from './image-pipeline';
@@ -13,6 +13,8 @@ import { variantKey, variantKeys, type StoredVariants } from './media.types';
 
 // settings-exempt: variant keys are unique and never rewritten, so browsers and CDNs may cache them forever
 const IMMUTABLE_CACHE = 'public, max-age=31536000, immutable';
+// settings-exempt: the same for a private image (a chat photo), but never in a shared cache
+const PRIVATE_IMMUTABLE_CACHE = 'private, max-age=31536000, immutable';
 
 export type ProcessOutcome = 'ready' | 'rejected' | 'skipped';
 
@@ -34,7 +36,7 @@ interface AssetRow {
  * The worker half of the media pipeline (runs as `system`, so it may move
  * `status_code`, which members can't: media_assets_protect_status, 0005).
  *
- * For an image:
+ * For an image (a post photo or a chat photo):
  *   1. download the original and check its magic bytes again (the first check
  *      only read a few bytes; this is the whole file);
  *   2. decode it with sharp under a pixel limit (decompression bombs);
@@ -76,7 +78,7 @@ export class MediaProcessingService {
       const sniffed = sniffMediaType(row.kindCode, original);
       if (!sniffed) throw new UnprocessableMediaError('signature does not match the media kind');
 
-      if (row.kindCode !== 'image') {
+      if (!isImageKind(row.kindCode)) {
         await this.finish(id, { mimeType: sniffed, byteSize: original.length });
         return 'ready';
       }
@@ -106,7 +108,8 @@ export class MediaProcessingService {
       for (const name of variantKeys) {
         const variant = image.variants[name];
         const key = variantKey(row.storageKey, name);
-        await this.storage.putObject(bucket, key, variant.data, 'image/webp', IMMUTABLE_CACHE);
+        const cache = row.visibilityCode === 'public' ? IMMUTABLE_CACHE : PRIVATE_IMMUTABLE_CACHE;
+        await this.storage.putObject(bucket, key, variant.data, 'image/webp', cache);
         written.push(key);
         variants[name] = {
           key,

@@ -7,6 +7,9 @@ import 'core/design/tokens/app_typography.dart';
 import 'core/design/widgets/offline_banner.dart';
 import 'core/l10n/locale_controller.dart';
 import 'core/routing/app_router.dart';
+import 'features/chat/application/chat_outbox.dart';
+import 'features/notifications/presentation/push_rationale.dart';
+import 'features/notifications/push/push_controller.dart';
 import 'features/offline_map/application/offline_map_controller.dart';
 import 'features/post/application/draft_sync.dart';
 import 'l10n/app_localizations.dart';
@@ -25,6 +28,10 @@ class App extends ConsumerWidget {
     ref.listen(draftSyncProvider, (_, _) {});
     // A newer downloaded map, looked for once per run (ADR 050).
     ref.listen(offlineMapAutoUpdateProvider, (_, _) {});
+    // Push for the whole run: token, taps, foreground banners (ADR 060).
+    ref.listen(pushControllerProvider, (_, _) {});
+    // Chat messages written offline go out when they can, whatever screen is open.
+    ref.listen(chatOutboxProvider, (_, _) {});
 
     return MaterialApp.router(
       onGenerateTitle: (context) => AppLocalizations.of(context)!.appTitle,
@@ -47,10 +54,16 @@ class App extends ConsumerWidget {
         return DefaultTextStyle(
           style: AppTypography.bodyLarge,
           textHeightBehavior: AppTypography.heightBehavior,
-          child: Column(
+          child: Stack(
             children: [
-              const OfflineBanner(),
-              Expanded(child: child ?? const SizedBox.shrink()),
+              Column(
+                children: [
+                  const OfflineBanner(),
+                  Expanded(child: child ?? const SizedBox.shrink()),
+                ],
+              ),
+              // A push that came while the app is open (ADR 060).
+              const Positioned(top: 0, left: 0, right: 0, child: PushBannerOverlay()),
             ],
           ),
         );

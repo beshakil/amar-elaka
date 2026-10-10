@@ -9,6 +9,7 @@ import { GeoWorkerModule } from './locations/geocoding/geo-worker.module';
 import { MaintenanceModule } from './maintenance/maintenance.module';
 import { MediaWorkerModule } from './media/media-worker.module';
 import { MapWorkerModule } from './map/offline/map-worker.module';
+import { NotificationsWorkerModule } from './notifications/notifications-worker.module';
 import { PlacesWorkerModule } from './places/places-worker.module';
 import { PostsWorkerModule } from './posts/posts-worker.module';
 import { QueueModule } from './queue/queue.module';
@@ -39,6 +40,7 @@ import { StoreImportWorkerModule } from './stores/import/store-import-worker.mod
     GeoWorkerModule,
     MediaWorkerModule,
     MapWorkerModule,
+    NotificationsWorkerModule,
     PlacesWorkerModule,
     PostsWorkerModule,
     SavedSearchesWorkerModule,

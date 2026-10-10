@@ -7,6 +7,7 @@ import { TokenService } from '../src/auth/tokens/token.service';
 import type { UnmetDemand } from '../src/analytics/dto/analytics.dto';
 import { UnmetDemandService } from '../src/analytics/unmet-demand.service';
 import { NotificationsModule } from '../src/notifications/notifications.module';
+import { QueueModule } from '../src/queue/queue.module';
 import { SavedSearchAutoPauseService } from '../src/saved-searches/matching/saved-search-auto-pause.service';
 import { SavedSearchMatcherService } from '../src/saved-searches/matching/saved-search-matcher.service';
 import { SavedSearchNotifierService } from '../src/saved-searches/matching/saved-search-notifier.service';
@@ -24,6 +25,7 @@ import { SearchOutboxRelay } from '../src/search/indexing/search-outbox.relay';
 import { SearchCoreModule } from '../src/search/search-core.module';
 import { SettingsModule } from '../src/settings/settings.module';
 import { resolveTestDatabaseUrl, testSqlClient } from './db/test-database';
+import { startNotificationWorker, type NotificationWorker } from './support/notification-worker';
 
 /**
  * Saved searches end to end (ADR 041): real Postgres, Redis and
@@ -55,6 +57,8 @@ const square = 'SRID=4326;MULTIPOLYGON(((89.1 25.6,89.4 25.6,89.4 25.9,89.1 25.9
 const BUDGET = { batchSize: 50, maxBatches: 20 };
 
 describe('Saved searches (e2e)', () => {
+  /** Notifications are queued (ADR 059): dispatched here before a test looks. */
+  let queued: NotificationWorker;
   let app: NestFastifyApplication;
   let worker: TestingModule;
   let admin: Sql;
@@ -110,10 +114,12 @@ describe('Saved searches (e2e)', () => {
     await worker.get(SavedSearchNotifierService).notifyPending(BUDGET);
   };
 
-  const notifications = (type: string) =>
-    admin<{ params: Record<string, string>; entity_id: string }[]>`
+  const notifications = async (type: string) => {
+    await queued.dispatch((n) => n.userId === OWNER);
+    return admin<{ params: Record<string, string>; entity_id: string }[]>`
       select params, entity_id from notifications
       where user_id = ${OWNER} and type_code = ${type} order by created_at`;
+  };
 
   async function cleanUp(): Promise<void> {
     await admin`delete from notifications where user_id::text like ${FIXTURE}`;
@@ -134,6 +140,7 @@ describe('Saved searches (e2e)', () => {
   }
 
   beforeAll(async () => {
+    queued = await startNotificationWorker();
     admin = testSqlClient(1, resolveTestDatabaseUrl());
     await cleanUp();
     await admin`
@@ -196,6 +203,8 @@ describe('Saved searches (e2e)', () => {
         SearchIndexingModule,
         SearchCoreModule,
         NotificationsModule,
+        // NotificationService queues (ADR 059): the queues it puts on.
+        QueueModule,
         SettingsModule,
       ],
       providers: [
@@ -223,6 +232,7 @@ describe('Saved searches (e2e)', () => {
   }, 120_000);
 
   afterAll(async () => {
+    await queued?.close();
     try {
       await cleanUp();
       // Carry the deletions to the index too.

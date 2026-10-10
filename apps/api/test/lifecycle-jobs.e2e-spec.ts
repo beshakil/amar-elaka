@@ -13,6 +13,7 @@ import { PostExpiryService } from '../src/posts/post-expiry.service';
 import { PostsWorkerModule } from '../src/posts/posts-worker.module';
 import { STORAGE_SERVICE, type StorageService } from '../src/storage/storage.ports';
 import { resolveTestDatabaseUrl, testSqlClient } from './db/test-database';
+import { startNotificationWorker, type NotificationWorker } from './support/notification-worker';
 
 /**
  * The scheduled post-lifecycle jobs (ADR 031) against real Postgres, Redis
@@ -46,6 +47,8 @@ let sequence = 0x100;
 const nextId = () => `0191e3a0-71fe-7000-8000-${(sequence++).toString(16).padStart(12, '0')}`;
 
 describe('Post lifecycle jobs (e2e)', () => {
+  /** Notifications are queued (ADR 059): dispatched here before a test looks. */
+  let queued: NotificationWorker;
   let app: NestFastifyApplication;
   let admin: Sql;
   let storage: StorageService;
@@ -119,10 +122,12 @@ describe('Post lifecycle jobs (e2e)', () => {
   const statusOf = async (id: string) =>
     (await admin<{ status_code: string }[]>`select status_code from posts where id = ${id}`)[0]
       ?.status_code;
-  const remindersFor = async (postId: string) =>
-    admin<{ dedupe_key: string; deep_link: string }[]>`
+  const remindersFor = async (postId: string) => {
+    await queued.dispatch((n) => n.entityId === postId);
+    return admin<{ dedupe_key: string; deep_link: string }[]>`
       select dedupe_key, deep_link from notifications
       where type_code = 'post_expiring' and entity_id = ${postId} order by created_at`;
+  };
 
   const call = (
     method: 'GET' | 'POST',
@@ -136,6 +141,7 @@ describe('Post lifecycle jobs (e2e)', () => {
     });
 
   beforeAll(async () => {
+    queued = await startNotificationWorker();
     admin = testSqlClient(1, resolveTestDatabaseUrl());
     await cleanUp();
     await admin`
@@ -201,6 +207,7 @@ describe('Post lifecycle jobs (e2e)', () => {
   });
 
   afterAll(async () => {
+    await queued?.close();
     await app.close();
     try {
       await cleanUp();
@@ -451,6 +458,8 @@ describe('Post lifecycle jobs (e2e)', () => {
         'purge-geo-provider-calls',
         'detect-duplicates',
         'build-offline-maps',
+        'relay-notification-outbox',
+        'send-saved-search-digests',
       ]);
       const drafts = jobs.find((job) => job.code === 'clean-stale-drafts')!;
       expect(drafts.schedule?.pattern).toBe('0 4 * * *');

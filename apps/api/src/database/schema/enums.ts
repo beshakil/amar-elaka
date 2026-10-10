@@ -1,4 +1,5 @@
-import { pgTable } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+import { boolean, pgTable, text } from 'drizzle-orm/pg-core';
 import { enumTableColumns } from './columns';
 
 // Enum tables used by migration 0001 (docs/specs/schema.md §12). Codes are
@@ -41,7 +42,12 @@ export const mediaVisibilities = pgTable('media_visibilities', enumTableColumns(
 export const mediaStatuses = pgTable('media_statuses', enumTableColumns());
 export const priceTypes = pgTable('price_types', enumTableColumns());
 export const postStatuses = pgTable('post_statuses', enumTableColumns());
-export const moderationReasons = pgTable('moderation_reasons', enumTableColumns());
+export const moderationReasons = pgTable('moderation_reasons', {
+  ...enumTableColumns(),
+  // The words a notification uses for the reason (0055).
+  labelBn: text('label_bn'),
+  labelEn: text('label_en'),
+});
 export const postDeletionReasons = pgTable('post_deletion_reasons', enumTableColumns());
 export const ownershipResolutions = pgTable('ownership_resolutions', enumTableColumns());
 export const placeSources = pgTable('place_sources', enumTableColumns());
@@ -99,7 +105,19 @@ export const payoutStatuses = pgTable('payout_statuses', enumTableColumns());
 export const conversationKinds = pgTable('conversation_kinds', enumTableColumns());
 export const participantRoles = pgTable('participant_roles', enumTableColumns());
 export const messageKinds = pgTable('message_kinds', enumTableColumns());
-export const notificationTypes = pgTable('notification_types', enumTableColumns());
+// How each type is delivered (0055, ADR 059).
+export const notificationTypes = pgTable('notification_types', {
+  ...enumTableColumns(),
+  defaultChannels: text('default_channels')
+    .array()
+    .notNull()
+    .default(sql`'{in_app,push}'::text[]`),
+  isUrgent: boolean('is_urgent').notNull().default(false),
+  smsEligible: boolean('sms_eligible').notNull().default(false),
+  collapsible: boolean('collapsible').notNull().default(false),
+  userConfigurable: boolean('user_configurable').notNull().default(true),
+  audience: text('audience').notNull().default('member'),
+});
 export const notificationChannels = pgTable('notification_channels', enumTableColumns());
 export const deliveryPurposes = pgTable('delivery_purposes', enumTableColumns());
 export const deliveryStatuses = pgTable('delivery_statuses', enumTableColumns());

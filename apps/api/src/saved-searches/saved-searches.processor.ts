@@ -9,10 +9,12 @@ import {
   JOB_MATCH_SAVED_SEARCHES,
   JOB_PAUSE_IDLE_SAVED_SEARCHES,
   JOB_REFRESH_UNMET_DEMAND,
+  JOB_SEND_SAVED_SEARCH_DIGESTS,
   QUEUE_SAVED_SEARCHES,
   type ScheduledJobData,
 } from '../queue/queue.types';
 import { SavedSearchAutoPauseService } from './matching/saved-search-auto-pause.service';
+import { SavedSearchDigestService } from './matching/saved-search-digest.service';
 import { SavedSearchMatcherService } from './matching/saved-search-matcher.service';
 import { SavedSearchNotifierService } from './matching/saved-search-notifier.service';
 
@@ -28,6 +30,7 @@ export class SavedSearchesProcessor extends WorkerHost {
     private readonly matcher: SavedSearchMatcherService,
     private readonly notifier: SavedSearchNotifierService,
     private readonly autoPause: SavedSearchAutoPauseService,
+    private readonly digest: SavedSearchDigestService,
     private readonly unmetDemand: UnmetDemandService,
     @InjectQueue(deadLetterQueueName(QUEUE_SAVED_SEARCHES)) private readonly dlq: Queue,
     private readonly logger: PinoLogger,
@@ -57,6 +60,10 @@ export class SavedSearchesProcessor extends WorkerHost {
       case JOB_PAUSE_IDLE_SAVED_SEARCHES:
         return this.runner.run(JOB_PAUSE_IDLE_SAVED_SEARCHES, job.data, queueJobId, (budget) =>
           this.autoPause.pauseIdle(budget),
+        );
+      case JOB_SEND_SAVED_SEARCH_DIGESTS:
+        return this.runner.run(JOB_SEND_SAVED_SEARCH_DIGESTS, job.data, queueJobId, (budget) =>
+          this.digest.sendWeekly(budget),
         );
       case JOB_REFRESH_UNMET_DEMAND:
         return this.runner.run(JOB_REFRESH_UNMET_DEMAND, job.data, queueJobId, () =>

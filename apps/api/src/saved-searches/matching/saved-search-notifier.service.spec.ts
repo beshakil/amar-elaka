@@ -26,7 +26,7 @@ function due(over: Partial<DueSearch> = {}): DueSearch {
   };
 }
 
-function setup(pending: DueSearch[], delivered = 1) {
+function setup(pending: DueSearch[], queueDown = false) {
   const sent: OutgoingNotification[] = [];
   const marked: { searchId: string; maxMatchId: string; day: string }[] = [];
   const repo = {
@@ -39,7 +39,9 @@ function setup(pending: DueSearch[], delivered = 1) {
   const notifications = {
     send: (n: OutgoingNotification) => {
       sent.push(n);
-      return Promise.resolve({ delivered });
+      return queueDown
+        ? Promise.reject(new Error('Redis unavailable'))
+        : Promise.resolve({ queued: true });
     },
   } as unknown as NotificationService;
   const settings = {
@@ -99,9 +101,9 @@ describe('SavedSearchNotifierService', () => {
     expect(outcome.details).toEqual({ held: 1 });
   });
 
-  it('marks nothing when no channel delivered, so the next run retries', async () => {
-    const { service, sent, marked } = setup([due()], 0);
-    await service.notifyPending(BUDGET, NOW);
+  it('marks nothing when the notification could not be queued, so the next run retries', async () => {
+    const { service, sent, marked } = setup([due()], true);
+    await expect(service.notifyPending(BUDGET, NOW)).rejects.toThrow('Redis unavailable');
     expect(sent).toHaveLength(1);
     expect(marked).toEqual([]);
   });

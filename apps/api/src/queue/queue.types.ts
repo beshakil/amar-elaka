@@ -16,6 +16,12 @@ export const QUEUE_PLACES = 'places';
 export const QUEUE_MAP = 'map';
 /** Bulk imports into a store (ADR 056): long jobs, kept off the lifecycle queues. */
 export const QUEUE_IMPORTS = 'imports';
+/**
+ * Every notification (ADR 059): `notify` decides and records, one
+ * `deliver-notification` job per channel sends (delayed through quiet
+ * hours), plus the outbox relay that turns price drops into notifications.
+ */
+export const QUEUE_NOTIFICATIONS = 'notifications';
 
 /** One store import to run; the row says the rest (store_imports, 0052). */
 export interface StoreImportJob {
@@ -49,6 +55,15 @@ export const JOB_REFRESH_UNMET_DEMAND = 'refresh-unmet-demand';
 export const JOB_PURGE_GEO_PROVIDER_CALLS = 'purge-geo-provider-calls';
 export const JOB_DETECT_DUPLICATES = 'detect-duplicates';
 export const JOB_BUILD_OFFLINE_MAPS = 'build-offline-maps';
+export const JOB_NOTIFY = 'notify';
+export const JOB_DELIVER_NOTIFICATION = 'deliver-notification';
+export const JOB_RELAY_NOTIFICATION_OUTBOX = 'relay-notification-outbox';
+export const JOB_SEND_SAVED_SEARCH_DIGESTS = 'send-saved-search-digests';
+
+/** One channel's send of one notification; the row says the rest (notification_deliveries). */
+export interface DeliverNotificationJob {
+  deliveryId: string;
+}
 
 export interface SendEmailJob {
   to: string;

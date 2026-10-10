@@ -142,6 +142,16 @@ export const EnvSchema = z
     // Infra tuning, like GEOCODING_TIMEOUT_MS: one gateway request's limit.
     SMS_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
 
+    // Push (ADR 059): FCM for Android, iOS and the web. `local` logs the
+    // push (dev, tests); `fcm` sends through the FCM HTTP v1 API with a
+    // service account (its JSON, as one line; the project id comes from it).
+    // FCM_API_URL overrides the endpoint (an emulator or a test server).
+    PUSH_PROVIDER: z.enum(['local', 'fcm']).default('local'),
+    FCM_SERVICE_ACCOUNT_JSON: z.string().optional().default(''),
+    FCM_API_URL: z.string().optional().default(''),
+    // Infra tuning, like SMS_TIMEOUT_MS: one FCM request's limit.
+    FCM_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
+
     // Google OAuth — audience check only; ID tokens are verified locally via
     // google-auth-library, so no client secret is needed.
     GOOGLE_CLIENT_ID: z.string().min(1),
@@ -184,6 +194,13 @@ export const EnvSchema = z
         code: z.ZodIssueCode.custom,
         path: ['SMS_PROVIDER'],
         message: 'SMS_PROVIDER=local only logs OTPs; production needs a real gateway (bulksmsbd)',
+      });
+    }
+    if (env.PUSH_PROVIDER === 'fcm' && !env.FCM_SERVICE_ACCOUNT_JSON) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['FCM_SERVICE_ACCOUNT_JSON'],
+        message: 'FCM_SERVICE_ACCOUNT_JSON is required when PUSH_PROVIDER=fcm',
       });
     }
     if (env.STORAGE_DRIVER === 'local' && !env.API_PUBLIC_URL) {

@@ -4,7 +4,12 @@ import type { FastifyInstance, FastifyPluginCallback, FastifyReply } from 'fasti
 import type { Readable } from 'node:stream';
 import { DomainException } from '../../common/exceptions/domain-exception';
 import { STORAGE_SERVICE, type StorageService } from '../storage.ports';
-import { LocalStorageService, LOCAL_UPLOAD_PATH } from './local-storage.service';
+import {
+  LocalStorageService,
+  LOCAL_DOWNLOAD_PATH,
+  LOCAL_UPLOAD_PATH,
+  type PublicObject,
+} from './local-storage.service';
 
 /** Public media is served under `${API_PUBLIC_URL}${PUBLIC_MEDIA_PATH}/<key>` (STORAGE_PUBLIC_URL). */
 export const PUBLIC_MEDIA_PATH = '/media';
@@ -38,8 +43,8 @@ function sendError(reply: FastifyReply, error: unknown): FastifyReply {
  * The HTTP half of the local driver, as an encapsulated Fastify plugin so its
  * catch-all body parser (uploads arrive as raw image/PDF bytes) can't leak to
  * the Nest routes. These routes sit outside Nest on purpose: the signed
- * upload token is the authorisation (like a presigned URL), and public media
- * needs no tenant.
+ * upload or download token is the authorisation (like a presigned URL), and
+ * public media needs no tenant.
  */
 export function localStorageRoutes(
   storage: LocalStorageService,
@@ -69,8 +74,12 @@ export function localStorageRoutes(
       return reply.headers(UPLOAD_CORS).status(HttpStatus.OK).send();
     });
 
-    const servePublic = async (key: string, reply: FastifyReply, withBody: boolean) => {
-      const object = await storage.openPublic(key);
+    const serve = async (
+      open: Promise<PublicObject | undefined>,
+      reply: FastifyReply,
+      withBody: boolean,
+    ) => {
+      const object = await open;
       if (!object) {
         return reply.status(HttpStatus.NOT_FOUND).send({
           statusCode: HttpStatus.NOT_FOUND,
@@ -90,10 +99,14 @@ export function localStorageRoutes(
       return reply.send(object.stream);
     };
     scope.get<{ Params: { '*': string } }>(`${PUBLIC_MEDIA_PATH}/*`, (request, reply) =>
-      servePublic(request.params['*'], reply, true),
+      serve(storage.openPublic(request.params['*']), reply, true),
     );
     scope.head<{ Params: { '*': string } }>(`${PUBLIC_MEDIA_PATH}/*`, (request, reply) =>
-      servePublic(request.params['*'], reply, false),
+      serve(storage.openPublic(request.params['*']), reply, false),
+    );
+    // A signed read (presignDownload): the token is the grant, as for uploads.
+    scope.get<{ Params: { '*': string } }>(`${LOCAL_DOWNLOAD_PATH}/*`, (request, reply) =>
+      serve(storage.openGranted(request.params['*']), reply, true),
     );
     done();
   };

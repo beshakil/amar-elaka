@@ -43,6 +43,12 @@ export interface StorageService {
     cacheControl?: string,
   ): Promise<void>;
   getPublicUrl(bucket: StorageBucket, key: string): string;
+  /**
+   * A short-lived URL that reads one object of either bucket — how a private
+   * object (a chat photo) is shown to the people allowed to see it. The
+   * caller decides who that is; the URL is the grant, like a presigned GET.
+   */
+  presignDownload(bucket: StorageBucket, key: string, ttlSeconds: number): Promise<string>;
 }
 
 export const STORAGE_SERVICE = Symbol('STORAGE_SERVICE');

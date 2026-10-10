@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/design/tokens/app_spacing.dart';
 import '../../../core/dynamic_form/bn_numerals.dart';
+import '../../../core/routing/deep_links.dart';
 import '../../../core/routing/route_paths.dart';
 import '../../../l10n/app_localizations.dart';
 import '../application/inbox_controller.dart';
@@ -30,6 +31,12 @@ class NotificationsScreen extends ConsumerWidget {
       appBar: AppBar(
         title: Text(l10n.notificationsTitle),
         actions: [
+          IconButton(
+            key: const ValueKey('notifications-settings'),
+            tooltip: l10n.notificationsSettings,
+            icon: const Icon(Icons.settings_outlined),
+            onPressed: () => unawaited(context.push(RoutePaths.notificationPreferences)),
+          ),
           if (hasUnread)
             TextButton(
               key: const ValueKey('notifications-read-all'),
@@ -67,7 +74,9 @@ class NotificationsScreen extends ConsumerWidget {
                 );
               }
               final item = value.items[index];
-              final text = notificationText(item, l10n, locale);
+              // The server's own words; the app's only for an older row without them.
+              final fallback = notificationText(item, l10n, locale);
+              final text = (title: item.title ?? fallback.title, body: item.body ?? fallback.body);
               return ListTile(
                 key: ValueKey('notification-${item.id}'),
                 leading: Icon(
@@ -114,8 +123,8 @@ class NotificationsScreen extends ConsumerWidget {
 
   void _open(BuildContext context, InboxController controller, InboxItem item) {
     unawaited(controller.markRead(item));
-    final link = item.deepLink;
-    if (canOpenDeepLink(link)) unawaited(context.push(link!));
+    final route = appRouteForDeepLink(item.deepLink);
+    if (route != null) unawaited(context.push(route));
   }
 
   static IconData _iconFor(String type) => switch (type) {
@@ -123,6 +132,9 @@ class NotificationsScreen extends ConsumerWidget {
     final t when t.startsWith('saved_search_') => Icons.bookmarks_outlined,
     final t when t.startsWith('place_') => Icons.place_outlined,
     final t when t.startsWith('geo_budget_') => Icons.warning_amber_outlined,
+    'new_message' => Icons.chat_bubble_outline,
+    'saved_post_price_drop' => Icons.trending_down,
+    final t when t.startsWith('store_') => Icons.storefront_outlined,
     _ => Icons.notifications_outlined,
   };
 }
