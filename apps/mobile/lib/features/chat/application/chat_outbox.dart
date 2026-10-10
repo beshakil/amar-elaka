@@ -37,7 +37,9 @@ class PendingMessage {
   factory PendingMessage.fromRow(PendingChatMessageRow row) => PendingMessage(
     clientMessageId: row.clientMessageId,
     conversationId: row.conversationId,
-    draft: MessageDraft.fromJson(jsonDecode(row.contentJson) as Map<String, dynamic>),
+    draft: MessageDraft.fromJson(
+      jsonDecode(row.contentJson) as Map<String, dynamic>,
+    ),
     failed: row.state == 'failed',
     createdAt: row.createdAt,
     localImagePath: row.localImagePath,
@@ -94,11 +96,17 @@ class ChatOutbox {
     final query = _db.select(_db.pendingChatMessages)
       ..where((t) => t.conversationId.equals(conversationId))
       ..orderBy([(t) => OrderingTerm.asc(t.createdAt)]);
-    return query.watch().map((rows) => rows.map(PendingMessage.fromRow).toList());
+    return query.watch().map(
+      (rows) => rows.map(PendingMessage.fromRow).toList(),
+    );
   }
 
   /// Queues a message and starts sending. Returns its client id.
-  Future<String> enqueue(String conversationId, MessageDraft draft, {String? localImagePath}) async {
+  Future<String> enqueue(
+    String conversationId,
+    MessageDraft draft, {
+    String? localImagePath,
+  }) async {
     final id = newClientMessageId();
     await _db
         .into(_db.pendingChatMessages)
@@ -116,20 +124,26 @@ class ChatOutbox {
   }
 
   Future<void> retry(String clientMessageId) async {
-    await (_db.update(_db.pendingChatMessages)
-          ..where((t) => t.clientMessageId.equals(clientMessageId)))
-        .write(const PendingChatMessagesCompanion(state: Value('pending'), errorCode: Value(null)));
+    await (_db.update(
+      _db.pendingChatMessages,
+    )..where((t) => t.clientMessageId.equals(clientMessageId))).write(
+      const PendingChatMessagesCompanion(
+        state: Value('pending'),
+        errorCode: Value(null),
+      ),
+    );
     unawaited(flush());
   }
 
   Future<void> discard(String clientMessageId) async {
-    await (_db.delete(_db.pendingChatMessages)
-          ..where((t) => t.clientMessageId.equals(clientMessageId)))
-        .go();
+    await (_db.delete(
+      _db.pendingChatMessages,
+    )..where((t) => t.clientMessageId.equals(clientMessageId))).go();
   }
 
   /// Sends what's pending (one flush at a time; concurrent calls share it).
-  Future<void> flush() => _flushing ??= _flush().whenComplete(() => _flushing = null);
+  Future<void> flush() =>
+      _flushing ??= _flush().whenComplete(() => _flushing = null);
 
   Future<void> _flush() async {
     _retryTimer?.cancel();
@@ -151,20 +165,32 @@ class ChatOutbox {
 
   Future<_Outcome> _sendOne(PendingChatMessageRow row) async {
     try {
-      var draft = MessageDraft.fromJson(jsonDecode(row.contentJson) as Map<String, dynamic>);
-      if (draft is ImageDraft && draft.mediaId == null && row.localImagePath != null) {
+      var draft = MessageDraft.fromJson(
+        jsonDecode(row.contentJson) as Map<String, dynamic>,
+      );
+      if (draft is ImageDraft &&
+          draft.mediaId == null &&
+          row.localImagePath != null) {
         final mediaId = await _upload(row.conversationId, row.localImagePath!);
         draft = ImageDraft(mediaId);
-        await _update(row.clientMessageId, contentJson: jsonEncode(draft.toJson()));
+        await _update(
+          row.clientMessageId,
+          contentJson: jsonEncode(draft.toJson()),
+        );
       }
-      final result = await _api.send(row.conversationId, row.clientMessageId, draft);
+      final result = await _api.send(
+        row.conversationId,
+        row.clientMessageId,
+        draft,
+      );
       await discard(row.clientMessageId);
       _sent.add(result);
       return _Outcome.done;
     } on ApiException catch (e) {
       final status = e.body.statusCode;
       // 401: signed out or a session to renew — the message waits for the user, it isn't refused.
-      final transient = status >= 500 || status == 429 || status == 408 || status == 401;
+      final transient =
+          status >= 500 || status == 429 || status == 408 || status == 401;
       if (transient) {
         await _update(row.clientMessageId, attempts: row.attempts + 1);
         return _Outcome.retryLater;
@@ -172,7 +198,11 @@ class ChatOutbox {
       await _update(row.clientMessageId, state: 'failed', errorCode: e.code);
       return _Outcome.done;
     } on ChatImageRejected {
-      await _update(row.clientMessageId, state: 'failed', errorCode: 'CHAT_IMAGE_INVALID');
+      await _update(
+        row.clientMessageId,
+        state: 'failed',
+        errorCode: 'CHAT_IMAGE_INVALID',
+      );
       return _Outcome.done;
     } on Object {
       // Offline, a timeout, a photo still processing: later.
@@ -183,7 +213,8 @@ class ChatOutbox {
 
   Future<String> _upload(String conversationId, String path) async {
     final dir = await _tempDir();
-    final target = '${dir.path}/chat-${DateTime.now().microsecondsSinceEpoch}.webp';
+    final target =
+        '${dir.path}/chat-${DateTime.now().microsecondsSinceEpoch}.webp';
     await _compressor.compress(path, target);
     final file = File(target);
     try {
@@ -199,12 +230,18 @@ class ChatOutbox {
     String? state,
     String? errorCode,
     int? attempts,
-  }) => (_db.update(_db.pendingChatMessages)..where((t) => t.clientMessageId.equals(clientMessageId)))
-      .write(
+  }) =>
+      (_db.update(
+        _db.pendingChatMessages,
+      )..where((t) => t.clientMessageId.equals(clientMessageId))).write(
         PendingChatMessagesCompanion(
-          contentJson: contentJson == null ? const Value.absent() : Value(contentJson),
+          contentJson: contentJson == null
+              ? const Value.absent()
+              : Value(contentJson),
           state: state == null ? const Value.absent() : Value(state),
-          errorCode: errorCode == null ? const Value.absent() : Value(errorCode),
+          errorCode: errorCode == null
+              ? const Value.absent()
+              : Value(errorCode),
           attempts: attempts == null ? const Value.absent() : Value(attempts),
         ),
       );
@@ -232,7 +269,9 @@ final chatOutboxProvider = Provider<ChatOutbox>((ref) {
   );
   // Back online: send what waited.
   ref.listen(isOnlineProvider, (previous, next) {
-    if (next.value == true && previous?.value != true) unawaited(outbox.flush());
+    if (next.value == true && previous?.value != true) {
+      unawaited(outbox.flush());
+    }
   });
   ref.onDispose(outbox.dispose);
   // What waited from the last run (written offline, or the app was killed).

@@ -7,15 +7,22 @@ library;
 class ChatCover {
   const ChatCover({required this.url, this.thumbhash});
 
-  factory ChatCover.fromJson(Map<String, dynamic> json) =>
-      ChatCover(url: json['url'] as String, thumbhash: json['thumbhash'] as String?);
+  factory ChatCover.fromJson(Map<String, dynamic> json) => ChatCover(
+    url: json['url'] as String,
+    thumbhash: json['thumbhash'] as String?,
+  );
 
   final String url;
   final String? thumbhash;
 }
 
 class ChatPost {
-  const ChatPost({required this.id, required this.title, this.price, this.cover});
+  const ChatPost({
+    required this.id,
+    required this.title,
+    this.price,
+    this.cover,
+  });
 
   factory ChatPost.fromJson(Map<String, dynamic> json) => ChatPost(
     id: json['id'] as String,
@@ -36,7 +43,12 @@ class ChatPost {
 }
 
 class ChatStore {
-  const ChatStore({required this.id, required this.slug, required this.nameBn, this.nameEn});
+  const ChatStore({
+    required this.id,
+    required this.slug,
+    required this.nameBn,
+    this.nameEn,
+  });
 
   factory ChatStore.fromJson(Map<String, dynamic> json) {
     final name = json['name'] as Map<String, dynamic>;
@@ -189,13 +201,18 @@ MessageKind _kind(Object? code) => switch (code) {
 };
 
 class ChatImageVariant {
-  const ChatImageVariant({required this.url, required this.width, required this.height});
+  const ChatImageVariant({
+    required this.url,
+    required this.width,
+    required this.height,
+  });
 
-  factory ChatImageVariant.fromJson(Map<String, dynamic> json) => ChatImageVariant(
-    url: json['url'] as String,
-    width: (json['width'] as num).toInt(),
-    height: (json['height'] as num).toInt(),
-  );
+  factory ChatImageVariant.fromJson(Map<String, dynamic> json) =>
+      ChatImageVariant(
+        url: json['url'] as String,
+        width: (json['width'] as num).toInt(),
+        height: (json['height'] as num).toInt(),
+      );
 
   final String url;
   final int width;
@@ -203,7 +220,12 @@ class ChatImageVariant {
 }
 
 class ChatImage {
-  const ChatImage({required this.thumb, required this.card, required this.full, this.thumbhash});
+  const ChatImage({
+    required this.thumb,
+    required this.card,
+    required this.full,
+    this.thumbhash,
+  });
 
   factory ChatImage.fromJson(Map<String, dynamic> json) => ChatImage(
     thumb: ChatImageVariant.fromJson(json['thumb'] as Map<String, dynamic>),
@@ -227,9 +249,15 @@ class ChatListing {
     this.cover,
   }) : removed = false;
 
-  const ChatListing.removed() : postId = null, title = null, price = null, cover = null, removed = true;
+  const ChatListing.removed()
+    : postId = null,
+      title = null,
+      price = null,
+      cover = null,
+      removed = true;
 
-  factory ChatListing.fromJson(Map<String, dynamic> json) => json['state'] == 'shared'
+  factory ChatListing.fromJson(Map<String, dynamic> json) =>
+      json['state'] == 'shared'
       ? ChatListing.shared(
           postId: json['postId'] as String,
           title: json['title'] as String,
@@ -334,12 +362,16 @@ sealed class MessageDraft {
 
   Map<String, dynamic> toJson();
 
-  static MessageDraft fromJson(Map<String, dynamic> json) => switch (json['kind']) {
-    'image' => ImageDraft(json['mediaId'] as String?),
-    'location' => LocationDraft((json['lat'] as num).toDouble(), (json['lng'] as num).toDouble()),
-    'listing_card' => ListingDraft(json['postId'] as String),
-    _ => TextDraft(json['body'] as String),
-  };
+  static MessageDraft fromJson(Map<String, dynamic> json) =>
+      switch (json['kind']) {
+        'image' => ImageDraft(json['mediaId'] as String?),
+        'location' => LocationDraft(
+          (json['lat'] as num).toDouble(),
+          (json['lng'] as num).toDouble(),
+        ),
+        'listing_card' => ListingDraft(json['postId'] as String),
+        _ => TextDraft(json['body'] as String),
+      };
 }
 
 class TextDraft extends MessageDraft {

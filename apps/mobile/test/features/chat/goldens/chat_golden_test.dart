@@ -21,16 +21,24 @@ void main() {
 
   const longBengali =
       '${ConjunctText.description} ${ConjunctText.title} — আগামীকাল সন্ধ্যায় ${ConjunctText.place}-এ দেখা করা যাবে?';
-  const mixed = 'iPhone 13 Pro এর battery health কত? Box আর charger সহ দিলে ৳৬০,০০০ final করবেন? OK হলে কাল 5pm-এ আসছি।';
+  const mixed =
+      'iPhone 13 Pro এর battery health কত? Box আর charger সহ দিলে ৳৬০,০০০ final করবেন? OK হলে কাল 5pm-এ আসছি।';
 
-  final conv = conversation(othersDeliveredUpTo: messageId(4), othersReadUpTo: messageId(2));
+  final conv = conversation(
+    othersDeliveredUpTo: messageId(4),
+    othersReadUpTo: messageId(2),
+  );
   // Local time: chatTime shows toLocal(), so the golden is the same in any CI timezone.
   final at = DateTime(2026, 10, 9, 14, 5);
 
   Widget bubble(int n, String sender, String body) {
     final m = message(n: n, sender: sender, body: body, at: at);
     final mine = sender == buyerMemberId;
-    return MessageBubble.message(m, mine: mine, state: mine ? deliveryStateOf(m.id, conv) : null);
+    return MessageBubble.message(
+      m,
+      mine: mine,
+      state: mine ? deliveryStateOf(m.id, conv) : null,
+    );
   }
 
   PendingMessage pending(String body, {bool failed = false}) => PendingMessage(
@@ -51,7 +59,10 @@ void main() {
     home: Scaffold(body: child),
   );
 
-  for (final (name, theme) in [('light', AppTheme.light()), ('dark', AppTheme.dark())]) {
+  for (final (name, theme) in [
+    ('light', AppTheme.light()),
+    ('dark', AppTheme.dark()),
+  ]) {
     testWidgets('chat bubbles, $name', (tester) async {
       tester.view.physicalSize = const Size(1080, 3600);
       tester.view.devicePixelRatio = 2.5;
@@ -81,16 +92,32 @@ void main() {
       for (final s in ['read', 'delivered', 'sent', 'pending', 'failed']) {
         expect(find.byKey(ValueKey('ticks-$s')), findsWidgets, reason: s);
       }
-      await expectLater(find.byType(ListView), matchesGoldenFile('chat_bubbles_$name.png'));
+      await expectLater(
+        find.byType(ListView),
+        matchesGoldenFile('chat_bubbles_$name.png'),
+      );
     });
 
     testWidgets('post card and inbox row, $name', (tester) async {
       tester.view.physicalSize = const Size(1080, 900);
       tester.view.devicePixelRatio = 2.5;
       addTearDown(tester.view.reset);
-      final row = Conversation.fromJson(
-        conversationJson(unreadCount: 3, postTitle: ConjunctText.title, counterpartName: ConjunctText.contact),
-      ).copyWith(lastMessage: message(n: 9, sender: sellerMemberId, body: mixed, at: at), activityAt: at);
+      final row =
+          Conversation.fromJson(
+            conversationJson(
+              unreadCount: 3,
+              postTitle: ConjunctText.title,
+              counterpartName: ConjunctText.contact,
+            ),
+          ).copyWith(
+            lastMessage: message(
+              n: 9,
+              sender: sellerMemberId,
+              body: mixed,
+              at: at,
+            ),
+            activityAt: at,
+          );
       await tester.pumpWidget(
         app(
           theme,
@@ -104,8 +131,14 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.byKey(const ValueKey('conversation-unread-c1')), findsOneWidget);
-      await expectLater(find.byKey(const ValueKey('golden')), matchesGoldenFile('chat_header_row_$name.png'));
+      expect(
+        find.byKey(const ValueKey('conversation-unread-c1')),
+        findsOneWidget,
+      );
+      await expectLater(
+        find.byKey(const ValueKey('golden')),
+        matchesGoldenFile('chat_header_row_$name.png'),
+      );
     });
   }
 }

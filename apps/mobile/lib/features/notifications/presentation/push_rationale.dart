@@ -13,7 +13,10 @@ import '../push/push_controller.dart';
 /// chat message left (ADR 060): show our explanation, once (then not for a
 /// while after "এখন না"), never at first launch and never once Android's
 /// own prompt was answered.
-Future<void> offerPushAtMeaningfulMoment(BuildContext context, WidgetRef ref) async {
+Future<void> offerPushAtMeaningfulMoment(
+  BuildContext context,
+  WidgetRef ref,
+) async {
   final gate = ref.read(pushRationaleGateProvider);
   final router = GoRouter.of(context);
   if (!await gate.shouldOffer()) return;
@@ -37,11 +40,23 @@ class PushRationaleScreen extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const Spacer(),
-              Icon(Icons.notifications_active_outlined, size: AppSpacing.xxxl, color: theme.colorScheme.primary),
+              Icon(
+                Icons.notifications_active_outlined,
+                size: AppSpacing.xxxl,
+                color: theme.colorScheme.primary,
+              ),
               const SizedBox(height: AppSpacing.lg),
-              Text(l10n.pushRationaleTitle, style: theme.textTheme.headlineSmall, textAlign: TextAlign.center),
+              Text(
+                l10n.pushRationaleTitle,
+                style: theme.textTheme.headlineSmall,
+                textAlign: TextAlign.center,
+              ),
               const SizedBox(height: AppSpacing.md),
-              Text(l10n.pushRationaleBody, style: theme.textTheme.bodyLarge, textAlign: TextAlign.center),
+              Text(
+                l10n.pushRationaleBody,
+                style: theme.textTheme.bodyLarge,
+                textAlign: TextAlign.center,
+              ),
               const Spacer(),
               FilledButton(
                 key: const ValueKey('push-rationale-accept'),
@@ -84,8 +99,18 @@ class PushBannerOverlay extends ConsumerWidget {
         color: theme.colorScheme.secondaryContainer,
         child: ListTile(
           leading: const Icon(Icons.notifications_outlined),
-          title: Text(payload.title ?? '', maxLines: 1, overflow: TextOverflow.ellipsis),
-          subtitle: payload.body == null ? null : Text(payload.body!, maxLines: 2, overflow: TextOverflow.ellipsis),
+          title: Text(
+            payload.title ?? '',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          subtitle: payload.body == null
+              ? null
+              : Text(
+                  payload.body!,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
           trailing: TextButton(
             onPressed: () => ref.read(pushControllerProvider).openPush(payload),
             child: Text(l10n.pushBannerOpen),

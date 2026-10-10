@@ -35,7 +35,8 @@ class NotificationsScreen extends ConsumerWidget {
             key: const ValueKey('notifications-settings'),
             tooltip: l10n.notificationsSettings,
             icon: const Icon(Icons.settings_outlined),
-            onPressed: () => unawaited(context.push(RoutePaths.notificationPreferences)),
+            onPressed: () =>
+                unawaited(context.push(RoutePaths.notificationPreferences)),
           ),
           if (hasUnread)
             TextButton(
@@ -76,7 +77,10 @@ class NotificationsScreen extends ConsumerWidget {
               final item = value.items[index];
               // The server's own words; the app's only for an older row without them.
               final fallback = notificationText(item, l10n, locale);
-              final text = (title: item.title ?? fallback.title, body: item.body ?? fallback.body);
+              final text = (
+                title: item.title ?? fallback.title,
+                body: item.body ?? fallback.body,
+              );
               return ListTile(
                 key: ValueKey('notification-${item.id}'),
                 leading: Icon(

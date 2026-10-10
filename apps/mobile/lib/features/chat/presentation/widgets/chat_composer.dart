@@ -43,7 +43,10 @@ class ChatComposer extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.all(AppSpacing.md),
           color: theme.colorScheme.surfaceContainer,
-          child: Text(disabledReason ?? l10n.chatBlockedNotice, textAlign: TextAlign.center),
+          child: Text(
+            disabledReason ?? l10n.chatBlockedNotice,
+            textAlign: TextAlign.center,
+          ),
         ),
       );
     }
@@ -61,17 +64,28 @@ class ChatComposer extends StatelessWidget {
                 child: ListView(
                   key: const ValueKey('chat-quick-replies'),
                   scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.sm,
+                  ),
                   children: [
                     for (final q in quickReplies)
                       Padding(
-                        padding: const EdgeInsets.only(right: AppSpacing.xs, top: AppSpacing.xs),
+                        padding: const EdgeInsets.only(
+                          right: AppSpacing.xs,
+                          top: AppSpacing.xs,
+                        ),
                         child: ActionChip(
-                          label: Text(q.body, maxLines: 1, overflow: TextOverflow.ellipsis),
+                          label: Text(
+                            q.body,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                           tooltip: l10n.chatQuickReplies,
                           onPressed: () {
                             controller.text = q.body;
-                            controller.selection = TextSelection.collapsed(offset: q.body.length);
+                            controller.selection = TextSelection.collapsed(
+                              offset: q.body.length,
+                            );
                             onChanged(q.body);
                           },
                         ),
@@ -80,7 +94,12 @@ class ChatComposer extends StatelessWidget {
                 ),
               ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(AppSpacing.xs, AppSpacing.xs, AppSpacing.xs, AppSpacing.xs),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.xs,
+                AppSpacing.xs,
+                AppSpacing.xs,
+                AppSpacing.xs,
+              ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
@@ -90,9 +109,27 @@ class ChatComposer extends StatelessWidget {
                     icon: const Icon(Icons.add_circle_outline),
                     onSelected: onAttach,
                     itemBuilder: (_) => [
-                      PopupMenuItem(value: AttachChoice.gallery, child: ListTile(leading: const Icon(Icons.photo_outlined), title: Text(l10n.chatSendPhoto))),
-                      PopupMenuItem(value: AttachChoice.camera, child: ListTile(leading: const Icon(Icons.photo_camera_outlined), title: Text(l10n.chatTakePhoto))),
-                      PopupMenuItem(value: AttachChoice.location, child: ListTile(leading: const Icon(Icons.location_on_outlined), title: Text(l10n.chatShareLocation))),
+                      PopupMenuItem(
+                        value: AttachChoice.gallery,
+                        child: ListTile(
+                          leading: const Icon(Icons.photo_outlined),
+                          title: Text(l10n.chatSendPhoto),
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: AttachChoice.camera,
+                        child: ListTile(
+                          leading: const Icon(Icons.photo_camera_outlined),
+                          title: Text(l10n.chatTakePhoto),
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: AttachChoice.location,
+                        child: ListTile(
+                          leading: const Icon(Icons.location_on_outlined),
+                          title: Text(l10n.chatShareLocation),
+                        ),
+                      ),
                     ],
                   ),
                   Expanded(
@@ -106,9 +143,14 @@ class ChatComposer extends StatelessWidget {
                       onChanged: onChanged,
                       decoration: InputDecoration(
                         hintText: l10n.chatComposerHint,
-                        border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(24))),
+                        border: const OutlineInputBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(24)),
+                        ),
                         isDense: true,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.md,
+                          vertical: AppSpacing.sm,
+                        ),
                       ),
                     ),
                   ),

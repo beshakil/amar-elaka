@@ -11,7 +11,11 @@ import '../../data/chat_models.dart';
 /// photo, title, price, a tap to open it. After the post's removal it says
 /// so, with nothing of it (Q46).
 class PostHeaderCard extends StatelessWidget {
-  const PostHeaderCard({required this.conversation, this.onOpenPost, super.key});
+  const PostHeaderCard({
+    required this.conversation,
+    this.onOpenPost,
+    super.key,
+  });
 
   final Conversation conversation;
   final ValueChanged<String>? onOpenPost;
@@ -28,7 +32,12 @@ class PostHeaderCard extends StatelessWidget {
       if (!conversation.postRemoved) return const SizedBox.shrink();
       return _frame(
         theme,
-        child: Text(l10n.chatPostRemoved, style: theme.textTheme.bodyMedium?.copyWith(fontStyle: FontStyle.italic)),
+        child: Text(
+          l10n.chatPostRemoved,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            fontStyle: FontStyle.italic,
+          ),
+        ),
       );
     }
     return _frame(
@@ -40,7 +49,11 @@ class PostHeaderCard extends StatelessWidget {
             borderRadius: AppRadii.mdRadius,
             child: SizedBox.square(
               dimension: _thumb,
-              child: NetworkPhoto(url: post.cover?.url, thumbhash: post.cover?.thumbhash, fit: BoxFit.cover),
+              child: NetworkPhoto(
+                url: post.cover?.url,
+                thumbhash: post.cover?.thumbhash,
+                fit: BoxFit.cover,
+              ),
             ),
           ),
           const SizedBox(width: AppSpacing.sm),
@@ -48,24 +61,46 @@ class PostHeaderCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(post.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.titleSmall),
+                Text(
+                  post.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleSmall,
+                ),
                 if (post.price != null)
-                  Text('৳${formatMoney(post.price!, locale)}', style: theme.textTheme.labelLarge?.copyWith(color: theme.colorScheme.primary)),
+                  Text(
+                    '৳${formatMoney(post.price!, locale)}',
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
               ],
             ),
           ),
-          Text(l10n.chatViewPost, style: theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.primary)),
+          Text(
+            l10n.chatViewPost,
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: theme.colorScheme.primary,
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _frame(ThemeData theme, {required Widget child, VoidCallback? onTap}) => Material(
+  Widget _frame(
+    ThemeData theme, {
+    required Widget child,
+    VoidCallback? onTap,
+  }) => Material(
     key: const ValueKey('chat-post-card'),
     color: theme.colorScheme.surfaceContainerLow,
     child: InkWell(
       onTap: onTap,
-      child: Padding(padding: const EdgeInsets.all(AppSpacing.sm), child: child),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.sm),
+        child: child,
+      ),
     ),
   );
 }

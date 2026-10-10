@@ -57,7 +57,9 @@ class ChatInboxScreen extends ConsumerWidget {
             separatorBuilder: (_, _) => const Divider(height: 1),
             itemBuilder: (context, index) {
               if (index >= value.items.length) {
-                WidgetsBinding.instance.addPostFrameCallback((_) => unawaited(controller.loadMore()));
+                WidgetsBinding.instance.addPostFrameCallback(
+                  (_) => unawaited(controller.loadMore()),
+                );
                 return const Padding(
                   padding: EdgeInsets.all(AppSpacing.md),
                   child: Center(child: CircularProgressIndicator()),
@@ -67,11 +69,17 @@ class ChatInboxScreen extends ConsumerWidget {
               return Dismissible(
                 key: ValueKey('dismiss-${conversation.id}'),
                 direction: DismissDirection.endToStart,
-                background: _swipeBackground(context, archived ? l10n.chatUnarchive : l10n.chatArchiveAction),
-                onDismissed: (_) => unawaited(_swiped(context, ref, conversation)),
+                background: _swipeBackground(
+                  context,
+                  archived ? l10n.chatUnarchive : l10n.chatArchiveAction,
+                ),
+                onDismissed: (_) =>
+                    unawaited(_swiped(context, ref, conversation)),
                 child: ConversationTile(
                   conversation: conversation,
-                  onTap: () => unawaited(context.push(RoutePaths.conversationFor(conversation.id))),
+                  onTap: () => unawaited(
+                    context.push(RoutePaths.conversationFor(conversation.id)),
+                  ),
                 ),
               );
             },
@@ -94,7 +102,11 @@ class ChatInboxScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _swiped(BuildContext context, WidgetRef ref, Conversation conversation) async {
+  Future<void> _swiped(
+    BuildContext context,
+    WidgetRef ref,
+    Conversation conversation,
+  ) async {
     final l10n = AppLocalizations.of(context)!;
     final messenger = ScaffoldMessenger.of(context);
     final controller = ref.read(chatInboxProvider(archived).notifier);
@@ -108,7 +120,10 @@ class ChatInboxScreen extends ConsumerWidget {
       messenger.showSnackBar(
         SnackBar(
           content: Text(l10n.chatArchived),
-          action: SnackBarAction(label: l10n.chatUndo, onPressed: () => unawaited(controller.unarchive(archivedOne))),
+          action: SnackBarAction(
+            label: l10n.chatUndo,
+            onPressed: () => unawaited(controller.unarchive(archivedOne)),
+          ),
         ),
       );
     } on Object {
@@ -127,7 +142,9 @@ class ChatInboxScreen extends ConsumerWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(archived ? Icons.unarchive_outlined : Icons.archive_outlined),
+              Icon(
+                archived ? Icons.unarchive_outlined : Icons.archive_outlined,
+              ),
               const SizedBox(width: AppSpacing.sm),
               Text(label),
             ],

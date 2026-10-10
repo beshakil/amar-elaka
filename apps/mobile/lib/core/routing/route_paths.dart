@@ -47,7 +47,8 @@ abstract final class RoutePaths {
   /// deep links, `/chat` and `/chat/<id>`, ADR 058/060).
   static const String chat = '/chat';
   static const String chatArchive = '/chat/archived';
-  static String conversationFor(String conversationId) => '$chat/$conversationId';
+  static String conversationFor(String conversationId) =>
+      '$chat/$conversationId';
 
   /// Why we'd like to send notifications, before Android's own prompt (ADR 060).
   static const String pushRationale = '/push-rationale';

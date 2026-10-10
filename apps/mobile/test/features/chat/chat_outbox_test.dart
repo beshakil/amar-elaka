@@ -66,7 +66,10 @@ void main() {
 
   test('a refusal fails it with its code; retry sends it', () async {
     api.sendFailures.add(chatApiError(422, 'CHAT_CONTACT_INFO_BLOCKED'));
-    final id = await outbox.enqueue('c1', const TextDraft('ফোন দিন ০১৭১১১১১১১১'));
+    final id = await outbox.enqueue(
+      'c1',
+      const TextDraft('ফোন দিন ০১৭১১১১১১১১'),
+    );
     await outbox.flush();
     final failed = (await pending()).single;
     expect(failed.failed, isTrue);
@@ -80,7 +83,10 @@ void main() {
   });
 
   test('a server error or a lapsed session waits instead of failing', () async {
-    api.sendFailures.addAll([chatApiError(503, 'UNAVAILABLE'), chatApiError(401, 'UNAUTHENTICATED')]);
+    api.sendFailures.addAll([
+      chatApiError(503, 'UNAVAILABLE'),
+      chatApiError(401, 'UNAUTHENTICATED'),
+    ]);
     await outbox.enqueue('c1', const TextDraft('আছেন?'));
     await outbox.flush();
     expect((await pending()).single.failed, isFalse);

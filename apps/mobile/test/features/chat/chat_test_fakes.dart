@@ -10,7 +10,8 @@ import 'package:amar_elaka_app/features/notifications/data/notification_settings
 import 'package:amar_elaka_app/features/notifications/push/push_messaging.dart';
 
 /// Message ids as the API makes them: uuid v7, so text order is time order.
-String messageId(int n) => '0192a000-0000-7000-8000-${n.toString().padLeft(12, '0')}';
+String messageId(int n) =>
+    '0192a000-0000-7000-8000-${n.toString().padLeft(12, '0')}';
 
 /// The buyer (the signed-in test user, member m1) and the seller.
 const buyerMemberId = 'm1';
@@ -35,12 +36,7 @@ Map<String, dynamic> conversationJson({
 }) => {
   'id': id,
   'tenantId': 't1',
-  'post': {
-    'id': 'p1',
-    'title': postTitle,
-    'price': '65000.00',
-    'cover': null,
-  },
+  'post': {'id': 'p1', 'title': postTitle, 'price': '65000.00', 'cover': null},
   'postRemoved': false,
   'store': store,
   'counterpart': {'kind': counterpartKind, 'name': counterpartName},
@@ -109,7 +105,13 @@ ChatMessage message({
   String? body,
   DateTime? at,
 }) => ChatMessage.fromJson(
-  messageJson(n: n, conversationId: conversationId, sender: sender, body: body, at: at),
+  messageJson(
+    n: n,
+    conversationId: conversationId,
+    sender: sender,
+    body: body,
+    at: at,
+  ),
 );
 
 ApiException chatApiError(int status, String code) =>
@@ -123,7 +125,8 @@ class FakeChatApi implements ChatApi {
 
   final Map<String, Map<String, dynamic>> conversations;
   final messages = <String, List<ChatMessage>>{};
-  final sent = <(String conversationId, String clientMessageId, MessageDraft draft)>[];
+  final sent =
+      <(String conversationId, String clientMessageId, MessageDraft draft)>[];
   final opened = <(String? postId, String? storeId)>[];
   final archived = <(String, bool)>[];
   final reads = <(String, String)>[];
@@ -133,37 +136,63 @@ class FakeChatApi implements ChatApi {
   int _next = 100;
 
   /// A message from the other side, as the server would have stored it.
-  ChatMessage receive(String conversationId, String body, {String sender = sellerMemberId}) {
-    final m = message(n: _next++, conversationId: conversationId, sender: sender, body: body);
+  ChatMessage receive(
+    String conversationId,
+    String body, {
+    String sender = sellerMemberId,
+  }) {
+    final m = message(
+      n: _next++,
+      conversationId: conversationId,
+      sender: sender,
+      body: body,
+    );
     (messages[conversationId] ??= []).add(m);
     return m;
   }
 
   @override
-  Future<({Conversation conversation, bool created})> openForPost(String postId, ChatSource source) async {
+  Future<({Conversation conversation, bool created})> openForPost(
+    String postId,
+    ChatSource source,
+  ) async {
     opened.add((postId, null));
-    return (conversation: Conversation.fromJson(conversations.values.first), created: true);
+    return (
+      conversation: Conversation.fromJson(conversations.values.first),
+      created: true,
+    );
   }
 
   @override
-  Future<({Conversation conversation, bool created})> openForStore(String storeId) async {
+  Future<({Conversation conversation, bool created})> openForStore(
+    String storeId,
+  ) async {
     opened.add((null, storeId));
-    return (conversation: Conversation.fromJson(conversations.values.first), created: true);
+    return (
+      conversation: Conversation.fromJson(conversations.values.first),
+      created: true,
+    );
   }
 
   @override
-  Future<InboxResult> inbox({String? cursor, bool archived = false}) async => InboxResult(
-    items: [
-      for (final c in conversations.values)
-        if (c['isArchived'] == archived) Conversation.fromJson(c),
-    ],
-  );
+  Future<InboxResult> inbox({String? cursor, bool archived = false}) async =>
+      InboxResult(
+        items: [
+          for (final c in conversations.values)
+            if (c['isArchived'] == archived) Conversation.fromJson(c),
+        ],
+      );
 
   @override
-  Future<Conversation> conversation(String id) async => Conversation.fromJson(conversations[id]!);
+  Future<Conversation> conversation(String id) async =>
+      Conversation.fromJson(conversations[id]!);
 
   @override
-  Future<HistoryResult> history(String id, {String? before, String? after}) async {
+  Future<HistoryResult> history(
+    String id, {
+    String? before,
+    String? after,
+  }) async {
     final all = messages[id] ?? const <ChatMessage>[];
     final items = after != null
         ? all.where((m) => m.id.compareTo(after) > 0).toList()
@@ -172,18 +201,28 @@ class FakeChatApi implements ChatApi {
   }
 
   @override
-  Future<SendResult> send(String conversationId, String clientMessageId, MessageDraft draft) async {
+  Future<SendResult> send(
+    String conversationId,
+    String clientMessageId,
+    MessageDraft draft,
+  ) async {
     if (sendFailures.isNotEmpty) {
       final failure = sendFailures.removeAt(0);
       throw failure ?? const NetworkException();
     }
     final list = messages[conversationId] ??= [];
-    final existing = list.where((m) => m.clientMessageId == clientMessageId).firstOrNull;
+    final existing = list
+        .where((m) => m.clientMessageId == clientMessageId)
+        .firstOrNull;
     if (existing != null) return SendResult(message: existing, created: false);
     sent.add((conversationId, clientMessageId, draft));
     final me = conversations[conversationId]!['me'] as Map<String, dynamic>;
     final m = ChatMessage.fromJson({
-      ...messageJson(n: _next++, conversationId: conversationId, sender: me['memberId'] as String),
+      ...messageJson(
+        n: _next++,
+        conversationId: conversationId,
+        sender: me['memberId'] as String,
+      ),
       'clientMessageId': clientMessageId,
       'body': draft is TextDraft ? draft.body : null,
     });
@@ -196,17 +235,29 @@ class FakeChatApi implements ChatApi {
       reads.add((conversationId, upToMessageId));
 
   @override
-  Future<void> markDelivered(String conversationId, String upToMessageId) async {}
+  Future<void> markDelivered(
+    String conversationId,
+    String upToMessageId,
+  ) async {}
 
   @override
-  Future<Conversation> setArchived(String conversationId, {required bool archived}) async {
+  Future<Conversation> setArchived(
+    String conversationId, {
+    required bool archived,
+  }) async {
     this.archived.add((conversationId, archived));
-    conversations[conversationId] = {...conversations[conversationId]!, 'isArchived': archived};
+    conversations[conversationId] = {
+      ...conversations[conversationId]!,
+      'isArchived': archived,
+    };
     return Conversation.fromJson(conversations[conversationId]!);
   }
 
   @override
-  Future<Conversation> setBlocked(String conversationId, {required bool blocked}) async {
+  Future<Conversation> setBlocked(
+    String conversationId, {
+    required bool blocked,
+  }) async {
     conversations[conversationId] = {
       ...conversations[conversationId]!,
       'isBlocked': blocked,
@@ -217,13 +268,19 @@ class FakeChatApi implements ChatApi {
   }
 
   @override
-  Future<void> report(String conversationId, String reasonCode, String? text) async {}
+  Future<void> report(
+    String conversationId,
+    String reasonCode,
+    String? text,
+  ) async {}
 
   @override
-  Future<List<QuickReply>> quickReplies(String conversationId) async => const [];
+  Future<List<QuickReply>> quickReplies(String conversationId) async =>
+      const [];
 
   @override
-  Future<String> uploadImage(String conversationId, File file) async => 'media-1';
+  Future<String> uploadImage(String conversationId, File file) async =>
+      'media-1';
 }
 
 /// The socket, driven by the test.
@@ -237,14 +294,15 @@ class FakeChatRealtime implements ChatRealtime {
   final typingSent = <bool>[];
 
   void deliver(ChatMessage m) => _messages.add(IncomingMessage('t1', m));
-  void typingFrom(String conversationId, {required bool isTyping}) => _typing.add(
-    TypingSignal(
-      conversationId: conversationId,
-      memberId: sellerMemberId,
-      isTyping: isTyping,
-      expiresIn: const Duration(seconds: 5),
-    ),
-  );
+  void typingFrom(String conversationId, {required bool isTyping}) =>
+      _typing.add(
+        TypingSignal(
+          conversationId: conversationId,
+          memberId: sellerMemberId,
+          isTyping: isTyping,
+          expiresIn: const Duration(seconds: 5),
+        ),
+      );
 
   @override
   Stream<IncomingMessage> get messages => _messages.stream;
@@ -271,12 +329,16 @@ class FakeChatRealtime implements ChatRealtime {
   @override
   void leave(String conversationId) => joined.remove(conversationId);
   @override
-  void sendTyping(String conversationId, {required bool isTyping}) => typingSent.add(isTyping);
+  void sendTyping(String conversationId, {required bool isTyping}) =>
+      typingSent.add(isTyping);
 }
 
 /// FCM, driven by the test: permission, the token, pushes arriving and tapped.
 class FakePushMessaging implements PushMessaging {
-  FakePushMessaging({this.current = PushPermission.notAsked, this.answer = PushPermission.granted});
+  FakePushMessaging({
+    this.current = PushPermission.notAsked,
+    this.answer = PushPermission.granted,
+  });
 
   PushPermission current;
   PushPermission answer;
@@ -315,10 +377,14 @@ class FakeNotificationSettingsApi implements NotificationSettingsApi {
   @override
   Future<List<TypePreference>> preferences() async => const [];
   @override
-  Future<List<TypePreference>> setPreference(String type, String channel, {required bool enabled}) async =>
-      const [];
+  Future<List<TypePreference>> setPreference(
+    String type,
+    String channel, {
+    required bool enabled,
+  }) async => const [];
   @override
-  Future<void> registerPushToken(String platform, String token) async => registered.add((platform, token));
+  Future<void> registerPushToken(String platform, String token) async =>
+      registered.add((platform, token));
   @override
   Future<void> forgetPushToken(String token) async {}
 }

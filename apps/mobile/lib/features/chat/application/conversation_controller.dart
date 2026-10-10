@@ -87,21 +87,31 @@ class ConversationController extends AsyncNotifier<ConversationState> {
     final conversation = results[0] as Conversation;
     final history = results[1] as HistoryResult;
     final quickReplies = conversation.isSellerSide && conversation.store != null
-        ? await _api.quickReplies(conversationId).catchError((Object _) => <QuickReply>[])
+        ? await _api
+              .quickReplies(conversationId)
+              .catchError((Object _) => <QuickReply>[])
         : <QuickReply>[];
 
     final subscriptions = <StreamSubscription<Object?>>[
-      realtime.messages.where((m) => m.message.conversationId == conversationId).listen(
-        (m) => _accept(m.message, fromOthers: true),
-      ),
-      realtime.receipts.where((r) => r.conversationId == conversationId).listen(_onReceipt),
-      realtime.typing.where((t) => t.conversationId == conversationId).listen(_onTyping),
-      realtime.conversationUpdated.where((id) => id == conversationId).listen((_) => unawaited(_refresh())),
-      realtime.connected.where((up) => up).listen((_) => unawaited(_onReconnect())),
+      realtime.messages
+          .where((m) => m.message.conversationId == conversationId)
+          .listen((m) => _accept(m.message, fromOthers: true)),
+      realtime.receipts
+          .where((r) => r.conversationId == conversationId)
+          .listen(_onReceipt),
+      realtime.typing
+          .where((t) => t.conversationId == conversationId)
+          .listen(_onTyping),
+      realtime.conversationUpdated
+          .where((id) => id == conversationId)
+          .listen((_) => unawaited(_refresh())),
+      realtime.connected
+          .where((up) => up)
+          .listen((_) => unawaited(_onReconnect())),
       outbox.watch(conversationId).listen(_onPending),
-      outbox.sent.where((r) => r.message.conversationId == conversationId).listen(
-        (r) => _accept(r.message, fromOthers: false),
-      ),
+      outbox.sent
+          .where((r) => r.message.conversationId == conversationId)
+          .listen((r) => _accept(r.message, fromOthers: false)),
     ];
     // Not during build: a provider may not change another while it builds.
     final active = ref.read(activeConversationProvider.notifier);
@@ -139,17 +149,23 @@ class ConversationController extends AsyncNotifier<ConversationState> {
     await _outbox.enqueue(conversationId, TextDraft(body));
   }
 
-  Future<void> sendImage(String localPath) =>
-      _outbox.enqueue(conversationId, const ImageDraft(null), localImagePath: localPath);
+  Future<void> sendImage(String localPath) => _outbox.enqueue(
+    conversationId,
+    const ImageDraft(null),
+    localImagePath: localPath,
+  );
 
   Future<void> sendLocation(double lat, double lng) =>
       _outbox.enqueue(conversationId, LocationDraft(lat, lng));
 
-  Future<void> sharePost(String postId) => _outbox.enqueue(conversationId, ListingDraft(postId));
+  Future<void> sharePost(String postId) =>
+      _outbox.enqueue(conversationId, ListingDraft(postId));
 
-  Future<void> retry(PendingMessage message) => _outbox.retry(message.clientMessageId);
+  Future<void> retry(PendingMessage message) =>
+      _outbox.retry(message.clientMessageId);
 
-  Future<void> discard(PendingMessage message) => _outbox.discard(message.clientMessageId);
+  Future<void> discard(PendingMessage message) =>
+      _outbox.discard(message.clientMessageId);
 
   /// The composer changed: typing on (throttled), off after a pause.
   void onComposerChanged(String text) {
@@ -158,7 +174,8 @@ class ConversationController extends AsyncNotifier<ConversationState> {
       return;
     }
     final now = DateTime.now();
-    if (_lastTypingSent == null || now.difference(_lastTypingSent!) >= _typingResend) {
+    if (_lastTypingSent == null ||
+        now.difference(_lastTypingSent!) >= _typingResend) {
       _realtime.sendTyping(conversationId, isTyping: true);
       _lastTypingSent = now;
     }
@@ -177,8 +194,13 @@ class ConversationController extends AsyncNotifier<ConversationState> {
 
   Future<void> loadOlder() async {
     final current = state.value;
-    if (current == null || !current.hasOlder || current.messages.isEmpty) return;
-    final page = await _api.history(conversationId, before: current.messages.first.id);
+    if (current == null || !current.hasOlder || current.messages.isEmpty) {
+      return;
+    }
+    final page = await _api.history(
+      conversationId,
+      before: current.messages.first.id,
+    );
     state = AsyncData(
       current.copyWith(
         messages: [...page.items.reversed, ...current.messages],
@@ -192,10 +214,13 @@ class ConversationController extends AsyncNotifier<ConversationState> {
   Future<void> setBlocked({required bool blocked}) async {
     final fresh = await _api.setBlocked(conversationId, blocked: blocked);
     final current = state.value;
-    if (current != null) state = AsyncData(current.copyWith(conversation: fresh));
+    if (current != null) {
+      state = AsyncData(current.copyWith(conversation: fresh));
+    }
   }
 
-  Future<void> report(String reasonCode, String? text) => _api.report(conversationId, reasonCode, text);
+  Future<void> report(String reasonCode, String? text) =>
+      _api.report(conversationId, reasonCode, text);
 
   // ---- live ------------------------------------------------------------------
 
@@ -205,14 +230,21 @@ class ConversationController extends AsyncNotifier<ConversationState> {
     final current = state.value;
     if (current == null) return;
     if (current.messages.any((m) => m.id == message.id)) return;
-    final messages = [...current.messages, message]..sort((a, b) => a.id.compareTo(b.id));
+    final messages = [...current.messages, message]
+      ..sort((a, b) => a.id.compareTo(b.id));
     final pending = [
       for (final p in current.pending)
         if (p.clientMessageId != message.clientMessageId) p,
     ];
-    state = AsyncData(current.copyWith(messages: messages, pending: pending, typing: false));
+    state = AsyncData(
+      current.copyWith(messages: messages, pending: pending, typing: false),
+    );
     if (fromOthers && !current.isMine(message)) {
-      unawaited(_api.markDelivered(conversationId, message.id).catchError((Object _) {}));
+      unawaited(
+        _api
+            .markDelivered(conversationId, message.id)
+            .catchError((Object _) {}),
+      );
       _markRead(messages, current.conversation);
     }
   }
@@ -223,18 +255,32 @@ class ConversationController extends AsyncNotifier<ConversationState> {
     // A pending row that is already a message (the answer came first) is not shown twice.
     final sentIds = {for (final m in current.messages) m.clientMessageId};
     state = AsyncData(
-      current.copyWith(pending: [for (final p in pending) if (!sentIds.contains(p.clientMessageId)) p]),
+      current.copyWith(
+        pending: [
+          for (final p in pending)
+            if (!sentIds.contains(p.clientMessageId)) p,
+        ],
+      ),
     );
   }
 
   void _onReceipt(ReceiptSignal receipt) {
     final current = state.value;
-    if (current == null || receipt.memberId == current.conversation.myMemberId) return;
+    if (current == null ||
+        receipt.memberId == current.conversation.myMemberId) {
+      return;
+    }
     state = AsyncData(
       current.copyWith(
         conversation: current.conversation.copyWith(
-          othersDeliveredUpTo: _later(current.conversation.othersDeliveredUpTo, receipt.deliveredUpTo),
-          othersReadUpTo: _later(current.conversation.othersReadUpTo, receipt.readUpTo),
+          othersDeliveredUpTo: _later(
+            current.conversation.othersDeliveredUpTo,
+            receipt.deliveredUpTo,
+          ),
+          othersReadUpTo: _later(
+            current.conversation.othersReadUpTo,
+            receipt.readUpTo,
+          ),
         ),
       ),
     );
@@ -242,22 +288,31 @@ class ConversationController extends AsyncNotifier<ConversationState> {
 
   void _onTyping(TypingSignal signal) {
     final current = state.value;
-    if (current == null || signal.memberId == current.conversation.myMemberId) return;
+    if (current == null || signal.memberId == current.conversation.myMemberId) {
+      return;
+    }
     _typingExpiry?.cancel();
-    if (signal.isTyping) _typingExpiry = Timer(signal.expiresIn, () => _setTyping(false));
+    if (signal.isTyping) {
+      _typingExpiry = Timer(signal.expiresIn, () => _setTyping(false));
+    }
     _setTyping(signal.isTyping);
   }
 
   void _setTyping(bool typing) {
     final current = state.value;
-    if (current != null && current.typing != typing) state = AsyncData(current.copyWith(typing: typing));
+    if (current != null && current.typing != typing) {
+      state = AsyncData(current.copyWith(typing: typing));
+    }
   }
 
   Future<void> _join() async {
     final every = await _realtime.join(conversationId);
     _heartbeat?.cancel();
     if (every != null) {
-      _heartbeat = Timer.periodic(every, (_) => _realtime.heartbeat(conversationId));
+      _heartbeat = Timer.periodic(
+        every,
+        (_) => _realtime.heartbeat(conversationId),
+      );
     }
   }
 
@@ -282,7 +337,9 @@ class ConversationController extends AsyncNotifier<ConversationState> {
     try {
       final fresh = await _api.conversation(conversationId);
       final current = state.value;
-      if (current != null) state = AsyncData(current.copyWith(conversation: fresh));
+      if (current != null) {
+        state = AsyncData(current.copyWith(conversation: fresh));
+      }
     } on Object {
       // Keep what's shown.
     }
@@ -290,10 +347,17 @@ class ConversationController extends AsyncNotifier<ConversationState> {
 
   /// Read up to the newest message from the other side (the inbox badge follows).
   void _markRead(List<ChatMessage> messages, Conversation conversation) {
-    final theirs = messages.where((m) => m.senderMemberId != conversation.myMemberId);
+    final theirs = messages.where(
+      (m) => m.senderMemberId != conversation.myMemberId,
+    );
     if (theirs.isEmpty) return;
-    unawaited(_api.markRead(conversationId, theirs.last.id).catchError((Object _) {}));
-    scheduleMicrotask(() => ref.read(chatInboxProvider(false).notifier).markSeen(conversationId));
+    unawaited(
+      _api.markRead(conversationId, theirs.last.id).catchError((Object _) {}),
+    );
+    scheduleMicrotask(
+      () =>
+          ref.read(chatInboxProvider(false).notifier).markSeen(conversationId),
+    );
   }
 
   static String? _later(String? a, String? b) {
@@ -304,4 +368,6 @@ class ConversationController extends AsyncNotifier<ConversationState> {
 }
 
 final conversationProvider = AsyncNotifierProvider.autoDispose
-    .family<ConversationController, ConversationState, String>(ConversationController.new);
+    .family<ConversationController, ConversationState, String>(
+      ConversationController.new,
+    );

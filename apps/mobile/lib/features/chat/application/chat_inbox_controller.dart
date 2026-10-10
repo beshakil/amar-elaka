@@ -25,12 +25,15 @@ class ActiveConversation extends Notifier<String?> {
   }
 }
 
-final activeConversationProvider = NotifierProvider<ActiveConversation, String?>(
-  ActiveConversation.new,
-);
+final activeConversationProvider =
+    NotifierProvider<ActiveConversation, String?>(ActiveConversation.new);
 
 class ChatInboxState {
-  const ChatInboxState({required this.items, this.nextCursor, this.loadingMore = false});
+  const ChatInboxState({
+    required this.items,
+    this.nextCursor,
+    this.loadingMore = false,
+  });
 
   final List<Conversation> items;
   final String? nextCursor;
@@ -39,12 +42,15 @@ class ChatInboxState {
   bool get hasMore => nextCursor != null;
   int get unreadTotal => items.fold(0, (sum, c) => sum + c.unreadCount);
 
-  ChatInboxState copyWith({List<Conversation>? items, String? nextCursor, bool? loadingMore}) =>
-      ChatInboxState(
-        items: items ?? this.items,
-        nextCursor: nextCursor ?? this.nextCursor,
-        loadingMore: loadingMore ?? this.loadingMore,
-      );
+  ChatInboxState copyWith({
+    List<Conversation>? items,
+    String? nextCursor,
+    bool? loadingMore,
+  }) => ChatInboxState(
+    items: items ?? this.items,
+    nextCursor: nextCursor ?? this.nextCursor,
+    loadingMore: loadingMore ?? this.loadingMore,
+  );
 }
 
 /// The chat inbox (ADR 060): every conversation the user is in, any area,
@@ -70,7 +76,9 @@ class ChatInboxController extends AsyncNotifier<ChatInboxState> {
     final subscriptions = [
       realtime.messages.listen(_onMessage),
       realtime.conversationUpdated.listen((id) => unawaited(_refetch(id))),
-      realtime.connected.where((up) => up).listen((_) => unawaited(_reloadFirstPage())),
+      realtime.connected
+          .where((up) => up)
+          .listen((_) => unawaited(_reloadFirstPage())),
     ];
     ref.onDispose(() {
       for (final s in subscriptions) {
@@ -86,9 +94,15 @@ class ChatInboxController extends AsyncNotifier<ChatInboxState> {
     if (current == null || !current.hasMore || current.loadingMore) return;
     state = AsyncData(current.copyWith(loadingMore: true));
     try {
-      final page = await _api.inbox(cursor: current.nextCursor, archived: archived);
+      final page = await _api.inbox(
+        cursor: current.nextCursor,
+        archived: archived,
+      );
       state = AsyncData(
-        ChatInboxState(items: [...current.items, ...page.items], nextCursor: page.nextCursor),
+        ChatInboxState(
+          items: [...current.items, ...page.items],
+          nextCursor: page.nextCursor,
+        ),
       );
     } on Object {
       state = AsyncData(current.copyWith(loadingMore: false));
@@ -110,7 +124,14 @@ class ChatInboxController extends AsyncNotifier<ChatInboxState> {
     if (current == null) return null;
     final gone = current.items.where((c) => c.id == id).firstOrNull;
     if (gone == null) return null;
-    state = AsyncData(current.copyWith(items: [for (final c in current.items) if (c.id != id) c]));
+    state = AsyncData(
+      current.copyWith(
+        items: [
+          for (final c in current.items)
+            if (c.id != id) c,
+        ],
+      ),
+    );
     try {
       await _api.setArchived(id, archived: archive);
       ref.invalidate(chatInboxProvider(!archived));
@@ -127,7 +148,10 @@ class ChatInboxController extends AsyncNotifier<ChatInboxState> {
     if (current == null) return;
     state = AsyncData(
       current.copyWith(
-        items: [for (final c in current.items) c.id == id ? c.copyWith(unreadCount: 0) : c],
+        items: [
+          for (final c in current.items)
+            c.id == id ? c.copyWith(unreadCount: 0) : c,
+        ],
       ),
     );
   }
@@ -136,7 +160,9 @@ class ChatInboxController extends AsyncNotifier<ChatInboxState> {
     final current = state.value;
     if (current == null) return;
     final message = incoming.message;
-    final index = current.items.indexWhere((c) => c.id == message.conversationId);
+    final index = current.items.indexWhere(
+      (c) => c.id == message.conversationId,
+    );
     if (index < 0) {
       // A new conversation (or one in the other list): the server says where it goes.
       unawaited(_refetch(message.conversationId));
@@ -148,15 +174,21 @@ class ChatInboxController extends AsyncNotifier<ChatInboxState> {
     final updated = conversation.copyWith(
       lastMessage: message,
       activityAt: message.createdAt,
-      unreadCount: mine || open ? conversation.unreadCount : conversation.unreadCount + 1,
+      unreadCount: mine || open
+          ? conversation.unreadCount
+          : conversation.unreadCount + 1,
     );
     // A new message brings an archived conversation back to the inbox (server side too).
     if (archived && !mine) {
-      state = AsyncData(current.copyWith(items: [...current.items]..removeAt(index)));
+      state = AsyncData(
+        current.copyWith(items: [...current.items]..removeAt(index)),
+      );
       ref.invalidate(chatInboxProvider(false));
       return;
     }
-    state = AsyncData(current.copyWith(items: [updated, ...current.items]..removeAt(index + 1)));
+    state = AsyncData(
+      current.copyWith(items: [updated, ...current.items]..removeAt(index + 1)),
+    );
   }
 
   Future<void> _refetch(String id) async {
@@ -169,7 +201,8 @@ class ChatInboxController extends AsyncNotifier<ChatInboxState> {
         state = AsyncData(current.copyWith(items: others));
         return;
       }
-      final items = [...others, fresh]..sort((a, b) => b.activityAt.compareTo(a.activityAt));
+      final items = [...others, fresh]
+        ..sort((a, b) => b.activityAt.compareTo(a.activityAt));
       state = AsyncData(current.copyWith(items: items));
     } on Object {
       // Not ours any more (left the store's staff) or offline: leave the list as it is.
@@ -179,7 +212,9 @@ class ChatInboxController extends AsyncNotifier<ChatInboxState> {
   Future<void> _reloadFirstPage() async {
     try {
       final page = await _api.inbox(archived: archived);
-      state = AsyncData(ChatInboxState(items: page.items, nextCursor: page.nextCursor));
+      state = AsyncData(
+        ChatInboxState(items: page.items, nextCursor: page.nextCursor),
+      );
     } on Object {
       // Keep what's shown.
     }
@@ -187,9 +222,10 @@ class ChatInboxController extends AsyncNotifier<ChatInboxState> {
 }
 
 /// The inbox (false) or the archive (true).
-final chatInboxProvider = AsyncNotifierProvider.family<ChatInboxController, ChatInboxState, bool>(
-  ChatInboxController.new,
-);
+final chatInboxProvider =
+    AsyncNotifierProvider.family<ChatInboxController, ChatInboxState, bool>(
+      ChatInboxController.new,
+    );
 
 /// The chat icon's badge: unread messages in the inbox.
 final chatUnreadProvider = Provider<int>(

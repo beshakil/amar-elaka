@@ -5,13 +5,14 @@ import '../../../../l10n/app_localizations.dart';
 
 /// Why the user reports a conversation: a reason (CHAT_REPORT_REASONS in the
 /// API) and optional words. Returns null when dismissed.
-Future<({String reasonCode, String? text})?> showChatReportSheet(BuildContext context) =>
-    showModalBottomSheet<({String reasonCode, String? text})>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (context) => const _ReportSheet(),
-    );
+Future<({String reasonCode, String? text})?> showChatReportSheet(
+  BuildContext context,
+) => showModalBottomSheet<({String reasonCode, String? text})>(
+  context: context,
+  isScrollControlled: true,
+  showDragHandle: true,
+  builder: (context) => const _ReportSheet(),
+);
 
 class _ReportSheet extends StatefulWidget {
   const _ReportSheet();
@@ -51,7 +52,10 @@ class _ReportSheetState extends State<_ReportSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(l10n.chatReportTitle, style: Theme.of(context).textTheme.titleMedium),
+          Text(
+            l10n.chatReportTitle,
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
           RadioGroup<String>(
             groupValue: _reason,
             onChanged: (v) => setState(() => _reason = v),
@@ -69,14 +73,20 @@ class _ReportSheetState extends State<_ReportSheet> {
           TextField(
             controller: _text,
             maxLines: 3,
-            decoration: InputDecoration(hintText: l10n.chatReportDetailsHint, border: const OutlineInputBorder()),
+            decoration: InputDecoration(
+              hintText: l10n.chatReportDetailsHint,
+              border: const OutlineInputBorder(),
+            ),
           ),
           const SizedBox(height: AppSpacing.md),
           FilledButton(
             key: const ValueKey('chat-report-send'),
             onPressed: _reason == null
                 ? null
-                : () => Navigator.of(context).pop((reasonCode: _reason!, text: _text.text.trim().isEmpty ? null : _text.text.trim())),
+                : () => Navigator.of(context).pop((
+                    reasonCode: _reason!,
+                    text: _text.text.trim().isEmpty ? null : _text.text.trim(),
+                  )),
             child: Text(l10n.chatReportSend),
           ),
         ],

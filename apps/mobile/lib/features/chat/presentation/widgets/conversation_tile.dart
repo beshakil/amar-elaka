@@ -11,7 +11,11 @@ import 'message_bubble.dart';
 /// The inbox's line for a conversation: the post's photo (or the store's
 /// initial), who, the last message, when, and the unread badge.
 class ConversationTile extends StatelessWidget {
-  const ConversationTile({required this.conversation, required this.onTap, super.key});
+  const ConversationTile({
+    required this.conversation,
+    required this.onTap,
+    super.key,
+  });
 
   final Conversation conversation;
   final VoidCallback onTap;
@@ -26,7 +30,10 @@ class ConversationTile extends StatelessWidget {
     final c = conversation;
     final name = c.counterpartKind == 'store' && c.store != null
         ? c.store!.nameFor(locale)
-        : (c.counterpartName ?? (c.counterpartKind == 'buyer' ? l10n.chatBuyer : l10n.chatSeller));
+        : (c.counterpartName ??
+              (c.counterpartKind == 'buyer'
+                  ? l10n.chatBuyer
+                  : l10n.chatSeller));
     final unread = c.unreadCount > 0;
     final preview = _preview(c, l10n);
     final cover = c.post?.cover;
@@ -39,13 +46,19 @@ class ConversationTile extends StatelessWidget {
         child: SizedBox.square(
           dimension: _thumb,
           child: cover != null
-              ? NetworkPhoto(url: cover.url, thumbhash: cover.thumbhash, fit: BoxFit.cover)
+              ? NetworkPhoto(
+                  url: cover.url,
+                  thumbhash: cover.thumbhash,
+                  fit: BoxFit.cover,
+                )
               : ColoredBox(
                   color: theme.colorScheme.secondaryContainer,
                   child: Center(
                     child: Text(
                       name.isEmpty ? '?' : name.characters.first,
-                      style: theme.textTheme.titleLarge?.copyWith(color: theme.colorScheme.onSecondaryContainer),
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        color: theme.colorScheme.onSecondaryContainer,
+                      ),
                     ),
                   ),
                 ),
@@ -61,12 +74,22 @@ class ConversationTile extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (c.post != null)
-            Text(c.post!.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.labelMedium),
+            Text(
+              c.post!.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.labelMedium,
+            ),
           Text(
             preview,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: unread ? TextStyle(fontWeight: FontWeight.w600, color: theme.colorScheme.onSurface) : null,
+            style: unread
+                ? TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: theme.colorScheme.onSurface,
+                  )
+                : null,
           ),
         ],
       ),
@@ -75,7 +98,10 @@ class ConversationTile extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          Text(chatTime(c.activityAt, locale), style: theme.textTheme.labelSmall),
+          Text(
+            chatTime(c.activityAt, locale),
+            style: theme.textTheme.labelSmall,
+          ),
           const SizedBox(height: AppSpacing.xs),
           if (unread)
             Badge(

@@ -43,7 +43,8 @@ class AppShell extends ConsumerWidget {
       appBar: AppBar(
         title: Text(titles[navigationShell.currentIndex]),
         actions: [
-          if (ref.watch(authControllerProvider) is AuthSessionAuthenticated) ...[
+          if (ref.watch(authControllerProvider)
+              is AuthSessionAuthenticated) ...[
             const ChatInboxButton(),
             const NotificationsBell(),
           ],

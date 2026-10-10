@@ -63,7 +63,12 @@ class App extends ConsumerWidget {
                 ],
               ),
               // A push that came while the app is open (ADR 060).
-              const Positioned(top: 0, left: 0, right: 0, child: PushBannerOverlay()),
+              const Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: PushBannerOverlay(),
+              ),
             ],
           ),
         );

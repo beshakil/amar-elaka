@@ -19,11 +19,17 @@ String? appRouteForDeepLink(String? link) {
   if (segments.isEmpty) return null;
   switch (segments.first) {
     case 'chat':
-      return segments.length >= 2 ? RoutePaths.conversationFor(segments[1]) : RoutePaths.chat;
+      return segments.length >= 2
+          ? RoutePaths.conversationFor(segments[1])
+          : RoutePaths.chat;
     case 'posts' when segments.length >= 2:
-      return uri.hasQuery ? '${RoutePaths.postDetailFor(segments[1])}?${uri.query}' : RoutePaths.postDetailFor(segments[1]);
+      return uri.hasQuery
+          ? '${RoutePaths.postDetailFor(segments[1])}?${uri.query}'
+          : RoutePaths.postDetailFor(segments[1]);
     case 'saved-searches':
-      return segments.length >= 2 ? RoutePaths.savedSearchFor(segments[1]) : RoutePaths.savedSearches;
+      return segments.length >= 2
+          ? RoutePaths.savedSearchFor(segments[1])
+          : RoutePaths.savedSearches;
     case 'saved':
       return RoutePaths.saved;
     case 'places' when segments.length >= 2:

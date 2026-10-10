@@ -163,7 +163,8 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
           : ContactBar(
               detail: detail,
               busy: _busy,
-              onChat: () => unawaited(openChat(context, ref, postId: widget.postId)),
+              onChat: () =>
+                  unawaited(openChat(context, ref, postId: widget.postId)),
               onCall: () {
                 if (_mayContact(detail)) {
                   _contact('call', () => actions.call(widget.postId));

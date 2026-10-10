@@ -24,7 +24,9 @@ Future<void> openChat(
   final router = GoRouter.of(context);
   try {
     final api = ref.read(chatApiProvider);
-    final opened = postId != null ? await api.openForPost(postId, source) : await api.openForStore(storeId!);
+    final opened = postId != null
+        ? await api.openForPost(postId, source)
+        : await api.openForStore(storeId!);
     unawaited(router.push(RoutePaths.conversationFor(opened.conversation.id)));
   } on Object {
     messenger.showSnackBar(SnackBar(content: Text(l10n.chatOpenFailed)));

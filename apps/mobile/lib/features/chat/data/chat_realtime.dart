@@ -85,7 +85,10 @@ class SocketIoChatRealtime implements ChatRealtime {
   /// The server's origin: the API base URL without its /api/v1 path.
   static String get _origin {
     final base = Uri.parse(ApiConfig.baseUrl);
-    return base.replace(path: '', query: null).toString().replaceAll(RegExp(r'/$'), '');
+    return base
+        .replace(path: '', query: null)
+        .toString()
+        .replaceAll(RegExp(r'/$'), '');
   }
 
   @override
@@ -101,7 +104,11 @@ class SocketIoChatRealtime implements ChatRealtime {
       'reconnectionDelayMax': _reconnectDelayMaxMs,
       // Read at every (re)connect: a refreshed token is picked up as is.
       'auth': (void Function(Map<String, dynamic>) cb) {
-        unawaited(_storage.readAccessToken().then((token) => cb({'token': token ?? ''})));
+        unawaited(
+          _storage.readAccessToken().then(
+            (token) => cb({'token': token ?? ''}),
+          ),
+        );
       },
     });
     socket
@@ -137,7 +144,9 @@ class SocketIoChatRealtime implements ChatRealtime {
             conversationId: map['conversationId'] as String,
             memberId: map['memberId'] as String,
             isTyping: map['isTyping'] as bool,
-            expiresIn: Duration(seconds: (map['expiresInSeconds'] as num).toInt()),
+            expiresIn: Duration(
+              seconds: (map['expiresInSeconds'] as num).toInt(),
+            ),
           ),
         );
       })
@@ -148,7 +157,8 @@ class SocketIoChatRealtime implements ChatRealtime {
       ..on('auth:expired', (_) => unawaited(_renewAndReconnect()))
       ..onConnectError((error) {
         // UNAUTHENTICATED: the stored token is stale — renew once, then retry.
-        if (error is Map && (error['data'] as Map?)?['code'] == 'UNAUTHENTICATED') {
+        if (error is Map &&
+            (error['data'] as Map?)?['code'] == 'UNAUTHENTICATED') {
           unawaited(_renewAndReconnect());
         }
       });
@@ -183,7 +193,9 @@ class SocketIoChatRealtime implements ChatRealtime {
     final socket = _socket;
     if (socket == null || !socket.connected) return null;
     final answer = await socket
-        .emitWithAckAsync('conversation:join', {'conversationId': conversationId})
+        .emitWithAckAsync('conversation:join', {
+          'conversationId': conversationId,
+        })
         .timeout(const Duration(seconds: 10), onTimeout: () => null);
     final data = _map(answer)?['data'];
     final ttl = data is Map ? data['presenceTtlSeconds'] : null;
@@ -192,8 +204,10 @@ class SocketIoChatRealtime implements ChatRealtime {
   }
 
   @override
-  void heartbeat(String conversationId) =>
-      _socket?.emit('conversation:heartbeat', {'conversationId': conversationId});
+  void heartbeat(String conversationId) => _socket?.emit(
+    'conversation:heartbeat',
+    {'conversationId': conversationId},
+  );
 
   @override
   void leave(String conversationId) =>
@@ -201,7 +215,10 @@ class SocketIoChatRealtime implements ChatRealtime {
 
   @override
   void sendTyping(String conversationId, {required bool isTyping}) =>
-      _socket?.emit('typing', {'conversationId': conversationId, 'isTyping': isTyping});
+      _socket?.emit('typing', {
+        'conversationId': conversationId,
+        'isTyping': isTyping,
+      });
 
   static Map<String, dynamic>? _map(Object? data) => switch (data) {
     final Map<String, dynamic> m => m,

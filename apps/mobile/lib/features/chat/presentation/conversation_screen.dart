@@ -49,7 +49,9 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
     _scroll.addListener(_onScroll);
     // The first chat message the user sends is a moment push obviously helps.
     _sentSubscription = ref.read(chatOutboxProvider).sent.listen((result) {
-      if (result.created && mounted) unawaited(offerPushAtMeaningfulMoment(context, ref));
+      if (result.created && mounted) {
+        unawaited(offerPushAtMeaningfulMoment(context, ref));
+      }
     });
   }
 
@@ -61,11 +63,13 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
     super.dispose();
   }
 
-  ConversationController get _controller => ref.read(conversationProvider(widget.conversationId).notifier);
+  ConversationController get _controller =>
+      ref.read(conversationProvider(widget.conversationId).notifier);
 
   void _onScroll() {
     // reverse: true — the top of the thread is the scroll's max extent.
-    if (_scroll.position.pixels >= _scroll.position.maxScrollExtent - _loadOlderThreshold) {
+    if (_scroll.position.pixels >=
+        _scroll.position.maxScrollExtent - _loadOlderThreshold) {
       unawaited(_controller.loadOlder());
     }
   }
@@ -86,22 +90,34 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
             children: [
               Text(l10n.chatLoadFailed),
               TextButton(
-                onPressed: () => ref.invalidate(conversationProvider(widget.conversationId)),
+                onPressed: () =>
+                    ref.invalidate(conversationProvider(widget.conversationId)),
                 child: Text(l10n.chatRetry),
               ),
             ],
           ),
         ),
       ),
-      _ => Scaffold(appBar: AppBar(), body: const Center(child: CircularProgressIndicator())),
+      _ => Scaffold(
+        appBar: AppBar(),
+        body: const Center(child: CircularProgressIndicator()),
+      ),
     };
   }
 
-  Widget _thread(BuildContext context, AppLocalizations l10n, String locale, ConversationState s) {
+  Widget _thread(
+    BuildContext context,
+    AppLocalizations l10n,
+    String locale,
+    ConversationState s,
+  ) {
     final c = s.conversation;
     final title = c.counterpartKind == 'store' && c.store != null
         ? c.store!.nameFor(locale)
-        : (c.counterpartName ?? (c.counterpartKind == 'buyer' ? l10n.chatBuyer : l10n.chatSeller));
+        : (c.counterpartName ??
+              (c.counterpartKind == 'buyer'
+                  ? l10n.chatBuyer
+                  : l10n.chatSeller));
     // Newest first for a reversed list: pending (newest) then sent, newest to oldest.
     final items = <Widget>[
       if (s.typing) const TypingIndicator(),
@@ -123,7 +139,8 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
           key: ValueKey('message-${m.id}'),
           mine: s.isMine(m),
           state: s.isMine(m) ? deliveryStateOf(m.id, c) : null,
-          onOpenListing: (postId) => unawaited(context.push(RoutePaths.postDetailFor(postId))),
+          onOpenListing: (postId) =>
+              unawaited(context.push(RoutePaths.postDetailFor(postId))),
           onOpenLocation: _openLocation,
         ),
     ];
@@ -134,7 +151,11 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
-            if (s.typing) Text(l10n.chatTyping, style: Theme.of(context).textTheme.labelSmall),
+            if (s.typing)
+              Text(
+                l10n.chatTyping,
+                style: Theme.of(context).textTheme.labelSmall,
+              ),
           ],
         ),
         actions: [
@@ -144,7 +165,9 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
             itemBuilder: (_) => [
               PopupMenuItem(
                 value: c.blockedByMe ? 'unblock' : 'block',
-                child: Text(c.blockedByMe ? l10n.chatMenuUnblock : l10n.chatMenuBlock),
+                child: Text(
+                  c.blockedByMe ? l10n.chatMenuUnblock : l10n.chatMenuBlock,
+                ),
               ),
               PopupMenuItem(value: 'report', child: Text(l10n.chatMenuReport)),
             ],
@@ -155,7 +178,8 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
         children: [
           PostHeaderCard(
             conversation: c,
-            onOpenPost: (postId) => unawaited(context.push(RoutePaths.postDetailFor(postId))),
+            onOpenPost: (postId) =>
+                unawaited(context.push(RoutePaths.postDetailFor(postId))),
           ),
           Expanded(
             child: ListView(
@@ -195,26 +219,37 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
     );
   }
 
-  Future<void> _attach(BuildContext context, AppLocalizations l10n, AttachChoice choice) async {
+  Future<void> _attach(
+    BuildContext context,
+    AppLocalizations l10n,
+    AttachChoice choice,
+  ) async {
     final messenger = ScaffoldMessenger.of(context);
     switch (choice) {
       case AttachChoice.gallery:
       case AttachChoice.camera:
         final picked = await ImagePicker().pickImage(
-          source: choice == AttachChoice.camera ? ImageSource.camera : ImageSource.gallery,
+          source: choice == AttachChoice.camera
+              ? ImageSource.camera
+              : ImageSource.gallery,
         );
         if (picked != null) await _controller.sendImage(picked.path);
       case AttachChoice.location:
         try {
           var permission = await Geolocator.checkPermission();
-          if (permission == LocationPermission.denied) permission = await Geolocator.requestPermission();
-          if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+          if (permission == LocationPermission.denied) {
+            permission = await Geolocator.requestPermission();
+          }
+          if (permission == LocationPermission.denied ||
+              permission == LocationPermission.deniedForever) {
             throw const _NoLocation();
           }
           final position = await Geolocator.getCurrentPosition();
           await _controller.sendLocation(position.latitude, position.longitude);
         } on Object {
-          messenger.showSnackBar(SnackBar(content: Text(l10n.chatLocationFailed)));
+          messenger.showSnackBar(
+            SnackBar(content: Text(l10n.chatLocationFailed)),
+          );
         }
     }
   }
@@ -223,7 +258,12 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
     unawaited(launchUrl(Uri.parse('geo:$lat,$lng?q=$lat,$lng')));
   }
 
-  Future<void> _menu(BuildContext context, AppLocalizations l10n, String action, Conversation c) async {
+  Future<void> _menu(
+    BuildContext context,
+    AppLocalizations l10n,
+    String action,
+    Conversation c,
+  ) async {
     final messenger = ScaffoldMessenger.of(context);
     switch (action) {
       case 'block':
@@ -233,7 +273,10 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
             title: Text(l10n.chatBlockConfirmTitle),
             content: Text(l10n.chatBlockConfirmBody),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(context, false), child: Text(l10n.chatCancel)),
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: Text(l10n.chatCancel),
+              ),
               FilledButton(
                 key: const ValueKey('chat-block-confirm'),
                 onPressed: () => Navigator.pop(context, true),
@@ -252,7 +295,9 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
           await _controller.report(report.reasonCode, report.text);
           messenger.showSnackBar(SnackBar(content: Text(l10n.chatReportSent)));
         } on Object {
-          messenger.showSnackBar(SnackBar(content: Text(l10n.chatGenericError)));
+          messenger.showSnackBar(
+            SnackBar(content: Text(l10n.chatGenericError)),
+          );
         }
     }
   }

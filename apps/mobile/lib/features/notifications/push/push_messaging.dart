@@ -6,9 +6,19 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 /// A push as the app reads it: the server's rendered text and where it leads
 /// (FCM data, apps/api/src/notifications/notification-dispatcher.ts).
 class PushPayload {
-  const PushPayload({this.title, this.body, this.deepLink, this.type, this.notificationId});
+  const PushPayload({
+    this.title,
+    this.body,
+    this.deepLink,
+    this.type,
+    this.notificationId,
+  });
 
-  factory PushPayload.fromData(Map<String, dynamic> data, {String? title, String? body}) => PushPayload(
+  factory PushPayload.fromData(
+    Map<String, dynamic> data, {
+    String? title,
+    String? body,
+  }) => PushPayload(
     title: title,
     body: body,
     deepLink: _nonEmpty(data['deepLink']),
@@ -76,11 +86,16 @@ class NoopPushMessaging implements PushMessaging {
 abstract final class FirebaseConfig {
   static const apiKey = String.fromEnvironment('FIREBASE_API_KEY');
   static const appId = String.fromEnvironment('FIREBASE_APP_ID');
-  static const messagingSenderId = String.fromEnvironment('FIREBASE_MESSAGING_SENDER_ID');
+  static const messagingSenderId = String.fromEnvironment(
+    'FIREBASE_MESSAGING_SENDER_ID',
+  );
   static const projectId = String.fromEnvironment('FIREBASE_PROJECT_ID');
 
   static bool get isConfigured =>
-      apiKey.isNotEmpty && appId.isNotEmpty && messagingSenderId.isNotEmpty && projectId.isNotEmpty;
+      apiKey.isNotEmpty &&
+      appId.isNotEmpty &&
+      messagingSenderId.isNotEmpty &&
+      projectId.isNotEmpty;
 
   static FirebaseOptions get options => const FirebaseOptions(
     apiKey: apiKey,
@@ -99,7 +114,9 @@ class FirebasePushMessaging implements PushMessaging {
   static Future<PushMessaging> create() async {
     if (!FirebaseConfig.isConfigured) return const NoopPushMessaging();
     try {
-      if (Firebase.apps.isEmpty) await Firebase.initializeApp(options: FirebaseConfig.options);
+      if (Firebase.apps.isEmpty) {
+        await Firebase.initializeApp(options: FirebaseConfig.options);
+      }
       return FirebasePushMessaging._(FirebaseMessaging.instance);
     } on Object {
       return const NoopPushMessaging();
@@ -118,8 +135,10 @@ class FirebasePushMessaging implements PushMessaging {
       _map((await _messaging.requestPermission()).authorizationStatus);
 
   static PushPermission _map(AuthorizationStatus status) => switch (status) {
-    AuthorizationStatus.authorized || AuthorizationStatus.provisional => PushPermission.granted,
-    AuthorizationStatus.denied || AuthorizationStatus.deniedPermanently => PushPermission.denied,
+    AuthorizationStatus.authorized ||
+    AuthorizationStatus.provisional => PushPermission.granted,
+    AuthorizationStatus.denied ||
+    AuthorizationStatus.deniedPermanently => PushPermission.denied,
     AuthorizationStatus.notDetermined => PushPermission.notAsked,
   };
 
@@ -130,10 +149,12 @@ class FirebasePushMessaging implements PushMessaging {
   Stream<String> get tokenRefreshed => _messaging.onTokenRefresh;
 
   @override
-  Stream<PushPayload> get foreground => FirebaseMessaging.onMessage.map(_payload);
+  Stream<PushPayload> get foreground =>
+      FirebaseMessaging.onMessage.map(_payload);
 
   @override
-  Stream<PushPayload> get opened => FirebaseMessaging.onMessageOpenedApp.map(_payload);
+  Stream<PushPayload> get opened =>
+      FirebaseMessaging.onMessageOpenedApp.map(_payload);
 
   @override
   Future<PushPayload?> initialMessage() async {
@@ -141,6 +162,9 @@ class FirebasePushMessaging implements PushMessaging {
     return message == null ? null : _payload(message);
   }
 
-  static PushPayload _payload(RemoteMessage m) =>
-      PushPayload.fromData(m.data, title: m.notification?.title, body: m.notification?.body);
+  static PushPayload _payload(RemoteMessage m) => PushPayload.fromData(
+    m.data,
+    title: m.notification?.title,
+    body: m.notification?.body,
+  );
 }

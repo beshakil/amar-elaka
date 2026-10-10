@@ -16,7 +16,9 @@ import 'push_messaging.dart';
 
 /// The device's push support: Firebase when the build is configured, else none.
 /// Tests override it with a fake.
-final pushMessagingProvider = FutureProvider<PushMessaging>((ref) => FirebasePushMessaging.create());
+final pushMessagingProvider = FutureProvider<PushMessaging>(
+  (ref) => FirebasePushMessaging.create(),
+);
 
 /// A push that came while the app was open: the shell shows it as a banner.
 class PushBanner extends Notifier<PushPayload?> {
@@ -27,7 +29,9 @@ class PushBanner extends Notifier<PushPayload?> {
   void dismiss() => state = null;
 }
 
-final pushBannerProvider = NotifierProvider<PushBanner, PushPayload?>(PushBanner.new);
+final pushBannerProvider = NotifierProvider<PushBanner, PushPayload?>(
+  PushBanner.new,
+);
 
 /// Where a push leads (one rule, with the notification center): the
 /// conversation, the post…; else the notification center.
@@ -66,12 +70,16 @@ class PushController {
   Future<void> syncToken() async {
     final messaging = await _ref.read(pushMessagingProvider.future);
     if (!messaging.isAvailable) return;
-    final signedIn = _ref.read(authControllerProvider) is AuthSessionAuthenticated;
+    final signedIn =
+        _ref.read(authControllerProvider) is AuthSessionAuthenticated;
     if (!signedIn) {
       final token = _registeredToken;
       _registeredToken = null;
       if (token != null) {
-        await _ref.read(notificationSettingsApiProvider).forgetPushToken(token).catchError((Object _) {});
+        await _ref
+            .read(notificationSettingsApiProvider)
+            .forgetPushToken(token)
+            .catchError((Object _) {});
       }
       return;
     }
@@ -83,14 +91,17 @@ class PushController {
   Future<void> _register(String token) async {
     if (_ref.read(authControllerProvider) is! AuthSessionAuthenticated) return;
     try {
-      await _ref.read(notificationSettingsApiProvider).registerPushToken(_platform, token);
+      await _ref
+          .read(notificationSettingsApiProvider)
+          .registerPushToken(_platform, token);
       _registeredToken = token;
     } on Object {
       // Next start or token refresh tries again.
     }
   }
 
-  static String get _platform => defaultTargetPlatform == TargetPlatform.iOS ? 'ios' : 'android';
+  static String get _platform =>
+      defaultTargetPlatform == TargetPlatform.iOS ? 'ios' : 'android';
 
   /// Opens a push's screen (a tap, or the one that launched the app).
   void openPush(PushPayload payload) {
@@ -119,7 +130,10 @@ final pushControllerProvider = Provider<PushController>((ref) {
   ref.onDispose(controller.dispose);
   unawaited(controller.start());
   // Signing in or out: register or forget this device's token.
-  ref.listen(authControllerProvider, (_, _) => unawaited(controller.syncToken()));
+  ref.listen(
+    authControllerProvider,
+    (_, _) => unawaited(controller.syncToken()),
+  );
   return controller;
 });
 
@@ -145,7 +159,10 @@ class PushRationaleGate {
     if (prefs.getBool(_answeredKey) ?? false) return false;
     final shownAt = prefs.getInt(_shownAtKey);
     if (shownAt == null) return true;
-    return DateTime.now().difference(DateTime.fromMillisecondsSinceEpoch(shownAt)) >= _quietPeriod;
+    return DateTime.now().difference(
+          DateTime.fromMillisecondsSinceEpoch(shownAt),
+        ) >=
+        _quietPeriod;
   }
 
   Future<void> markShown() async {
@@ -159,9 +176,13 @@ class PushRationaleGate {
     final result = await messaging.requestPermission();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_answeredKey, true);
-    if (result == PushPermission.granted) await _ref.read(pushControllerProvider).syncToken();
+    if (result == PushPermission.granted) {
+      await _ref.read(pushControllerProvider).syncToken();
+    }
     return result == PushPermission.granted;
   }
 }
 
-final pushRationaleGateProvider = Provider<PushRationaleGate>(PushRationaleGate.new);
+final pushRationaleGateProvider = Provider<PushRationaleGate>(
+  PushRationaleGate.new,
+);

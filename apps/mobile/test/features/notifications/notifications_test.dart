@@ -151,7 +151,10 @@ void main() {
     });
 
     test('only links the app has a screen for are followed', () {
-      expect(appRouteForDeepLink('/posts/abc'), RoutePaths.postDetailFor('abc'));
+      expect(
+        appRouteForDeepLink('/posts/abc'),
+        RoutePaths.postDetailFor('abc'),
+      );
       expect(appRouteForDeepLink('/saved-searches/abc'), isNotNull);
       expect(appRouteForDeepLink('/places/abc'), isNotNull);
       expect(appRouteForDeepLink('/chat/c1'), RoutePaths.conversationFor('c1'));
