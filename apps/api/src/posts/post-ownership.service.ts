@@ -1,4 +1,10 @@
 import { Injectable } from '@nestjs/common';
+import { BanStateService } from '../auth/ban-state.service';
+import {
+  AccountBannedException,
+  AccountRestrictedException,
+  AccountTerminatedException,
+} from '../auth/exceptions/auth.exceptions';
 import { TenantContext, type AppRole, type TenantContextStore } from '../database/tenant-context';
 import { TenantDb } from '../database/tenant-db';
 import { PostsRepository } from './posts.repository';
@@ -27,6 +33,7 @@ export class PostOwnershipService {
     private readonly tenantDb: TenantDb,
     private readonly context: TenantContext,
     private readonly repo: PostsRepository,
+    private readonly bans: BanStateService,
   ) {}
 
   /** Which tenant a new post at this point belongs to (resolve_owning_tenant, 0023). */
@@ -68,6 +75,17 @@ export class PostOwnershipService {
       return work({ memberId: current.memberId, role: current.role ?? 'anon' });
     }
 
+    // An area ban bites in its own area (ADR 063): writing into another area
+    // checks that area's state, as the JWT guard did for the request's area.
+    if (mode === 'ensure' && current.userId && current.tenantId !== tenantId) {
+      const state = await this.bans.stateFor(current.userId, tenantId);
+      if (state?.severity === 'terminated') throw new AccountTerminatedException();
+      if (state?.severity === 'banned') throw new AccountBannedException();
+      if (state?.severity === 'restricted' && current.banAccess === 'active') {
+        throw new AccountRestrictedException();
+      }
+    }
+
     const membership = current.userId
       ? await this.tenantDb.transaction((tx) =>
           mode === 'ensure'
@@ -84,6 +102,7 @@ export class PostOwnershipService {
       ...(current.userId ? { userId: current.userId } : {}),
       ...(membership ? { memberId: membership.memberId } : {}),
       role,
+      ...(current.banAccess ? { banAccess: current.banAccess } : {}),
     };
     return this.context.run(store, () => work({ memberId: membership?.memberId, role }));
   }

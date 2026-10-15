@@ -59,6 +59,13 @@ export const JOB_NOTIFY = 'notify';
 export const JOB_DELIVER_NOTIFICATION = 'deliver-notification';
 export const JOB_RELAY_NOTIFICATION_OUTBOX = 'relay-notification-outbox';
 export const JOB_SEND_SAVED_SEARCH_DIGESTS = 'send-saved-search-digests';
+export const JOB_SEND_REVIEW_PROMPTS = 'send-review-prompts';
+export const JOB_EXPIRE_VERIFICATIONS = 'expire-verifications';
+export const JOB_PURGE_VERIFICATION_DOCUMENTS = 'purge-verification-documents';
+/** Bans, appeals and complaints (ADR 063). */
+export const JOB_EXPIRE_BANS = 'expire-bans';
+export const JOB_ESCALATE_APPEALS = 'escalate-appeals';
+export const JOB_COMPLAINT_SLA = 'complaint-sla';
 
 /** One channel's send of one notification; the row says the rest (notification_deliveries). */
 export interface DeliverNotificationJob {

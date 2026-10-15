@@ -31,7 +31,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       tenantId,
       body: { ...parsed.data, device: { platformCode: 'web' } },
     });
-    const response = NextResponse.json({ ok: true });
+    // A banned account goes to its notice, not to `next` (ADR 063).
+    const response = NextResponse.json({ ok: true, accountState: tokens.accountState ?? 'active' });
     const options = sessionCookieOptions();
     response.cookies.set(ACCESS_TOKEN_COOKIE, tokens.accessToken, options);
     response.cookies.set(REFRESH_TOKEN_COOKIE, tokens.refreshToken, {

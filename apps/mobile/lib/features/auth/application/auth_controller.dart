@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:amar_elaka_api/amar_elaka_api.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../../core/network/account_gate.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../core/network/session_signal.dart';
@@ -26,6 +27,13 @@ class AuthController extends _$AuthController {
     ref.listen(sessionSignalProvider, (previous, next) {
       if (previous != null && next != previous) {
         state = const AuthSessionUnauthenticated();
+      }
+    });
+    // A terminated account has no session to keep (ADR 063): drop it; the
+    // router sends the person to the public appeal path.
+    ref.listen(accountGateProvider, (previous, next) {
+      if (next == AccountGate.terminated && previous != next) {
+        unawaited(logout());
       }
     });
     unawaited(_checkExistingSession());
@@ -77,6 +85,8 @@ class AuthController extends _$AuthController {
 
   Future<void> verifyOtp({required String phone, required String code}) async {
     await ref.read(authRepositoryProvider).verifyOtp(phone: phone, code: code);
+    // A fresh session: the API decides the account's state again.
+    ref.read(accountGateProvider.notifier).set(AccountGate.open);
     await _checkExistingSession();
   }
 

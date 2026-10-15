@@ -460,6 +460,12 @@ describe('Post lifecycle jobs (e2e)', () => {
         'build-offline-maps',
         'relay-notification-outbox',
         'send-saved-search-digests',
+        'send-review-prompts',
+        'expire-verifications',
+        'purge-verification-documents',
+        'expire-bans',
+        'escalate-appeals',
+        'complaint-sla',
       ]);
       const drafts = jobs.find((job) => job.code === 'clean-stale-drafts')!;
       expect(drafts.schedule?.pattern).toBe('0 4 * * *');

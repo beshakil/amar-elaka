@@ -219,6 +219,8 @@ describe('Row level security: communication domain (0009)', () => {
       await admin`delete from messages where tenant_id::text like ${FIXTURE_PREFIX}`;
       await admin`delete from conversation_participants where tenant_id::text like ${FIXTURE_PREFIX}`;
       await admin`delete from conversations where tenant_id::text like ${FIXTURE_PREFIX}`;
+      await admin`delete from store_seller_scores where tenant_id::text like ${FIXTURE_PREFIX}`;
+      await admin`delete from review_prompts where tenant_id::text like ${FIXTURE_PREFIX}`;
       await admin`delete from stores where tenant_id::text like ${FIXTURE_PREFIX}`;
       await admin`delete from tenant_members where tenant_id::text like ${FIXTURE_PREFIX}`;
       await admin`delete from tenants where id::text like ${FIXTURE_PREFIX}`;

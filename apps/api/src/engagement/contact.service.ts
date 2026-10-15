@@ -114,6 +114,7 @@ export class ContactService {
             storeId: row.store_id,
             targetMemberId: row.author_member_id,
             actorMemberId: memberId ?? null,
+            actorUserId: this.context.require().userId ?? null,
             viewerKey: key,
           }),
         );
@@ -183,6 +184,7 @@ export class ContactService {
             storeId,
             targetMemberId: store.owner_member_id,
             actorMemberId: memberId ?? null,
+            actorUserId: this.context.require().userId ?? null,
             viewerKey: key,
           }),
         );
@@ -251,6 +253,7 @@ export class ContactService {
             storeId: target.store_id,
             targetMemberId: target.owner_member_id,
             actorMemberId: memberId ?? null,
+            actorUserId: this.context.require().userId ?? null,
             viewerKey: key,
           }),
         );

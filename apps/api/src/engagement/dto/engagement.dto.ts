@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { SELLER_TIERS } from '../../reviews/seller-score-formula';
 import { createZodDto } from '../../common/pipes/zod-dto';
 import { postCardSchema } from '../../feed/dto/feed.dto';
 import { POST_STATUSES } from '../../posts/post-state-machine';
@@ -84,7 +85,13 @@ const localized = z.object({ bn: z.string().nullable(), en: z.string().nullable(
 
 const variantSchema = z.object({ url: z.string(), width: z.number(), height: z.number() });
 
-export const SELLER_BADGES = ['trusted', 'phone_verified', 'verified_store'] as const;
+/** identity_checked (ADR 062): the seller's NID and selfie were checked by a moderator, and it hasn't expired. */
+export const SELLER_BADGES = [
+  'trusted',
+  'phone_verified',
+  'identity_checked',
+  'verified_store',
+] as const;
 
 export const postDetailSchema = z.object({
   id: z.string(),
@@ -127,7 +134,14 @@ export const postDetailSchema = z.object({
     memberSince: z.string().nullable(),
     badges: z.array(z.enum(SELLER_BADGES)),
     store: z
-      .object({ id: z.string(), slug: z.string(), name: localized, verified: z.boolean() })
+      .object({
+        id: z.string(),
+        slug: z.string(),
+        name: localized,
+        verified: z.boolean(),
+        /** The seller score as a badge (ADR 061), the one SellerScoreService. */
+        tier: z.enum(SELLER_TIERS),
+      })
       .nullable(),
     /** Null until there's chat history to measure (seller_profiles). */
     responseHint: z

@@ -83,6 +83,9 @@ async function main(): Promise<void> {
       await seedStoreImport(tx, storeIds[0]!, categoryIds.get('gadgets-electronics')!);
       await seedStock(tx);
       await seedChat(tx, memberIds, storeIds[0]!);
+      await seedReviews(tx, memberIds, storeIds[0]!);
+      await seedVerifications(tx, memberIds, storeIds[0]!);
+      await seedBansAndComplaints(tx, memberIds, storeIds[0]!);
     });
     console.log('Seed complete.');
   } finally {
@@ -192,6 +195,202 @@ async function seedChat(tx: TransactionSql, memberIds: MemberIds, storeId: strin
     on conflict (report_id) do nothing`;
   console.log(
     'chat: 2 conversations, 4 messages, 1 chat lead, 3 quick replies, 1 conversation report',
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Reviews and the seller score (ADR 061)
+// ---------------------------------------------------------------------------
+
+/**
+ * The first store's reviews: the Mirpur buyer's (proven by a call three
+ * days ago, published, with the owner's reply) and a community member's held
+ * for a moderator (low trust) — so the store page, the seller panel and the
+ * moderators' review queue all show something; a "how was it?" already sent
+ * to another member; and a stale seller score, computed on its first read.
+ */
+async function seedReviews(
+  tx: TransactionSql,
+  memberIds: MemberIds,
+  storeId: string,
+): Promise<void> {
+  const [store] = await tx<{ tenant_id: string; owner_member_id: string }[]>`
+    select tenant_id, owner_member_id from stores where id = ${storeId}`;
+  const [held, prompted] = memberIds.mirpur.community;
+  if (!store || !held || !prompted) return;
+  const contacts: [string, string, number][] = [
+    [memberIds.mirpur.buyer, 'call_click', 3],
+    [held, 'whatsapp_click', 5],
+    [prompted, 'call_click', 3],
+  ];
+  const leadIds = new Map<string, string>();
+  // lead_events takes inserts only in its own tenant's context (0009).
+  await tx`select set_config('app.tenant_id', ${store.tenant_id}, true)`;
+  for (const [member, channel, daysAgo] of contacts) {
+    const id = seedId(`lead:review:${member}`);
+    leadIds.set(member, id);
+    await tx`
+      insert into lead_events (id, tenant_id, channel_code, source_code, store_id, target_member_id,
+                               actor_member_id, actor_user_id, occurred_at)
+      select ${id}, ${store.tenant_id}, ${channel}, 'store_page', ${storeId}, ${store.owner_member_id},
+             ${member}, tm.user_id, now() - make_interval(days => ${daysAgo})
+      from tenant_members tm where tm.id = ${member}
+      on conflict (id) do nothing`;
+  }
+  await tx`select set_config('app.tenant_id', '', true)`;
+  const published = seedId('review:buyer');
+  await tx`
+    insert into reviews (id, tenant_id, reviewer_member_id, store_id, rating, body, has_verified_interaction,
+                         status_code, lead_event_id, flags)
+    values
+      (${published}, ${store.tenant_id}, ${memberIds.mirpur.buyer}, ${storeId}, 5,
+       'দোকানদার খুব ভদ্র, পণ্য যেমন বলেছেন তেমনই পেয়েছি। ডেলিভারিও সময়মতো।', true, 'published',
+       ${leadIds.get(memberIds.mirpur.buyer)!}, '{}'),
+      (${seedId('review:held')}, ${store.tenant_id}, ${held}, ${storeId}, 1,
+       'একদম বাজে, কেউ কিনবেন না!!!', true, 'pending', ${leadIds.get(held)!}, '{low_trust}')
+    on conflict (id) do nothing`;
+  await tx`
+    insert into review_responses (id, tenant_id, review_id, responder_member_id, body)
+    values (${seedId('review-response:buyer')}, ${store.tenant_id}, ${published}, ${store.owner_member_id},
+            'অনেক ধন্যবাদ! আবার আসবেন।')
+    on conflict do nothing`;
+  await tx`
+    insert into review_prompts (id, tenant_id, store_id, user_id, lead_event_id)
+    select ${seedId('review-prompt')}, ${store.tenant_id}, ${storeId}, tm.user_id, ${leadIds.get(prompted)!}
+    from tenant_members tm where tm.id = ${prompted}
+    on conflict do nothing`;
+  await tx`
+    insert into store_seller_scores (tenant_id, store_id, score, tier_code, algorithm_version, next_recompute_at)
+    values (${store.tenant_id}, ${storeId}, 0, 'new', 1, now())
+    on conflict (tenant_id, store_id) do nothing`;
+  console.log(
+    'reviews: 1 published (with a reply), 1 held for a moderator, 1 review prompt, 1 stale seller score',
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Verification (ADR 062)
+// ---------------------------------------------------------------------------
+
+/**
+ * The first store's owner has a checked identity and the store a verified
+ * business (both decided by the Mirpur moderator, so the badges show), and
+ * the Mirpur buyer's identity request waits in the moderators' queue. No
+ * evidence files: the seed has no storage, so the detail view says none.
+ * The NID "hashes" are hashes of seed labels, never of a real number.
+ */
+async function seedVerifications(
+  tx: TransactionSql,
+  memberIds: MemberIds,
+  storeId: string,
+): Promise<void> {
+  const [store] = await tx<{ tenant_id: string; owner_user_id: string }[]>`
+    select s.tenant_id, tm.user_id as owner_user_id
+    from stores s join tenant_members tm on tm.tenant_id = s.tenant_id and tm.id = s.owner_member_id
+    where s.id = ${storeId}`;
+  const [people] = await tx<{ moderator: string; buyer: string }[]>`
+    select (select user_id from tenant_members where id = ${memberIds.mirpur.moderator}) as moderator,
+           (select user_id from tenant_members where id = ${memberIds.mirpur.buyer}) as buyer`;
+  if (!store || !people) return;
+  const nidHash = (label: string): string =>
+    createHash('sha256').update(`seed-nid:${label}`).digest('hex');
+  await tx`
+    insert into verifications (id, tenant_id, subject_type, subject_id, level_code, status_code,
+                               submitted_by_user_id, nid_hash, nid_last3, reviewed_by_user_id, reviewed_at,
+                               expires_at)
+    values
+      (${seedId('verification:owner')}, ${store.tenant_id}, 'member', ${store.owner_user_id}, 'identity_checked',
+       'approved', ${store.owner_user_id}, ${nidHash('owner')}, '101', ${people.moderator},
+       now() - interval '10 days', now() + interval '720 days'),
+      (${seedId('verification:store')}, ${store.tenant_id}, 'store', ${storeId}, 'business_verified',
+       'approved', ${store.owner_user_id}, null, null, ${people.moderator},
+       now() - interval '9 days', now() + interval '356 days'),
+      (${seedId('verification:buyer')}, ${store.tenant_id}, 'member', ${people.buyer}, 'identity_checked',
+       'submitted', ${people.buyer}, ${nidHash('buyer')}, '202', null, null, null)
+    on conflict (id) do nothing`;
+  await tx`select public.refresh_verification_caches('member', ${store.owner_user_id})`;
+  await tx`select public.refresh_verification_caches('store', ${storeId})`;
+  console.log('verification: owner identity + store business approved, 1 identity request waiting');
+}
+
+// ---------------------------------------------------------------------------
+// Bans, appeals, the blacklist and complaints (ADR 063)
+// ---------------------------------------------------------------------------
+
+/**
+ * Something on every new screen: a Mirpur community member restricted for
+ * 7 days (step 1 of the ladder) whose appeal waits for the area's admins; a
+ * blacklist recommendation from Mirpur waiting for the platform; and two
+ * complaints about the first store — one waiting (urgent scam), one resolved.
+ */
+async function seedBansAndComplaints(
+  tx: TransactionSql,
+  memberIds: MemberIds,
+  storeId: string,
+): Promise<void> {
+  const userOf = async (memberId: string | undefined) =>
+    memberId
+      ? (
+          await tx<
+            { user_id: string; tenant_id: string }[]
+          >`select user_id, tenant_id from tenant_members where id = ${memberId}`
+        )[0]
+      : undefined;
+  const [restricted, listed, moderator, admin, buyer] = await Promise.all([
+    userOf(memberIds.mirpur.community[5]),
+    userOf(memberIds.mirpur.community[6]),
+    userOf(memberIds.mirpur.moderator),
+    userOf(memberIds.mirpur.tenantAdmin),
+    userOf(memberIds.mirpur.buyer),
+  ]);
+  if (!restricted || !listed || !moderator || !admin || !buyer) return;
+  const tenantId = restricted.tenant_id;
+  const evidence = JSON.stringify([{ type: 'complaint', id: seedId('complaint:open') }]);
+  const banId = seedId('ban:restricted');
+
+  // These tables take writes only through their functions (0059); the seed writes
+  // fixed rows as the role those functions run as (no RLS), then resets.
+  await tx`set local role ae_rls_bypass`;
+  await tx`
+    insert into bans (id, tenant_id, user_id, severity_code, reason_code, reason_text, evidence_refs, banned_by_user_id,
+                      starts_at, expires_at, escalation_step)
+    values (${banId}, ${tenantId}, ${restricted.user_id}, 'restricted', 'spam',
+            'একই বিজ্ঞাপন দিনে ২০ বার, তিনটি রিপোর্ট', ${evidence}::text::jsonb, ${moderator.user_id},
+            now() - interval '1 day', now() + interval '6 days', 1)
+    on conflict (id) do nothing`;
+  await tx`
+    insert into moderation_actions (tenant_id, ban_id, actor_user_id, action_code, reason_code, reason_text)
+    select ${tenantId}, ${banId}, ${moderator.user_id}, 'ban_issued', 'account_ban', 'restricted / spam'
+    where not exists (select 1 from moderation_actions where ban_id = ${banId})`;
+  await tx`
+    insert into ban_appeals (id, public_reference, user_id, ban_id, channel_code, submitted_phone_e164, statement,
+                             queue_code, escalate_at)
+    select ${seedId('appeal:restricted')}, 'AP-SEED000001', ${restricted.user_id}, ${banId}, 'in_app', u.phone_e164,
+           'ভুল করে একই বিজ্ঞাপন বারবার পোস্ট হয়ে গেছে, আর হবে না।', 'tenant_admin', now() + interval '6 days'
+    from users u where u.id = ${restricted.user_id}
+    on conflict (id) do nothing`;
+  await tx`
+    insert into blacklist_entries (id, user_id, reason_code, severity_code, status_code, summary, source_tenant_id,
+                                   recommended_by_user_id, evidence_refs)
+    values (${seedId('blacklist:recommended')}, ${listed.user_id}, 'advance_payment_scam', 'banned', 'recommended',
+            'তিনজন ক্রেতার কাছ থেকে অগ্রিম নিয়ে ফোন বন্ধ', ${tenantId}, ${admin.user_id}, ${evidence}::text::jsonb)
+    on conflict (id) do nothing`;
+  await tx`
+    insert into complaints (id, tenant_id, reporter_user_id, subject_type, subject_id, category_code, priority_code,
+                            description, due_at)
+    values (${seedId('complaint:open')}, ${tenantId}, ${buyer.user_id}, 'store', ${storeId}, 'scam', 'urgent',
+            '৫০০০ টাকা অগ্রিম নিয়েছে, ফোন দিচ্ছে না', now() + interval '3 hours')
+    on conflict (id) do nothing`;
+  await tx`
+    insert into complaints (id, tenant_id, reporter_user_id, subject_type, subject_id, category_code, priority_code,
+                            status_code, description, due_at, resolution, resolved_by_user_id, resolved_at)
+    values (${seedId('complaint:resolved')}, ${tenantId}, ${restricted.user_id}, 'store', ${storeId}, 'abuse', 'high',
+            'resolved', 'চ্যাটে খারাপ ভাষা', now() - interval '2 days', 'দোকানকে সতর্ক করা হয়েছে',
+            ${moderator.user_id}, now() - interval '3 days')
+    on conflict (id) do nothing`;
+  await tx`reset role`;
+  console.log(
+    'bans: 1 restricted (appeal waiting), 1 blacklist recommendation, 2 complaints (1 open, 1 resolved)',
   );
 }
 

@@ -138,6 +138,14 @@ class NotificationsScreen extends ConsumerWidget {
     final t when t.startsWith('geo_budget_') => Icons.warning_amber_outlined,
     'new_message' => Icons.chat_bubble_outline,
     'saved_post_price_drop' => Icons.trending_down,
+    'review_prompt' => Icons.rate_review_outlined,
+    final t when t.startsWith('verification_') => Icons.verified_outlined,
+    'ban_issued' ||
+    'ban_lifted' ||
+    'appeal_decided' ||
+    'appeal_received' ||
+    'blacklist_recommended' => Icons.gpp_maybe_outlined,
+    final t when t.startsWith('complaint_') => Icons.report_outlined,
     final t when t.startsWith('store_') => Icons.storefront_outlined,
     _ => Icons.notifications_outlined,
   };

@@ -25,15 +25,21 @@ const MAX_BODY_BYTES = 15 * 1024 * 1024;
  *
  * `?conversation=<id>`: a photo for that chat (ADR 060), through the
  * conversation's own image endpoints — the API checks the sender is in it.
+ * `?reviewStore=<id>`: a photo for a review of that store (ADR 061), in the
+ * store's own area.
  */
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const contentType = request.headers.get('content-type') ?? '';
   const sha256 = request.headers.get('x-content-sha256') ?? '';
   const conversation = request.nextUrl.searchParams.get('conversation');
+  const reviewStore = request.nextUrl.searchParams.get('reviewStore');
+  const scopeId = z.string().uuid().nullable();
   if (
     !(ACCEPTED_IMAGE_TYPES as readonly string[]).includes(contentType) ||
     !/^[0-9a-f]{64}$/.test(sha256) ||
-    (conversation !== null && !z.string().uuid().safeParse(conversation).success)
+    !scopeId.safeParse(conversation).success ||
+    !scopeId.safeParse(reviewStore).success ||
+    (conversation !== null && reviewStore !== null)
   ) {
     return NextResponse.json({ code: 'UPLOAD_REJECTED' }, { status: 400 });
   }
@@ -58,6 +64,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       bytes: body,
       sha256,
       conversationId: conversation ?? undefined,
+      reviewStoreId: reviewStore ?? undefined,
     });
     return result.ok
       ? NextResponse.json({ mediaId: result.mediaId })

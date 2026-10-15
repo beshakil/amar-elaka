@@ -1,3 +1,4 @@
+import { ActiveAccountRequired } from '../auth/ban-access.decorator';
 import {
   Body,
   Controller,
@@ -88,6 +89,7 @@ export class ChatController {
 
   /** The caller's conversation about this post: opened, or the existing one returned. */
   @Post('posts/:id/conversations')
+  @ActiveAccountRequired()
   @ApiCreatedResponse({ type: OpenConversationResultDto })
   openForPost(
     @Param() params: TargetIdParamDto,
@@ -98,6 +100,7 @@ export class ChatController {
 
   /** The caller's conversation with this store: opened, or the existing one returned. */
   @Post('stores/:id/conversations')
+  @ActiveAccountRequired()
   @ApiCreatedResponse({ type: OpenConversationResultDto })
   openForStore(
     @Param() params: TargetIdParamDto,
@@ -131,6 +134,7 @@ export class ChatController {
 
   /** The same as the socket's message:send; resending a clientMessageId returns the stored message. */
   @Post('conversations/:id/messages')
+  @ActiveAccountRequired()
   @ApiCreatedResponse({ type: SendResultDto })
   send(@Param() params: ConversationIdParamDto, @Body() body: SendMessageDto): Promise<SendResult> {
     return this.messages.send(params.id, body);
@@ -193,6 +197,7 @@ export class ChatController {
 
   /** Upload a photo for this conversation: PUT it to `upload.url`, then confirm. */
   @Post('conversations/:id/images')
+  @ActiveAccountRequired()
   @ApiCreatedResponse({ type: ChatImagePresignedDto })
   presignImage(
     @Param() params: ConversationIdParamDto,
@@ -202,6 +207,7 @@ export class ChatController {
   }
 
   @Post('conversations/:id/images/:mediaId/confirm')
+  @ActiveAccountRequired()
   @HttpCode(HttpStatus.ACCEPTED)
   @ApiAcceptedResponse({ type: ChatImageStatusDto })
   confirmImage(@Param() params: ChatImageParamDto): Promise<ChatImageStatus> {

@@ -29,6 +29,11 @@ export const TENANT_ADMIN_NAV: NavItem[] = [
     requiresAny: [
       { module: 'posts', action: 'approve' },
       { module: 'places', action: 'approve' },
+      { module: 'verifications', action: 'approve' },
+      { module: 'complaints', action: 'read' },
+      { module: 'bans', action: 'read' },
+      { module: 'appeals', action: 'read' },
+      { module: 'blacklist', action: 'read' },
     ],
   },
   {
@@ -44,6 +49,9 @@ export const TENANT_ADMIN_NAV: NavItem[] = [
 export const PLATFORM_ADMIN_NAV: NavItem[] = [
   { key: 'overview', href: '/', icon: 'dashboard' },
   { key: 'tenants', href: '/tenants', icon: 'building' },
+  // ADR 063: escalated and global appeals; blacklist recommendations to approve.
+  { key: 'platformAppeals', href: '/platform/appeals', icon: 'flag' },
+  { key: 'platformBlacklist', href: '/platform/blacklist', icon: 'shield' },
   { key: 'roles', href: '/roles', icon: 'shield', requires: { module: 'roles', action: 'read' } },
 ];
 

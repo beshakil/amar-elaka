@@ -82,6 +82,8 @@ describe('Feed (e2e)', () => {
     await admin`delete from bazar_commodities where id::text like ${FIXTURE}`;
     await admin`delete from national_hotlines where id::text like ${FIXTURE}`;
     await admin`delete from posts where tenant_id::text like ${FIXTURE}`;
+    await admin`delete from store_seller_scores where tenant_id::text like ${FIXTURE}`;
+    await admin`delete from review_prompts where tenant_id::text like ${FIXTURE}`;
     await admin`delete from stores where tenant_id::text like ${FIXTURE}`;
     await admin`delete from places where tenant_id::text like ${FIXTURE}`;
     await admin`delete from boost_types where id::text like ${FIXTURE}`;

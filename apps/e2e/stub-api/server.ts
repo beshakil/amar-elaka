@@ -530,6 +530,8 @@ function storeOf(tenantId: string): Schemas['StorePageDto'] | null {
     verification: { badge: 'business', storeVerified: true },
     rating: 4.5,
     ratingCount: 12,
+    // ADR 061: the seller score as a badge.
+    sellerTier: 'trusted',
     followerCount: 30,
     stats: { followers: 30, livePosts: posts.length, memberSince: '2026-01-15T00:00:00.000Z' },
     hours: {
@@ -644,6 +646,33 @@ async function handlePublic(
       };
       send(res, 200, reveal);
     }
+    return true;
+  }
+  // ADR 061: a store's reviews (any store id): one published review with the store's reply.
+  if (req.method === 'GET' && /^\/stores\/[0-9a-f-]{36}\/reviews$/.test(path)) {
+    send(res, 200, {
+      summary: {
+        average: 4.5,
+        count: 2,
+        histogram: { '1': 0, '2': 0, '3': 0, '4': 1, '5': 1 },
+        tier: 'trusted',
+      },
+      items: [
+        {
+          id: '0191e3a0-0000-7000-8000-00000000a501',
+          rating: 5,
+          text: 'দোকানদার খুব ভদ্র, সময়মতো ডেলিভারি দিয়েছেন।',
+          authorName: 'করিম ক্রেতা',
+          authorRemoved: false,
+          verifiedContact: true,
+          createdAt: '2026-10-01T10:00:00.000Z',
+          editedAt: null,
+          photos: [],
+          response: { text: 'ধন্যবাদ!', createdAt: '2026-10-02T10:00:00.000Z', editedAt: null },
+        },
+      ],
+      nextBefore: null,
+    });
     return true;
   }
   const storeMatch = /^\/stores\/([a-z0-9-]+)$/.exec(path);
@@ -905,7 +934,7 @@ function issueTokens(email: string): Schemas['SessionTokensDto'] {
   const accessToken = `${base64url({ alg: 'none' })}.${base64url({ sub: email, tenantId: persona.tenantId, exp })}.stub`;
   const refreshToken = randomUUID();
   state.refreshTokens.set(refreshToken, { email, used: false });
-  return { accessToken, refreshToken };
+  return { accessToken, refreshToken, accountState: 'active' };
 }
 
 function viewerOf(req: IncomingMessage): (Persona & { email: string }) | null {
@@ -1668,6 +1697,11 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
     state.refreshTokens.delete(String(body?.refreshToken));
     const loggedOut: Schemas['LoggedOutDto'] = { status: 'logged_out' };
     return send(res, 200, loggedOut);
+  }
+  // ADR 063: the seller pages read the account's bans; the stub personas have none.
+  if (req.method === 'GET' && path === '/account/bans') {
+    const bans: Schemas['BanNoticesDto'] = { items: [] };
+    return send(res, 200, bans);
   }
   if (req.method === 'GET' && path === '/auth/me') {
     const me: Schemas['MeResultDto'] = {

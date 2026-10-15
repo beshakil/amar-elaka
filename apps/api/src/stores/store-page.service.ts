@@ -1,3 +1,4 @@
+import { SellerScoreService } from '../reviews/seller-score.service';
 import { ShareService } from '../engagement/share.service';
 import { storeChannels } from '../engagement/store-channels';
 import { Inject, Injectable } from '@nestjs/common';
@@ -50,6 +51,7 @@ export class StorePageService {
     private readonly tracker: AnalyticsTracker,
     @Inject(APP_CONFIG) private readonly env: Pick<Env, 'JWT_SECRET'>,
     private readonly share: ShareService,
+    private readonly scores: SellerScoreService,
   ) {}
 
   async page(slug: string, query: StorePageQuery, viewer?: ViewerSignals): Promise<StorePage> {
@@ -84,9 +86,10 @@ export class StorePageService {
         visitor: viewerKey(this.env.JWT_SECRET, viewer),
       });
     }
-    const [hours, posts] = await Promise.all([
+    const [hours, posts, sellerTier] = await Promise.all([
       this.hours.storeHours(row.id),
       this.feed.cardsFor(page),
+      this.scores.tier(row.tenant_id, row.id),
     ]);
 
     return {
@@ -125,6 +128,7 @@ export class StorePageService {
       },
       rating: row.rating,
       ratingCount: row.rating_count,
+      sellerTier,
       followerCount: row.follower_count,
       stats: {
         followers: row.follower_count,

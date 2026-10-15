@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:amar_elaka_api/amar_elaka_api.dart';
 import 'package:amar_elaka_app/core/routing/route_paths.dart';
 import 'package:amar_elaka_app/features/my_store/presentation/create_store_screen.dart';
+import 'package:amar_elaka_app/features/reviews/data/reviews_api.dart';
 import 'package:amar_elaka_app/features/my_store/presentation/my_store_screen.dart';
 import 'package:amar_elaka_app/features/store/data/store_api.dart';
 import 'package:amar_elaka_app/features/store/data/store_models.dart';
@@ -12,6 +13,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
 import '../post/post_test_harness.dart';
+import '../reviews/review_test_fakes.dart';
 
 final _shopCategory = CatalogCategory.fromJson({
   'id': '0191e3a0-0000-7000-8000-00000000c0aa',
@@ -135,6 +137,12 @@ Future<void> runStoreHappyPath(WidgetTester tester) async {
     overrides: [
       storeApiProvider.overrideWithValue(stores),
       storeCategoriesProvider.overrideWith((ref) async => [_shopCategory]),
+      // A new store has no reviews yet (ADR 061).
+      reviewsApiProvider.overrideWithValue(
+        FakeReviewsApi(
+          page: reviewPage(items: const [], tier: 'new'),
+        ),
+      ),
     ],
     routes: [
       GoRoute(

@@ -1,6 +1,9 @@
 import { Injectable, type CanActivate, type ExecutionContext } from '@nestjs/common';
 import type { FastifyRequest } from 'fastify';
+import { Reflector } from '@nestjs/core';
 import { TenantContext } from '../../database/tenant-context';
+import { BanStateService } from '../ban-state.service';
+import { enforceBan } from './ban-enforcement';
 import { TenantMismatchException, UnauthenticatedException } from '../exceptions/auth.exceptions';
 import { TokenService } from '../tokens/token.service';
 import { extractBearerToken } from './bearer-token';
@@ -18,6 +21,8 @@ export class JwtAuthGuard implements CanActivate {
   constructor(
     private readonly tokens: TokenService,
     private readonly context: TenantContext,
+    private readonly bans: BanStateService,
+    private readonly reflector: Reflector,
   ) {}
 
   async canActivate(executionContext: ExecutionContext): Promise<boolean> {
@@ -36,11 +41,19 @@ export class JwtAuthGuard implements CanActivate {
       throw new TenantMismatchException();
     }
 
+    // Bans bite on every request (ADR 063): one cached read per (user, area).
+    const enforced = enforceBan(
+      this.reflector,
+      executionContext,
+      claims,
+      await this.bans.stateFor(claims.userId, claims.tenantId),
+    );
     this.context.set({
       userId: claims.userId,
       tenantId: claims.tenantId,
       memberId: claims.memberId,
-      role: claims.role,
+      role: enforced.role,
+      ...(enforced.banAccess ? { banAccess: enforced.banAccess } : {}),
     });
     return true;
   }

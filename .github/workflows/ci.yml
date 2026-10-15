@@ -210,6 +210,7 @@ jobs:
       STORAGE_PUBLIC_URL: http://localhost:3000/media
       API_PUBLIC_URL: http://localhost:3000
       JWT_SECRET: ci-jwt-secret-0123456789abcdef
+      NID_HASH_SECRET: ci-nid-hash-secret-0123456789abcdef01
       JWT_ACCESS_TTL: 15m
       JWT_REFRESH_TTL: 60d
       SMTP_HOST: localhost

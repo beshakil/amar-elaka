@@ -1,4 +1,5 @@
 import 'package:amar_elaka_api/amar_elaka_api.dart';
+import 'package:amar_elaka_app/core/network/account_gate.dart';
 import 'package:amar_elaka_app/core/routing/redirect_logic.dart';
 import 'package:amar_elaka_app/core/routing/route_paths.dart';
 import 'package:amar_elaka_app/features/auth/domain/auth_session_state.dart';
@@ -288,5 +289,70 @@ void main() {
         );
       },
     );
+  });
+
+  group('account gate (ADR 063)', () {
+    test('a banned session stays on the notice and its appeals', () {
+      for (final location in [
+        RoutePaths.home,
+        RoutePaths.profile,
+        RoutePaths.chat,
+      ]) {
+        expect(
+          computeRedirect(
+            tenantState: _ready(),
+            authState: const AuthSessionAuthenticated(_me),
+            location: location,
+            accountGate: AccountGate.banned,
+          ),
+          RoutePaths.banNotice,
+        );
+      }
+      for (final location in [
+        RoutePaths.banNotice,
+        RoutePaths.appealFor('b1'),
+      ]) {
+        expect(
+          computeRedirect(
+            tenantState: _ready(),
+            authState: const AuthSessionAuthenticated(_me),
+            location: location,
+            accountGate: AccountGate.banned,
+          ),
+          isNull,
+        );
+      }
+    });
+
+    test(
+      'a terminated account goes to the public appeal path, signed in or not',
+      () {
+        for (final auth in [
+          const AuthSessionAuthenticated(_me),
+          const AuthSessionUnauthenticated(),
+        ]) {
+          expect(
+            computeRedirect(
+              tenantState: _ready(),
+              authState: auth,
+              location: RoutePaths.home,
+              accountGate: AccountGate.terminated,
+            ),
+            RoutePaths.publicAppeal,
+          );
+        }
+      },
+    );
+
+    test('an open gate changes nothing', () {
+      expect(
+        computeRedirect(
+          tenantState: _ready(),
+          authState: const AuthSessionAuthenticated(_me),
+          location: RoutePaths.banNotice,
+        ),
+        isNull,
+      );
+    });
   });
 }

@@ -244,6 +244,7 @@ class StoreRef {
     required this.slug,
     required this.name,
     required this.verified,
+    this.tier,
   });
 
   factory StoreRef.fromJson(Map<String, dynamic> json) =>
@@ -253,6 +254,10 @@ class StoreRef {
   final String slug;
   final OptionalName name;
   final bool verified;
+
+  /// The seller score as a badge (ADR 061): top | trusted | good | new |
+  /// none — never the number. Null from an API older than 0057.
+  final String? tier;
 
   Map<String, dynamic> toJson() => _$StoreRefToJson(this);
 }

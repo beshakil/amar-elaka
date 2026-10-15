@@ -4,6 +4,9 @@ import { LoggerModule } from 'nestjs-pino';
 import { AuthModule } from './auth/auth.module';
 import { CategoriesModule } from './categories/categories.module';
 import { ChatModule } from './chat/chat.module';
+import { ReviewsModule } from './reviews/reviews.module';
+import { VerificationModule } from './verification/verification.module';
+import { BansModule } from './bans/bans.module';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { ZodValidationPipe } from './common/pipes/zod-validation.pipe';
 import { APP_CONFIG, ConfigModule } from './config/config.module';
@@ -72,6 +75,9 @@ import { TenantsModule } from './tenants/tenants.module';
     StoresModule,
     SellerAnalyticsModule,
     ChatModule,
+    ReviewsModule,
+    VerificationModule,
+    BansModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },

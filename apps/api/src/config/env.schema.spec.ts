@@ -10,6 +10,7 @@ const BASE = {
   STORAGE_PUBLIC_URL: 'http://localhost:3000/media',
   API_PUBLIC_URL: 'http://localhost:3000',
   JWT_SECRET: 'jwt-secret-0123456789abcdef',
+  NID_HASH_SECRET: 'nid-hash-secret-0123456789abcdef0123',
   JWT_ACCESS_TTL: '15m',
   JWT_REFRESH_TTL: '60d',
   SMTP_HOST: 'localhost',

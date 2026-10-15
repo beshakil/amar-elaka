@@ -39,6 +39,7 @@ String _describeApiError(
     'ACCOUNT_RESTRICTED' => l10n.errorAccountRestrictedMessage,
     'ACCOUNT_BANNED' => l10n.errorAccountBannedMessage,
     'ACCOUNT_TERMINATED' => l10n.errorAccountTerminatedMessage,
+    'ACCOUNT_BLOCKED' => l10n.errorAccountBlockedMessage,
     'GOOGLE_ACCOUNT_NOT_LINKED' => l10n.errorGoogleAccountNotLinkedMessage,
     'GOOGLE_ACCOUNT_ALREADY_LINKED' =>
       l10n.errorGoogleAccountAlreadyLinkedMessage,

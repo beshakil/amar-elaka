@@ -11,6 +11,11 @@ import { APP_ROLES } from '../../database/tenant-context';
 export const sessionTokensSchema = z.object({
   accessToken: z.string(),
   refreshToken: z.string(),
+  /**
+   * active, or the account's ban state (ADR 063): restricted can browse but
+   * not post, chat or review; banned can only read its bans and appeal.
+   */
+  accountState: z.enum(['active', 'restricted', 'banned']),
 });
 export type SessionTokens = z.infer<typeof sessionTokensSchema>;
 export class SessionTokensDto extends createZodDto(sessionTokensSchema) {}

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { and, eq, isNull } from 'drizzle-orm';
 import { sqlStateOf } from '../common/utils/sql-state';
 import type { DatabaseTransaction } from '../database/database.client';
@@ -8,9 +8,12 @@ import { TenantDb } from '../database/tenant-db';
 import { SettingsService } from '../settings/settings.service';
 import { AuthRepository } from './auth.repository';
 import type { DeviceInput } from './dto/device.schema';
+import { APP_CONFIG } from '../config/config.module';
+import type { Env } from '../config/env.schema';
+import { phoneHash } from '../common/utils/identifier-hash';
+import { BanStateService } from './ban-state.service';
 import {
-  AccountBannedException,
-  AccountRestrictedException,
+  AccountBlockedException,
   AccountTerminatedException,
   DisplayNameTooLongException,
   EmailAlreadyRegisteredException,
@@ -25,7 +28,7 @@ import {
 import { GoogleTokenVerifierService } from './google/google-token-verifier.service';
 import { OtpService, type OtpSent } from './otp/otp.service';
 import { PasswordService } from './password/password.service';
-import { TokenService } from './tokens/token.service';
+import { APPEAL_SCOPE, TokenService } from './tokens/token.service';
 import type { MeResult, SessionTokens } from './dto/auth-responses.dto';
 
 const UNIQUE_VIOLATION = '23505';
@@ -41,6 +44,8 @@ export class AuthService {
     private readonly password: PasswordService,
     private readonly google: GoogleTokenVerifierService,
     private readonly settings: SettingsService,
+    private readonly bans: BanStateService,
+    @Inject(APP_CONFIG) private readonly env: Pick<Env, 'NID_HASH_SECRET'>,
   ) {}
 
   requestOtp(phone: string, ip: string): Promise<OtpSent> {
@@ -61,7 +66,12 @@ export class AuthService {
 
     return this.tenantDb.transaction(async (tx) => {
       const identity = await this.repo.resolveOrCreateByPhone(tx, phone);
-      this.assertNotBlacklisted(identity.blacklistSeverity);
+      await this.assertSignInAllowed(
+        tx,
+        identity,
+        phoneHash(phone, this.env.NID_HASH_SECRET),
+        device,
+      );
       return this.finalizeAndSign(tx, identity.userId, tenantId, device, ip, userAgent);
     });
   }
@@ -101,7 +111,7 @@ export class AuthService {
     return this.tenantDb.transaction(async (tx) => {
       const found = await this.repo.getByGoogleId(tx, identity.googleId);
       if (!found) throw new GoogleAccountNotLinkedException();
-      this.assertNotBlacklisted(found.blacklistSeverity);
+      await this.assertSignInAllowed(tx, found, null, device);
       return this.finalizeAndSign(tx, found.userId, tenantId, device, ip, userAgent);
     });
   }
@@ -143,7 +153,7 @@ export class AuthService {
       if (!ok || !credential) {
         throw new InvalidCredentialsException();
       }
-      this.assertNotBlacklisted(credential.blacklistSeverity);
+      await this.assertSignInAllowed(tx, credential, null, device);
       return this.finalizeAndSign(tx, credential.userId, tenantId, device, ip, userAgent);
     });
   }
@@ -172,13 +182,17 @@ export class AuthService {
     // just revoked the whole token family, and throwing inside would undo it.
     if (rotated.kind === 'reused') throw new RefreshTokenReusedException();
 
+    // A ban may have started (or ended) since the last token: the new one says so.
+    const state = await this.bans.stateFor(rotated.userId, tenantId);
+    if (state?.severity === 'terminated') throw new AccountTerminatedException();
     const accessToken = await this.tokens.signAccessToken({
       userId: rotated.userId,
       tenantId,
       memberId: rotated.memberId,
       role: rotated.roleCode as AppRole,
+      ...(state?.severity === 'banned' ? { scope: [...APPEAL_SCOPE] } : {}),
     });
-    return { accessToken, refreshToken: next.token };
+    return { accessToken, refreshToken: next.token, accountState: state?.severity ?? 'active' };
   }
 
   async logout(refreshToken: string): Promise<void> {
@@ -305,19 +319,46 @@ export class AuthService {
       createdIp: ip,
       userAgent,
     });
+    // A banned account signs in to the appeal-only scope (§9.10); a
+    // restricted one normally (posting, chat and reviews refuse it).
+    const state = await this.bans.stateFor(userId, tenantId);
+    if (state?.severity === 'terminated') throw new AccountTerminatedException();
     const accessToken = await this.tokens.signAccessToken({
       userId,
       tenantId,
       memberId: session.memberId,
       role: session.roleCode as AppRole,
+      ...(state?.severity === 'banned' ? { scope: [...APPEAL_SCOPE] } : {}),
     });
-    return { accessToken, refreshToken: issued.token };
+    return { accessToken, refreshToken: issued.token, accountState: state?.severity ?? 'active' };
   }
 
-  private assertNotBlacklisted(severity: string | null): void {
-    if (severity === 'terminated') throw new AccountTerminatedException();
-    if (severity === 'banned') throw new AccountBannedException();
-    if (severity === 'restricted') throw new AccountRestrictedException();
+  /**
+   * The blacklist at sign-up and sign-in, in every area (ADR 063):
+   *  - the account's own entry: terminated never signs in; banned and
+   *    restricted do, into their limited scope (finalizeAndSign);
+   *  - someone else's entry on this phone (hash) or device, banned or worse:
+   *    refused — a new account can't sidestep a ban. A failed sign-up rolls
+   *    back, so no account is left behind.
+   */
+  private async assertSignInAllowed(
+    tx: DatabaseTransaction,
+    identity: { userId: string; blacklistSeverity: string | null },
+    phoneHashValue: string | null,
+    device: DeviceInput,
+  ): Promise<void> {
+    const match = await this.repo.blacklistMatch(
+      tx,
+      identity.userId,
+      phoneHashValue,
+      device.fingerprintHash ?? null,
+    );
+    if (match.own === 'terminated' || identity.blacklistSeverity === 'terminated') {
+      throw new AccountTerminatedException();
+    }
+    if (match.identifier === 'banned' || match.identifier === 'terminated') {
+      throw new AccountBlockedException();
+    }
   }
 
   private requireTenantId(): string {

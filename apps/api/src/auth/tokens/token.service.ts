@@ -11,7 +11,12 @@ export interface AccessTokenClaims {
   tenantId: string;
   memberId: string;
   role: AppRole;
+  /** Present only on a banned account's token: exactly APPEAL_SCOPE (§9.10). */
+  scope?: string[];
 }
+
+/** A banned session's whole world (schema.md §9.10). */
+export const APPEAL_SCOPE: readonly string[] = ['appeal:read', 'appeal:write', 'account:read'];
 
 export interface IssuedRefreshToken {
   token: string;
@@ -37,6 +42,7 @@ export class TokenService {
       tenantId: claims.tenantId,
       memberId: claims.memberId,
       role: claims.role,
+      ...(claims.scope ? { scope: claims.scope } : {}),
     });
   }
 
@@ -47,12 +53,14 @@ export class TokenService {
       tenantId: string;
       memberId: string;
       role: AppRole;
+      scope?: string[];
     }>(token);
     return {
       userId: payload.sub,
       tenantId: payload.tenantId,
       memberId: payload.memberId,
       role: payload.role,
+      ...(Array.isArray(payload.scope) ? { scope: payload.scope } : {}),
     };
   }
 

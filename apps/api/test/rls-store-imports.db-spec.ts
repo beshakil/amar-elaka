@@ -82,6 +82,8 @@ describe('Row level security: store imports (0052)', () => {
     await admin`delete from store_import_rows where tenant_id::text like ${FIXTURE}`;
     await admin`delete from store_imports where tenant_id::text like ${FIXTURE}`;
     await admin`delete from store_members where tenant_id::text like ${FIXTURE}`;
+    await admin`delete from store_seller_scores where tenant_id::text like ${FIXTURE}`;
+    await admin`delete from review_prompts where tenant_id::text like ${FIXTURE}`;
     await admin`delete from stores where tenant_id::text like ${FIXTURE}`;
     await admin`delete from tenant_members where tenant_id::text like ${FIXTURE}`;
     await admin`delete from categories where id::text like ${FIXTURE}`;

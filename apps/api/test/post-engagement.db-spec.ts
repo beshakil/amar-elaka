@@ -110,6 +110,8 @@ describe('Post engagement (0031)', () => {
 
   async function cleanUp(): Promise<void> {
     await clearPosts();
+    await admin`delete from store_seller_scores where tenant_id::text like ${FIXTURE}`;
+    await admin`delete from review_prompts where tenant_id::text like ${FIXTURE}`;
     await admin`delete from stores where tenant_id::text like ${FIXTURE}`;
     await admin`delete from member_trust_scores where tenant_id::text like ${FIXTURE}`;
     await admin`delete from category_field_schemas where category_id::text like ${FIXTURE}`;

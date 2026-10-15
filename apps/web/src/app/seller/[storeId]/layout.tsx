@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, getTranslations } from 'next-intl/server';
+import { BanBanner } from '@/components/account/ban-banner';
 import { SellerNav } from '@/components/seller/seller-nav';
 import { requireViewer } from '@/lib/auth/viewer';
 import { pickMessages } from '@/lib/i18n-messages';
@@ -37,6 +38,7 @@ export default async function SellerLayout({
             {store.status !== 'active' && ` · ${t('pendingStore')}`}
           </p>
         </header>
+        <BanBanner bans={viewer.bans} />
         <SellerNav storeId={store.id} />
         {children}
       </div>

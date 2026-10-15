@@ -33,6 +33,24 @@ export function apiErrorMessageKey(error: unknown): string {
     case 'TENANT_SUSPENDED':
     case 'TENANT_TERMINATED':
       return 'tenantUnavailable';
+    case 'VERIFICATION_NOT_FOUND':
+      return 'verificationNotFound';
+    case 'VERIFICATION_DECISION_INVALID':
+      return 'verificationDecisionInvalid';
+    case 'BAN_NOT_ALLOWED':
+      return 'banNotAllowed';
+    case 'BAN_NOT_FOUND':
+      return 'banNotFound';
+    case 'APPEAL_NOT_ALLOWED':
+      return 'appealNotAllowed';
+    case 'APPEAL_DECISION_INVALID':
+      return 'appealDecisionInvalid';
+    case 'BLACKLIST_NOT_ALLOWED':
+      return 'blacklistNotAllowed';
+    case 'COMPLAINT_UPDATE_INVALID':
+      return 'complaintUpdateInvalid';
+    case 'BAN_ACTION_FORBIDDEN':
+      return 'banActionForbidden';
     case 'ROLE_ALREADY_EXISTS':
       return 'roleAlreadyExists';
     case 'ROLE_BUILTIN_IMMUTABLE':

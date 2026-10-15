@@ -351,6 +351,8 @@ describe('Row level security: commerce domain (0007)', () => {
       await admin`delete from boost_types where id::text like ${FIXTURE_PREFIX}`;
       await admin`delete from tenant_credit_packages where tenant_id::text like ${FIXTURE_PREFIX}`;
       await admin`delete from credit_packages where id::text like ${FIXTURE_PREFIX}`;
+      await admin`delete from store_seller_scores where tenant_id::text like ${FIXTURE_PREFIX}`;
+      await admin`delete from review_prompts where tenant_id::text like ${FIXTURE_PREFIX}`;
       await admin`delete from stores where tenant_id::text like ${FIXTURE_PREFIX}`;
       await admin`delete from tenant_members where tenant_id::text like ${FIXTURE_PREFIX}`;
       await admin`delete from tenants where id::text like ${FIXTURE_PREFIX}`;

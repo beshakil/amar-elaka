@@ -291,6 +291,8 @@ export const leadEvents = pgTable('lead_events', {
   targetMemberId: uuid('target_member_id'),
   // Composite FK (tenant_id, actor_member_id) -> tenant_members, SET NULL.
   actorMemberId: uuid('actor_member_id'),
+  // Who contacted, by user (0057): set even before a membership exists; a review's proof.
+  actorUserId: uuid('actor_user_id').references(() => users.id, { onDelete: 'set null' }),
   anonSessionHash: text('anon_session_hash'),
   // Composite FK (tenant_id, ad_booking_id) -> ad_bookings, SET NULL.
   adBookingId: uuid('ad_booking_id'),

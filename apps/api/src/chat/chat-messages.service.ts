@@ -180,6 +180,7 @@ export class ChatMessagesService {
         storeId: lead.store_id,
         targetMemberId: lead.seller_member_id ?? state.my_member_id,
         actorMemberId: lead.buyer_member_id,
+        actorUserId: lead.buyer_user_id,
         viewerKey: this.buyerKey(lead),
       });
     }

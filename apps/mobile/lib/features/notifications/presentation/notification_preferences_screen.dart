@@ -72,7 +72,17 @@ String notificationTypeLabel(String type, AppLocalizations l10n) =>
       'store_staff_invited' => l10n.typeStaffInvite,
       'store_suspended' || 'store_reinstated' => l10n.typeStoreStatus,
       'store_import_finished' => l10n.typeImport,
-      'ban_issued' || 'appeal_decided' => l10n.typeAccount,
+      'review_prompt' => l10n.typeReviewPrompt,
+      'verification_approved' ||
+      'verification_rejected' ||
+      'verification_expiring' ||
+      'verification_expired' => l10n.typeVerification,
+      'ban_issued' || 'appeal_decided' || 'ban_lifted' => l10n.typeAccount,
+      'appeal_received' ||
+      'blacklist_recommended' ||
+      'complaint_assigned' ||
+      'complaint_sla_breached' => l10n.typeStaffWork,
+      'complaint_resolved' => l10n.typeComplaints,
       _ => l10n.typeOther,
     };
 

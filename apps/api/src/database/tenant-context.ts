@@ -41,6 +41,9 @@ const TenantContextSchema = z
     // just carried alongside tenantId so TenantGateGuard can enforce
     // suspended/terminated without a second lookup (tenant-resolution.middleware.ts).
     tenantStatus: z.string(),
+    // What the route allows a banned or restricted person (auth/ban-access.decorator.ts),
+    // carried so cross-area writes (PostOwnershipService.inTenant) apply the same rule.
+    banAccess: z.enum(['appeal', 'active']),
   })
   .partial()
   .strict();

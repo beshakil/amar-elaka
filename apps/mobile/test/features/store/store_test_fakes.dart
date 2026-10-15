@@ -28,6 +28,7 @@ StorePageData storePage({List<FeedPostCard>? posts, bool following = false}) =>
       },
       'isVerified': true,
       'isFollowing': following,
+      'sellerTier': 'trusted',
       'followerCount': 1240,
       'stats': {
         'followers': 1240,

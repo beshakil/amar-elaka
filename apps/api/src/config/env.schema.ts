@@ -127,6 +127,12 @@ export const EnvSchema = z
     JWT_ACCESS_TTL: durationString,
     JWT_REFRESH_TTL: durationString,
 
+    // NID verification (ADR 062): the pepper of the NID number's salted hash.
+    // Only the hash and the last 3 digits are stored; without this secret the
+    // hash can't be brute-forced from the (small) NID number space. Never
+    // rotate without re-hashing: a new pepper makes old hashes unmatched.
+    NID_HASH_SECRET: z.string().min(32, 'must be at least 32 characters'),
+
     // SMTP
     SMTP_HOST: z.string().min(1),
     SMTP_PORT: z.coerce.number().int().positive().max(65535),

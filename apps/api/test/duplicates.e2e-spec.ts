@@ -65,6 +65,8 @@ describe('Duplicate detection and merge (e2e)', () => {
     await admin`delete from place_merges where tenant_id::text like ${FIXTURE}`;
     await admin`delete from duplicate_candidates where tenant_id::text like ${FIXTURE}`;
     await admin`update places set merged_into_place_id = null, merged_at = null where tenant_id::text like ${FIXTURE}`;
+    await admin`delete from store_seller_scores where tenant_id::text like ${FIXTURE}`;
+    await admin`delete from review_prompts where tenant_id::text like ${FIXTURE}`;
     await admin`delete from stores where tenant_id::text like ${FIXTURE}`;
     await admin`delete from places where tenant_id::text like ${FIXTURE}`;
     await admin`delete from tenant_categories where tenant_id::text like ${FIXTURE}`;

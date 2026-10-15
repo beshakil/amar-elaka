@@ -8,12 +8,21 @@ import {
   JOB_DELIVER_NOTIFICATION,
   JOB_NOTIFY,
   JOB_RELAY_NOTIFICATION_OUTBOX,
+  JOB_SEND_REVIEW_PROMPTS,
+  JOB_EXPIRE_VERIFICATIONS,
+  JOB_PURGE_VERIFICATION_DOCUMENTS,
+  JOB_EXPIRE_BANS,
+  JOB_ESCALATE_APPEALS,
+  JOB_COMPLAINT_SLA,
   QUEUE_NOTIFICATIONS,
   type DeliverNotificationJob,
   type ScheduledJobData,
 } from '../queue/queue.types';
 import type { OutgoingNotification } from './notification-channel';
 import { NotificationDispatcher } from './notification-dispatcher';
+import { ReviewPromptsService } from '../reviews/review-prompts.service';
+import { VerificationJobsService } from '../verification/verification-jobs.service';
+import { BansJobsService } from '../bans/bans-jobs.service';
 import { NotificationOutboxRelay } from './notification-outbox.relay';
 
 type NotificationsJob = Job<OutgoingNotification | DeliverNotificationJob | ScheduledJobData>;
@@ -28,6 +37,9 @@ export class NotificationsProcessor extends WorkerHost {
   constructor(
     private readonly dispatcher: NotificationDispatcher,
     private readonly outbox: NotificationOutboxRelay,
+    private readonly reviewPrompts: ReviewPromptsService,
+    private readonly verificationJobs: VerificationJobsService,
+    private readonly banJobs: BansJobsService,
     private readonly runner: JobRunner,
     @InjectQueue(deadLetterQueueName(QUEUE_NOTIFICATIONS)) private readonly dlq: Queue,
     private readonly logger: PinoLogger,
@@ -48,6 +60,48 @@ export class NotificationsProcessor extends WorkerHost {
           job.data as ScheduledJobData,
           job.id ?? null,
           (budget) => this.outbox.relay(budget),
+        );
+      case JOB_SEND_REVIEW_PROMPTS:
+        return this.runner.run(
+          JOB_SEND_REVIEW_PROMPTS,
+          job.data as ScheduledJobData,
+          job.id ?? null,
+          (budget) => this.reviewPrompts.run(budget),
+        );
+      case JOB_EXPIRE_VERIFICATIONS:
+        return this.runner.run(
+          JOB_EXPIRE_VERIFICATIONS,
+          job.data as ScheduledJobData,
+          job.id ?? null,
+          (budget) => this.verificationJobs.expireAndRemind(budget),
+        );
+      case JOB_PURGE_VERIFICATION_DOCUMENTS:
+        return this.runner.run(
+          JOB_PURGE_VERIFICATION_DOCUMENTS,
+          job.data as ScheduledJobData,
+          job.id ?? null,
+          (budget) => this.verificationJobs.purgeDocuments(budget),
+        );
+      case JOB_EXPIRE_BANS:
+        return this.runner.run(
+          JOB_EXPIRE_BANS,
+          job.data as ScheduledJobData,
+          job.id ?? null,
+          (budget) => this.banJobs.expire(budget),
+        );
+      case JOB_ESCALATE_APPEALS:
+        return this.runner.run(
+          JOB_ESCALATE_APPEALS,
+          job.data as ScheduledJobData,
+          job.id ?? null,
+          (budget) => this.banJobs.escalate(budget),
+        );
+      case JOB_COMPLAINT_SLA:
+        return this.runner.run(
+          JOB_COMPLAINT_SLA,
+          job.data as ScheduledJobData,
+          job.id ?? null,
+          (budget) => this.banJobs.complaintSla(budget),
         );
       default:
         throw new Error(`notifications queue: unknown job ${job.name}`);

@@ -135,6 +135,8 @@ describe('Duplicate detection and merge (0043)', () => {
     await admin`delete from media_assets where tenant_id::text like ${FIXTURE}`;
     await admin`delete from place_claims where tenant_id::text like ${FIXTURE}`;
     await admin`update places set claim_store_id = null, merged_into_place_id = null, merged_at = null where tenant_id::text like ${FIXTURE}`;
+    await admin`delete from store_seller_scores where tenant_id::text like ${FIXTURE}`;
+    await admin`delete from review_prompts where tenant_id::text like ${FIXTURE}`;
     await admin`delete from stores where tenant_id::text like ${FIXTURE}`;
     await admin`delete from places where tenant_id::text like ${FIXTURE}`;
     if (ids.length > 0) await admin`delete from outbox_events where aggregate_id in ${admin(ids)}`;

@@ -4,6 +4,12 @@ import type { Queue } from 'bullmq';
 import { SCHEDULE_TIMEZONE } from '../common/schedule-timezone';
 import {
   JOB_RELAY_NOTIFICATION_OUTBOX,
+  JOB_SEND_REVIEW_PROMPTS,
+  JOB_EXPIRE_VERIFICATIONS,
+  JOB_PURGE_VERIFICATION_DOCUMENTS,
+  JOB_EXPIRE_BANS,
+  JOB_ESCALATE_APPEALS,
+  JOB_COMPLAINT_SLA,
   QUEUE_NOTIFICATIONS,
   type ScheduledJobData,
 } from '../queue/queue.types';
@@ -11,6 +17,12 @@ import {
 // settings-exempt: cron schedule for a background job (ops tuning); what it acts on is the outbox
 const SCHEDULES = {
   [JOB_RELAY_NOTIFICATION_OUTBOX]: '* * * * *', // every minute: a price drop reaches savers within a minute or two
+  [JOB_SEND_REVIEW_PROMPTS]: '*/15 * * * *', // every 15 minutes: "how was it?" lands near review_prompt_hours
+  [JOB_EXPIRE_VERIFICATIONS]: '5 * * * *', // hourly: an expired badge goes within the hour (ADR 062)
+  [JOB_PURGE_VERIFICATION_DOCUMENTS]: '40 3 * * *', // nightly: retention of verification documents
+  [JOB_EXPIRE_BANS]: '*/10 * * * *', // every 10 minutes: tidies ended bans (they stop biting at once regardless) (ADR 063)
+  [JOB_ESCALATE_APPEALS]: '20 * * * *', // hourly: an area that didn't decide in time loses the appeal to the platform
+  [JOB_COMPLAINT_SLA]: '*/15 * * * *', // every 15 minutes: overdue complaints are flagged near their due time
 } as const;
 
 /** Registers the notification jobs (worker only; idempotent across restarts). */

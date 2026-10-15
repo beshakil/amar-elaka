@@ -1,3 +1,4 @@
+import { ActiveAccountRequired } from '../auth/ban-access.decorator';
 import {
   Body,
   Controller,
@@ -55,6 +56,7 @@ export class PostsController {
    * safe: the same key and body return the same post (200) instead of a new one.
    */
   @Post()
+  @ActiveAccountRequired()
   @RequirePermission('posts', 'write')
   @ApiCreatedResponse({ type: PostDto })
   async create(
@@ -104,6 +106,7 @@ export class PostsController {
   }
 
   @Patch(':id')
+  @ActiveAccountRequired()
   @RequirePermission('posts', 'write')
   @ApiOkResponse({ type: PostDto })
   update(@Param() params: PostIdParamDto, @Body() body: UpdatePostDto): Promise<PostView> {
@@ -111,6 +114,7 @@ export class PostsController {
   }
 
   @Post(':id/submit')
+  @ActiveAccountRequired()
   @HttpCode(HttpStatus.OK)
   @RequirePermission('posts', 'write')
   @ApiOkResponse({ type: PostDto })
@@ -132,6 +136,7 @@ export class PostsController {
    * renewed instead; earlier → 409 POST_RENEW_TOO_EARLY.
    */
   @Post(':id/repost')
+  @ActiveAccountRequired()
   @HttpCode(HttpStatus.OK)
   @RequirePermission('posts', 'write')
   @ApiOkResponse({ type: PostDto })

@@ -75,6 +75,7 @@ export function sniffMediaType(kind: MediaKind, bytes: Uint8Array): SniffedMedia
   switch (kind) {
     case 'image':
     case 'chat_image':
+    case 'verification_image':
       return image;
     case 'document':
       if (startsWith(bytes, PDF)) return 'application/pdf';

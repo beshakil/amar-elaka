@@ -13,6 +13,7 @@ import '../../../core/design/widgets/loading_shimmer.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/platform/external_apps.dart';
 import '../../../core/routing/auth_gate.dart';
+import '../../account_ban/presentation/complaint_screens.dart';
 import '../../../core/routing/route_paths.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../chat/presentation/open_chat.dart';
@@ -134,6 +135,26 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
     }
   }
 
+  /// A complaint about the seller (ADR 063): their store if they have one,
+  /// else "the person on this post" — the API names them, the app never does.
+  void _complain(PostDetail detail) {
+    if (!requireLogin(context, ref)) return;
+    final locale = Localizations.localeOf(context).languageCode;
+    final store = detail.seller.store;
+    unawaited(
+      showComplaintSheet(
+        context,
+        subjectType: store == null ? 'user' : 'store',
+        subjectId: store?.id,
+        postId: store == null ? widget.postId : null,
+        subjectName:
+            store?.name.of(locale) ??
+            detail.seller.name ??
+            _l10n.complaintTheSeller,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final async = ref.watch(postDetailProvider(widget.postId));
@@ -179,7 +200,10 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
               onShare: () => _share(detail),
             ),
       body: switch (async) {
-        AsyncData(:final value) => _DetailBody(detail: value),
+        AsyncData(:final value) => _DetailBody(
+          detail: value,
+          onComplain: value.isMine ? null : () => _complain(value),
+        ),
         AsyncError(:final error) =>
           error is ApiException && error.statusCode == 404
               ? EmptyState(
@@ -201,9 +225,10 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
 }
 
 class _DetailBody extends StatelessWidget {
-  const _DetailBody({required this.detail});
+  const _DetailBody({required this.detail, this.onComplain});
 
   final PostDetail detail;
+  final VoidCallback? onComplain;
 
   @override
   Widget build(BuildContext context) {
@@ -279,7 +304,7 @@ class _DetailBody extends StatelessWidget {
                 Text(description),
                 const SizedBox(height: AppSpacing.md),
               ],
-              SellerCardView(seller: detail.seller),
+              SellerCardView(seller: detail.seller, onComplain: onComplain),
               if (detail.similar.isNotEmpty) ...[
                 const SizedBox(height: AppSpacing.lg),
                 Text(l10n.detailSimilar, style: theme.textTheme.titleMedium),

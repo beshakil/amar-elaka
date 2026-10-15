@@ -8,8 +8,10 @@ import type { Route } from 'next';
  *
  *   /chat, /chat/<id>        the inbox, a conversation
  *   /posts/<id>              the listing (its canonical URL is a redirect away)
+ *   /stores/<id>/review      writing a review of that store (a "how was it?")
  *   /stores/<id>/imports/<x> the seller panel's import page
  *   /saved-searches[/<id>]   the search page (saved searches live in the app)
+ *   /account/bans            the ban notice and appeal (ADR 063)
  */
 export function webPathForDeepLink(link: string | null | undefined): Route | null {
   if (!link || !link.startsWith('/') || link.startsWith('//')) return null;
@@ -24,11 +26,16 @@ export function webPathForDeepLink(link: string | null | undefined): Route | nul
     case 'posts':
       return parts.length === 2 && safe(id) ? (`/listing/${id}` as Route) : null;
     case 'stores':
+      if (parts.length === 3 && safe(id) && sub === 'review') {
+        return `/reviews/write?store=${id}` as Route;
+      }
       return parts.length === 4 && safe(id) && sub === 'imports' && safe(subId)
         ? (`/seller/${id}/import` as Route)
         : null;
     case 'saved-searches':
       return '/search';
+    case 'account':
+      return parts.length === 2 && id === 'bans' ? '/account/bans' : null;
     default:
       return null;
   }

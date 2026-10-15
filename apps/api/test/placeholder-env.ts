@@ -21,6 +21,7 @@ const PLACEHOLDER_ENV: Record<string, string> = {
   STORAGE_PUBLIC_URL: 'http://127.0.0.1:1/media',
   API_PUBLIC_URL: 'http://127.0.0.1:1',
   JWT_SECRET: 'unit-test-placeholder-secret',
+  NID_HASH_SECRET: 'unit-test-placeholder-nid-pepper-0000',
   JWT_ACCESS_TTL: '15m',
   JWT_REFRESH_TTL: '60d',
   SMTP_HOST: '127.0.0.1',

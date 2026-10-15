@@ -22,6 +22,8 @@ import { JOB_NOTIFY, QUEUE_NOTIFICATIONS } from '../../src/queue/queue.types';
 export interface NotificationWorker {
   /** Dispatches (and removes) the queued notify jobs that match; how many. */
   dispatch(match: (n: OutgoingNotification) => boolean): Promise<number>;
+  /** The worker's own module, for specs that run one of its jobs (e.g. ReviewPromptsService). */
+  module: TestingModule;
   close(): Promise<void>;
 }
 
@@ -48,6 +50,7 @@ export async function startNotificationWorker(): Promise<NotificationWorker> {
   const queue = moduleRef.get<Queue<OutgoingNotification>>(getQueueToken(QUEUE_NOTIFICATIONS));
 
   return {
+    module: moduleRef,
     async dispatch(match) {
       const matching = (await queue.getJobs(['waiting', 'delayed', 'prioritized'])).filter(
         (job) => job.name === JOB_NOTIFY && match(job.data),

@@ -14,7 +14,8 @@ export function buildPinoHttpOptions(env: Pick<Env, 'NODE_ENV'>): NonNullable<Pa
       const existing = req.headers['x-request-id'];
       return typeof existing === 'string' && existing.length > 0 ? existing : randomUUID();
     },
-    redact: ['req.headers.authorization', 'req.headers.cookie'],
+    // The NID number (ADR 062) never reaches a log, wherever it would appear.
+    redact: ['req.headers.authorization', 'req.headers.cookie', 'req.body.nid', '*.nid', 'nid'],
     ...(env.NODE_ENV === 'production'
       ? {}
       : { transport: { target: 'pino-pretty', options: { singleLine: true, colorize: true } } }),

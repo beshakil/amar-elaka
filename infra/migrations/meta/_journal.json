@@ -400,6 +400,27 @@
       "when": 1791635535764,
       "tag": "0056_chat_inbox",
       "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
+      "when": 1791721935764,
+      "tag": "0057_reviews",
+      "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1791808335764,
+      "tag": "0058_verification",
+      "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1791894735764,
+      "tag": "0059_bans_appeals",
+      "breakpoints": true
     }
   ]
 }

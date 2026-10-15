@@ -118,3 +118,8 @@ gateways, revenue share, partner dashboards beyond moderation. Months 4–5.
 
   Week 11 focus: realtime chat, notification infrastructure (push, SMS, email,
   in-app), and wiring every pending notification from weeks 5–10 into it.
+
+  Week 12 focus: reviews, seller score, verification, complaints, bans with
+  three severities, appeals, global blacklist governance.
+
+Week 13 focus: information services.

@@ -1,13 +1,21 @@
-import type { Metadata } from 'next';
+import type { Metadata, Route } from 'next';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getTranslations } from 'next-intl/server';
-import { BadgeCheck, MapPin } from 'lucide-react';
+import { NextIntlClientProvider } from 'next-intl';
+import { getMessages, getTranslations } from 'next-intl/server';
+import { BadgeCheck, MapPin, ShieldCheck } from 'lucide-react';
 import { localizeDigits } from '@amar-elaka/dynamic-form';
 import { NoCoverage } from '@/components/no-coverage';
 import { Breadcrumbs } from '@/components/listings/breadcrumbs';
 import { ListingGrid } from '@/components/listings/listing-grid';
+import { ReviewItem, ReviewSummary, TierBadge } from '@/components/reviews/review-display';
+import { ReviewReportButton } from '@/components/reviews/review-report-button';
+import { buttonVariants } from '@/components/ui/button';
+import { pickMessages } from '@/lib/i18n-messages';
 import { cardFromPost, type PriceWords } from '@/lib/listings/format';
 import { storePage } from '@/lib/listings/load';
+import { reviewLabels } from '@/lib/reviews/labels';
+import { storeReviews } from '@/lib/reviews/load';
 import { breadcrumbJsonLd, jsonLdScript } from '@/lib/seo/json-ld';
 import { localBusinessJsonLd } from '@/lib/seo/listing-jsonld';
 import { currentOrigin, currentTenantConfig } from '@/lib/tenant';
@@ -57,7 +65,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-/** A store's public page (basic, ADR 039): who, where, its listings; LocalBusiness JSON-LD. */
+/** A store's public page (ADR 039): who, where, its seller tier and reviews (ADR 061), its listings; LocalBusiness JSON-LD. */
 export default async function StorePage({ params }: Props) {
   const loaded = await load(params);
   if (!loaded) return <NoCoverage />;
@@ -73,6 +81,12 @@ export default async function StorePage({ params }: Props) {
   };
   const name = store.name.bn ?? store.name.en ?? store.slug;
   const path = `/store/${store.slug}`;
+  const [reviews, labels, tr, messages] = await Promise.all([
+    storeReviews(tenant, store.id),
+    reviewLabels(),
+    getTranslations('reviews'),
+    getMessages(),
+  ]);
   const crumbs = [
     { name: tl('home'), path: '/' },
     { name, path },
@@ -105,8 +119,22 @@ export default async function StorePage({ params }: Props) {
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-semibold">
             {name}
-            {store.isVerified && (
+            {store.isVerified ? (
               <BadgeCheck className="size-6 text-brand" aria-label={t('verified')} />
+            ) : (
+              store.verification.badge === 'identity' && (
+                <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-normal text-muted-foreground">
+                  <ShieldCheck className="size-3.5" aria-hidden />
+                  {t('ownerIdentityChecked')}
+                </span>
+              )
+            )}
+            {store.sellerTier !== 'none' && (
+              <TierBadge
+                tier={store.sellerTier}
+                label={labels.tier(store.sellerTier)}
+                explain={labels.tierExplain}
+              />
             )}
           </h1>
           <p className="flex flex-wrap items-center gap-x-3 text-sm text-muted-foreground">
@@ -123,6 +151,50 @@ export default async function StorePage({ params }: Props) {
         </div>
       </header>
       {store.description && <p className="mt-4 whitespace-pre-line">{store.description}</p>}
+
+      <section
+        aria-labelledby="store-reviews"
+        className="mt-8 space-y-4"
+        data-testid="store-reviews"
+      >
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 id="store-reviews" className="text-lg font-semibold">
+            {tr('title')}
+          </h2>
+          {/* Sign-in and the contact rule are checked on the next page, which explains a "not yet". */}
+          <Link
+            href={`/reviews/write?store=${store.id}&back=${encodeURIComponent(path)}` as Route}
+            className={buttonVariants({ variant: 'outline', size: 'sm' })}
+            rel="nofollow"
+            data-testid="review-write"
+          >
+            {tr('write')}
+          </Link>
+        </div>
+        {reviews && <ReviewSummary summary={reviews.summary} labels={labels} />}
+        {!reviews || reviews.items.length === 0 ? (
+          <p className="text-muted-foreground">{tr('none')}</p>
+        ) : (
+          <NextIntlClientProvider messages={pickMessages(messages, ['reviews'])}>
+            <div className="divide-y divide-border">
+              {reviews.items.map((review) => (
+                <ReviewItem
+                  key={review.id}
+                  review={review}
+                  labels={labels}
+                  actions={
+                    <ReviewReportButton
+                      storeId={store.id}
+                      reviewId={review.id}
+                      loginPath={`/login?next=${encodeURIComponent(path)}`}
+                    />
+                  }
+                />
+              ))}
+            </div>
+          </NextIntlClientProvider>
+        )}
+      </section>
 
       <section aria-labelledby="store-listings" className="mt-8">
         <h2 id="store-listings" className="mb-3 text-lg font-semibold">

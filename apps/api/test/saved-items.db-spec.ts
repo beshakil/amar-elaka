@@ -137,6 +137,8 @@ describe('Saved items and follows (0032)', () => {
   async function cleanUp(): Promise<void> {
     await clearSaves();
     await admin`delete from places where tenant_id::text like ${FIXTURE}`;
+    await admin`delete from store_seller_scores where tenant_id::text like ${FIXTURE}`;
+    await admin`delete from review_prompts where tenant_id::text like ${FIXTURE}`;
     await admin`delete from stores where tenant_id::text like ${FIXTURE}`;
     await admin`delete from category_field_schemas where category_id::text like ${FIXTURE}`;
     await admin`delete from categories where id::text like ${FIXTURE}`;

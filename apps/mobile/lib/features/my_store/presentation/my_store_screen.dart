@@ -189,6 +189,14 @@ class _StoreCard extends ConsumerWidget {
               RoutePaths.myStoreEditFor(store.id),
             ),
           ],
+          // Business verification is the owner's own request (ADR 062).
+          if (store.role == 'owner' && active)
+            tile(
+              'verification',
+              Icons.verified_outlined,
+              l10n.storeVerificationTitle,
+              RoutePaths.storeVerificationFor(store.id),
+            ),
           if (active)
             tile(
               'page',

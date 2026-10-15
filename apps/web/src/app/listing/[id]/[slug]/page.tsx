@@ -8,12 +8,14 @@ import { localizeDigits } from '@amar-elaka/dynamic-form';
 import { NoCoverage } from '@/components/no-coverage';
 import { Breadcrumbs } from '@/components/listings/breadcrumbs';
 import { ContactActions } from '@/components/listings/contact-actions';
+import { TierBadge } from '@/components/reviews/review-display';
 import { buttonVariants } from '@/components/ui/button';
 import { ListingGrid } from '@/components/listings/listing-grid';
 import { SaveButton } from '@/components/listings/save-button';
 import { ViewBeacon } from '@/components/listings/view-beacon';
 import type { PostDetail, TenantConfig } from '@/lib/api/schemas';
 import { pickMessages } from '@/lib/i18n-messages';
+import { reviewLabels } from '@/lib/reviews/labels';
 import { cardFromPost, priceDigits, priceLabel, type PriceWords } from '@/lib/listings/format';
 import { listingDetail, listingStatus } from '@/lib/listings/load';
 import { detailFieldValue } from '@/lib/posts/detail-display';
@@ -307,6 +309,7 @@ async function Seller({ post, tenant }: { post: PostDetail; tenant: TenantConfig
       )
     : null;
   const store = post.seller.store;
+  const labels = store ? await reviewLabels() : null;
   return (
     <section aria-labelledby="seller" className="rounded-lg border border-border p-4">
       <h2 id="seller" className="text-sm text-muted-foreground">
@@ -327,12 +330,18 @@ async function Seller({ post, tenant }: { post: PostDetail; tenant: TenantConfig
         </ul>
       )}
       {store && (
-        <a
-          href={`/store/${store.slug}`}
-          className="mt-3 inline-block text-sm text-brand hover:underline"
-        >
-          {t('store')}: {store.name.bn ?? store.slug}
-        </a>
+        <p className="mt-3 flex flex-wrap items-center gap-2">
+          <a href={`/store/${store.slug}`} className="text-sm text-brand hover:underline">
+            {t('store')}: {store.name.bn ?? store.slug}
+          </a>
+          {labels && store.tier !== 'none' && (
+            <TierBadge
+              tier={store.tier}
+              label={labels.tier(store.tier)}
+              explain={labels.tierExplain}
+            />
+          )}
+        </p>
       )}
     </section>
   );

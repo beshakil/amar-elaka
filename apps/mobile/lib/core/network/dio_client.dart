@@ -3,6 +3,8 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../storage/secure_session_storage.dart';
 import 'api_config.dart';
+import 'account_gate.dart';
+import 'interceptors/account_state_interceptor.dart';
 import 'interceptors/auth_interceptor.dart';
 import 'interceptors/install_id_interceptor.dart';
 import 'interceptors/refresh_interceptor.dart';
@@ -45,6 +47,11 @@ Dio dioClient(Ref ref) {
       storage: storage,
       onSessionExpired: () =>
           ref.read(sessionSignalProvider.notifier).notifyExpired(),
+    ),
+    // After refresh: a 401 from an appeal-only token whose ban ended is
+    // refreshed above; a 403 for a live ban or termination lands here.
+    AccountStateInterceptor(
+      (gate) => ref.read(accountGateProvider.notifier).set(gate),
     ),
     RetryInterceptor(dio),
   ]);

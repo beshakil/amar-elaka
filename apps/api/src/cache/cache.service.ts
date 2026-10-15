@@ -31,6 +31,9 @@ export class CacheService implements KeyValueCache, TextCache, OnModuleDestroy {
 
   constructor(@Inject(APP_CONFIG) env: Pick<Env, 'REDIS_URL'>) {
     this.client = new Redis(env.REDIS_URL, { lazyConnect: true });
+    // A dropped connection fails the command that hit it (callers decide); it must
+    // not also surface as an unhandled 'error' event.
+    this.client.on('error', () => undefined);
   }
 
   async get<T>(key: string): Promise<T | undefined> {
@@ -74,7 +77,12 @@ export class CacheService implements KeyValueCache, TextCache, OnModuleDestroy {
     };
   }
 
-  onModuleDestroy(): void {
-    this.client.disconnect();
+  /** Graceful: replies still in flight (e.g. a request's ban-state read) arrive before the socket closes. */
+  async onModuleDestroy(): Promise<void> {
+    if (this.client.status === 'ready') {
+      await this.client.quit().catch(() => this.client.disconnect());
+    } else {
+      this.client.disconnect();
+    }
   }
 }

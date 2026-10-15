@@ -3674,7 +3674,7 @@ An appeal against a ban or global blacklist entry. It's the "ticket" for both th
 
 ### 9.10 Ban enforcement & appeal API contract
 
-Not a table. This is the behaviour the tables above exist to support, written down so tests (§15.3 F) can target it. It will be built in the auth phase, not now.
+Not a table. This is the behaviour the tables above exist to support, written down so tests (§15.3 F) can target it. Built in 0059 (ADR 063); `/appeals/status` is a POST as below.
 
 Global severity comes from an active `blacklist_entries` row; tenant severity from an active `bans` row in that tenant.
 
@@ -5454,6 +5454,102 @@ states how that's satisfied for the whole schema, so no table falls through.
 integer, boolean)`: `p_archived` — `false` the inbox, `true` the archive, `NULL` both (a single conversation's
   lookup). Still SECURITY DEFINER, owner `ae_rls_bypass`; dropped and recreated as that role, `EXECUTE` re-granted
   to `ae_app`. No table changes: archiving writes `conversation_participants.is_archived` (0054).
+
+### Reviews and the seller score (0057, ADR 061)
+
+- `lead_events` + `actor_user_id → users` SET NULL (backfilled from members), index `(tenant_id, store_id, actor_user_id,
+occurred_at desc)`: the contact by user, also before any membership — a review's proof.
+- `reviews` + `lead_event_id → lead_events` SET NULL, `edited_at`, `flags text[]` (`low_trust` | `burst` |
+  `shared_device` | `phone_pattern` | `similar_text`), `author_scrubbed_at` (CHECK: scrubbed ⇒ body null). Indexes on
+  pending reviews and on a store's recent reviews. RLS: `reviews_reviewer_insert/update` and `reviews_staff_moderate`
+  dropped; `reviews_reviewer_read_own`, `reviews_staff_read`, `reviews_system_read` added; INSERT/UPDATE/DELETE revoked
+  from `ae_app` (writes only through the functions). `review_responses` + `edited_at`, writes revoked likewise.
+- `moderation_actions` + `review_id` target; `report_reasons` and `moderation_reasons` + `fake_review`.
+- `stores`: trigger `stores_c_protect_rating` keeps `rating_avg` / `rating_count` to the review aggregate
+  (`reviews_maintain_store_rating`) and the system.
+- NEW `store_seller_scores` (tenant-scoped, system-written; read by staff, the store's managers, system):
+  `score` 0–100, `tier_code` (`top` | `trusted` | `good` | `new` | `none`), `components`, `algorithm_version`,
+  `next_recompute_at` (set by review, verification and upheld-report triggers).
+- NEW `review_prompts` (tenant-scoped, system-written; the user reads their own): once per `(tenant, store, user)`.
+- Functions (SECURITY DEFINER, owner `ae_rls_bypass`): `review_eligibility`, `review_integrity_flags`,
+  `review_attach_media`, `submit_review`, `edit_review`, `respond_to_review`, `report_review`, `decide_review`,
+  `scrub_review_author` (legal holds first), `due_review_prompts`, `store_seller_score_inputs`, `store_review_page`,
+  `store_rating_summary`, `my_store_review`, `review_queue_page`. Errors AE601–AE613.
+- Notification type `review_prompt` (in_app + push, bn/en templates); scheduled job `send-review-prompts`.
+- Settings: `review_*` (min hours after contact, window days, edit days, text and reply length, photos, page size,
+  low-trust threshold, burst count and window, phone prefix length and min reviewers, text similarity and min length,
+  prompt hours, max age and batch) and `seller_score_*` (prior mean and weight, the five weights, report penalty,
+  response target/max minutes and window, min conversations, full-age months, min reviews for a tier, three tier
+  thresholds, cache hours).
+
+### Verification (0058, ADR 062)
+
+- NEW `verifications` (tenant-scoped: the member's request in the area where it was submitted; a store's in the
+  store's area): `subject_type` (`member` → a user id | `store`), `subject_id`, `level_code` (`identity_checked` for
+  members, `business_verified` for stores), `status_code` → `verification_statuses`, `submitted_by_user_id`,
+  `nid_hash` (HMAC-SHA256 hex under `NID_HASH_SECRET`) + `nid_last3` (CHECK: both exactly for identity — the raw number
+  is never stored), `nid_duplicate`, `visit_status` (`not_needed` | `requested` | `done`), `agent_visit_id` (reserved),
+  `reviewed_by_user_id`, `reviewed_at`, `rejection_reason_code` → `verification_rejection_reasons`, `decision_note`,
+  `expires_at` (required when approved), `reminder_sent_at`, `documents_purged_at`. One open request per subject and
+  level (partial unique index). RLS: the subject reads their own, staff and system read; only SELECT granted to
+  `ae_app` (writes through the functions).
+- NEW `verification_evidence` (tenant-scoped): `verification_id`, `kind_code` (`selfie` | `trade_licence` |
+  `shop_front` | `visit_photo`), `media_asset_id` (unique). Media in the private `documents` bucket, kind
+  `verification_image` (new; re-encoded, metadata stripped) or `document` (PDF).
+- `moderation_actions` + `verification_id` target; action type `verification_visit_requested`; reason
+  `verification_review`; moderator grants `verifications:read` / `approve`.
+- `media_asset_is_referenced` now counts `verification_evidence`.
+- Functions (SECURITY DEFINER, owner `ae_rls_bypass`): `verification_level_of_user` / `_of_member` / `_of_store`
+  (the one level rule), `refresh_verification_caches` (`stores.is_verified`, `seller_profiles.verification_level_code`,
+  trust stale), `verification_can_request`, `submit_identity_verification`, `submit_business_verification`,
+  `verification_attach_evidence`, `decide_verification`, `verification_queue_page`, `verification_detail`,
+  `my_verifications`, `expire_verifications`, `due_verification_reminders`, `purge_verification_documents` (legal holds
+  first). Errors AE701–AE704.
+- Notification types `verification_approved` | `_rejected` | `_expiring` | `_expired`; scheduled jobs
+  `expire-verifications` (hourly) and `purge-verification-documents` (daily).
+- Settings: `verification_identity_valid_days`, `verification_business_valid_days`,
+  `verification_reminder_days_before`, `verification_doc_retention_days`, `verification_doc_url_ttl_seconds`,
+  `verification_queue_page_size_max`, `verification_job_batch_size`.
+- Not changed: `verification_requests` and `business_verifications` (0010) stay, unused (ADR 062).
+
+### Bans, appeals, blacklist and complaints (0059, ADR 063)
+
+- `bans` + `reference_code` (`BN-…`, unique; immutable with the content columns). INSERT/UPDATE revoked from `ae_app`:
+  `issue_ban()` (the ladder, override reason, permanent = tenant admin + evidence), `lift_ban()`, `expire_bans()`,
+  `decide_appeal()` only.
+- `blacklist_entries` + `reference_code` (`BL-…`), `phone_hash` (HMAC, 64 hex; the raw `phone_e164` is no longer
+  written), `review_note`; identifier CHECK counts `phone_hash`; one `recommended` row per user (partial unique);
+  expiry index. RLS unchanged (tenant admin inserts `recommended` only; platform admin alone updates).
+- `ban_appeals` + `tenant_recommendation` (`uphold` only), `tenant_note`, `tenant_reviewed_by_user_id`,
+  `tenant_reviewed_at`, `escalation_reason` (`timeout` | `tenant_upheld`), `replacement_ban_id`,
+  `replacement_blacklist_entry_id`; CHECK decided ⇒ decider and time. The tenant admin's FOR ALL policy → read only;
+  INSERT/UPDATE revoked from `ae_app`.
+- `moderation_actions` + `ban_id` ((tenant_id, ban_id) → bans), `blacklist_entry_id` targets; action types
+  `ban_issued`, `ban_lifted`, `appeal_granted`/`_reduced`/`_upheld`/`_escalated`, `blacklist_recommended`/`_approved`/
+  `_rejected`/`_revoked`; reasons `account_ban`, `ban_appeal`, `blacklist_review`.
+- NEW `complaints` (tenant-scoped, the subject's area): `reference_code` (`CP-…`), `reporter_user_id`, `subject_type`
+  (`user` | `store`), `subject_id`, `category_code`, `priority_code`, `status_code`, `description`, `evidence_refs`,
+  `assigned_to_user_id`/`assigned_at`, `due_at`, `sla_breached_at`, `resolution`, `resolved_by_user_id`,
+  `resolved_at`, `ban_id`. One open complaint per reporter and subject. RLS: reporter reads own; the area's staff and
+  executives read; platform/system read; writes through the functions only. Lookups `complaint_categories`
+  (+ `default_priority_code`), `complaint_priorities` (+ `sla_setting_key`), `complaint_statuses`.
+- Functions (SECURITY DEFINER, owner `ae_rls_bypass`): `my_ban_state` (the one state rule), `my_ban_notices`,
+  `blacklist_match` (own entry; another's by device or phone hash, phone-only decaying to `watch`), `issue_ban`,
+  `lift_ban`, `expire_bans`, `ban_list_page`, `ban_find_member`, `appeal_submit_in_app`, `my_appeals`,
+  `public_appeal_status`, `public_appeal_submit` (role `appeal_public`), `appeal_queue_page`, `decide_appeal` (the area
+  never the final judge), `escalate_due_appeals`, `recommend_blacklist`, `blacklist_page`, `blacklist_subject_phone`,
+  `decide_blacklist`, `revoke_blacklist`, `submit_complaint`, `complaint_post_author`, `my_complaints`,
+  `complaint_queue_page`, `complaint_assignees`, `update_complaint`, `resolve_complaint`, `due_complaint_sla_breaches`.
+  Errors AE801–AE807.
+- Grants: moderator `bans:read/write`; executive `complaints:read/write`.
+- Notification types `ban_lifted`, `appeal_received`, `blacklist_recommended`, `complaint_assigned`,
+  `complaint_sla_breached`, `complaint_resolved`; `ban_issued` / `appeal_decided` templates now carry the reference.
+  Scheduled jobs `expire-bans`, `escalate-appeals`, `complaint-sla`.
+- Settings: `ban_state_cache_seconds`, `ban_reason_text_max_length`, `ban_job_batch_size`,
+  `appeal_statement_max_length`, `appeal_public_token_ttl_seconds`, `appeal_queue_page_size_max`,
+  `blacklist_phone_match_days`, `complaint_sla_hours_{urgent,high,normal,low}`, `complaint_max_per_day`,
+  `complaint_description_max_length`, `complaint_queue_page_size_max` (with the existing `ban_ladder_days`,
+  `ban_escalation_lookback_days`, `appeal_escalation_days`, `appeal_rate_limit_per_day`).
 
 ### 15.1 Creation order
 

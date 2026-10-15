@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../account_ban/application/ban_providers.dart';
 import '../../../core/design/theme_mode_controller.dart';
 import '../../../core/l10n/locale_controller.dart';
 import '../../../core/design/tokens/app_spacing.dart';
@@ -48,6 +49,21 @@ class ProfileScreen extends ConsumerWidget {
                 title: Text(l10n.myStoreTitle),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => context.push(RoutePaths.myStore),
+              ),
+              const _BanNoticeTile(),
+              ListTile(
+                key: const ValueKey('profile-complaints'),
+                leading: const Icon(Icons.report_outlined),
+                title: Text(l10n.myComplaintsTitle),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => context.push(RoutePaths.myComplaints),
+              ),
+              ListTile(
+                key: const ValueKey('profile-verification'),
+                leading: const Icon(Icons.verified_user_outlined),
+                title: Text(l10n.verificationTitle),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => context.push(RoutePaths.verification),
               ),
               ListTile(
                 key: const ValueKey('profile-saved'),
@@ -222,6 +238,30 @@ class _OfflineMapTile extends ConsumerWidget {
       ),
       trailing: const Icon(Icons.chevron_right),
       onTap: () => context.push(RoutePaths.offlineMap),
+    );
+  }
+}
+
+/// Shown only while the account has a ban (ADR 063): a restricted member can
+/// still use the app, and finds why, how long and the appeal here.
+class _BanNoticeTile extends ConsumerWidget {
+  const _BanNoticeTile();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final notices = ref.watch(banNoticesProvider).value ?? const [];
+    if (notices.isEmpty) return const SizedBox.shrink();
+    final l10n = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
+    return ListTile(
+      key: const ValueKey('profile-ban-notice'),
+      leading: Icon(Icons.gpp_maybe_outlined, color: theme.colorScheme.error),
+      title: Text(
+        l10n.banNoticeTitle,
+        style: TextStyle(color: theme.colorScheme.error),
+      ),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () => context.push(RoutePaths.banNotice),
     );
   }
 }

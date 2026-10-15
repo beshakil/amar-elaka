@@ -4,7 +4,16 @@ import { APP_CONFIG } from '../config/config.module';
 import type { Env } from '../config/env.schema';
 import { JobRunnerModule } from '../jobs/job-runner.module';
 import { MailModule } from '../mail/mail.module';
+import { ReviewPromptsService } from '../reviews/review-prompts.service';
+import { SellerScoreModule } from '../reviews/seller-score.module';
+import { VerificationJobsService } from '../verification/verification-jobs.service';
+import { VerificationRepository } from '../verification/verification.repository';
 import { SettingsModule } from '../settings/settings.module';
+import { BanStateService } from '../auth/ban-state.service';
+import { BanNotifier } from '../bans/ban-notifier';
+import { BansJobsService } from '../bans/bans-jobs.service';
+import { BansRepository } from '../bans/bans.repository';
+import { CacheModule } from '../cache/cache.module';
 import { EmailNotificationChannel } from './channels/email.channel';
 import { PushNotificationChannel } from './channels/push.channel';
 import { SmsNotificationChannel } from './channels/sms.channel';
@@ -25,11 +34,20 @@ import { NotificationTexts } from './templates/notification-texts';
  * The delivering side (WorkerModule only, ADR 059): the dispatcher, the
  * in-app inbox and the push / SMS / email channels (NOTIFICATION_CHANNELS —
  * a new channel is one more entry; nothing that sends changes), the push
- * provider (PUSH_PROVIDER env: local logs, fcm sends), and the price-drop
- * outbox relay.
+ * provider (PUSH_PROVIDER env: local logs, fcm sends), the price-drop
+ * outbox relay, the review prompts (ADR 061), the verification jobs (ADR 062)
+ * and the ban, appeal and complaint jobs (ADR 063).
  */
 @Module({
-  imports: [JobRunnerModule, SettingsModule, SmsProviderModule, MailModule, NotificationsModule],
+  imports: [
+    JobRunnerModule,
+    SettingsModule,
+    SmsProviderModule,
+    MailModule,
+    NotificationsModule,
+    SellerScoreModule,
+    CacheModule,
+  ],
   providers: [
     NotificationsRepository,
     NotificationTexts,
@@ -57,6 +75,13 @@ import { NotificationTexts } from './templates/notification-texts';
     },
     NotificationDispatcher,
     NotificationOutboxRelay,
+    ReviewPromptsService,
+    VerificationRepository,
+    VerificationJobsService,
+    BansRepository,
+    BanNotifier,
+    BanStateService,
+    BansJobsService,
     NotificationsProcessor,
     NotificationsSchedule,
   ],

@@ -78,6 +78,8 @@ describe('Saved items and follows (e2e)', () => {
     await admin`delete from outbox_events where aggregate_table = 'posts' and payload->>'tenantId' like ${FIXTURE}`;
     await admin`delete from posts where tenant_id::text like ${FIXTURE}`;
     await admin`delete from places where tenant_id::text like ${FIXTURE}`;
+    await admin`delete from store_seller_scores where tenant_id::text like ${FIXTURE}`;
+    await admin`delete from review_prompts where tenant_id::text like ${FIXTURE}`;
     await admin`delete from stores where tenant_id::text like ${FIXTURE}`;
     await admin`delete from tenant_categories where tenant_id::text like ${FIXTURE}`;
     await admin`delete from category_field_schemas where category_id::text like ${FIXTURE}`;

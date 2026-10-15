@@ -11,6 +11,7 @@ describe('where a notification or web push leads', () => {
     expect(webPathForDeepLink('/posts/p1?action=repost')).toBe('/listing/p1');
     expect(webPathForDeepLink('/stores/s1/imports/i1')).toBe('/seller/s1/import');
     expect(webPathForDeepLink('/saved-searches/x')).toBe('/search');
+    expect(webPathForDeepLink('/stores/s1/review')).toBe('/reviews/write?store=s1');
   });
   it('nothing for the rest — and never somewhere off the site', () => {
     expect(webPathForDeepLink(null)).toBeNull();
@@ -27,5 +28,10 @@ describe('settings groups', () => {
     expect(notificationTypeGroup('post_removed')).toBe('post_outcome');
     expect(notificationTypeGroup('new_message')).toBe('new_message');
     expect(notificationTypeGroup('brand_new_type')).toBe('other');
+  });
+
+  it('opens the ban notice from a ban or appeal notice (ADR 063)', () => {
+    expect(webPathForDeepLink('/account/bans')).toBe('/account/bans');
+    expect(webPathForDeepLink('/account/other')).toBeNull();
   });
 });

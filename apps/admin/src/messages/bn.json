@@ -10,7 +10,9 @@
     "expandSidebar": "সাইডবার খুলুন",
     "collapseSidebar": "সাইডবার বন্ধ করুন",
     "moderation": "মডারেশন",
-    "heatmap": "চাহিদা ও জোগান"
+    "heatmap": "চাহিদা ও জোগান",
+    "platformAppeals": "আপিল",
+    "platformBlacklist": "ব্ল্যাকলিস্ট"
   },
   "breadcrumb": {
     "label": "ব্রেডক্রাম্ব",
@@ -124,7 +126,16 @@
     "placeItemGone": "এটি আর নেই; তালিকা নতুন করে দেখুন।",
     "placeAlreadyDecided": "এটির সিদ্ধান্ত আগেই হয়ে গেছে।",
     "placeStatusLocked": "জায়গার এই অবস্থায় এটি করা যায় না।",
-    "placeLocationOtherTenant": "নতুন লোকেশনটি অন্য এলাকার মধ্যে পড়েছে।"
+    "placeLocationOtherTenant": "নতুন লোকেশনটি অন্য এলাকার মধ্যে পড়েছে।",
+    "verificationNotFound": "এই যাচাইয়ের অনুরোধটি আর খোলা নেই।",
+    "verificationDecisionInvalid": "এই সিদ্ধান্ত এখানে খাটে না (বাতিলে কারণ লাগে; মাঠ পরিদর্শন শুধু ব্যবসার জন্য; মেয়াদ ভবিষ্যতের তারিখ হতে হবে)।",
+    "banNotAllowed": "এই নিষেধাজ্ঞা দেওয়া যাচ্ছে না। কারণ, প্রমাণ ও মেয়াদ দেখে আবার চেষ্টা করুন (সিঁড়ির বাইরে গেলে কারণ লিখতে হয়; স্থায়ী শুধু এলাকার অ্যাডমিন, প্রমাণসহ)।",
+    "banNotFound": "এই নিষেধাজ্ঞা আর চালু নেই।",
+    "appealNotAllowed": "এই আপিল করা যাচ্ছে না।",
+    "appealDecisionInvalid": "এই সিদ্ধান্ত এখানে খাটে না (এটি হয়তো প্ল্যাটফর্মে চলে গেছে; কমাতে আগের তারিখ লাগে; বহাল রাখার সুপারিশে কারণ লিখতে হয়)।",
+    "blacklistNotAllowed": "ব্ল্যাকলিস্টে এই পরিবর্তন করা যাচ্ছে না (প্রমাণ লাগে; একজনের জন্য একটিই খোলা সুপারিশ)।",
+    "complaintUpdateInvalid": "অভিযোগটিতে এই পরিবর্তন করা যাচ্ছে না। তালিকা নতুন করে দেখুন।",
+    "banActionForbidden": "এই সিদ্ধান্ত আপনার নেওয়ার নয়।"
   },
   "error": {
     "title": "কিছু একটা ভুল হয়েছে",
@@ -205,7 +216,12 @@
     "tabs": "মডারেশনের ধরন",
     "tab": {
       "posts": "পোস্ট",
-      "places": "জায়গা"
+      "places": "জায়গা",
+      "verifications": "যাচাই",
+      "complaints": "অভিযোগ",
+      "bans": "নিষেধাজ্ঞা",
+      "appeals": "আপিল",
+      "blacklist": "ব্ল্যাকলিস্ট"
     },
     "confirmDecision": "নিশ্চিত করুন",
     "places": {
@@ -333,5 +349,265 @@
       "title": "জোগান",
       "help": "চালু বিজ্ঞাপন আর সক্রিয় দোকান।"
     }
+  },
+  "verification": {
+    "pageTitle": "যাচাইয়ের অনুরোধ",
+    "description": "এই এলাকার পরিচয় (NID + সেলফি) ও ব্যবসা (ট্রেড লাইসেন্স + দোকানের ছবি) যাচাইয়ের অনুরোধ, পুরোনোগুলো আগে।",
+    "empty": "এখন কোনো অনুরোধ নেই।",
+    "unnamed": "নাম নেই",
+    "back": "← সব অনুরোধ",
+    "level": {
+      "identity_checked": "পরিচয় যাচাই",
+      "business_verified": "ব্যবসা যাচাই"
+    },
+    "status": {
+      "submitted": "জমা হয়েছে",
+      "in_review": "দেখা হচ্ছে",
+      "approved": "অনুমোদিত",
+      "rejected": "বাতিল",
+      "expired": "মেয়াদ শেষ",
+      "revoked": "প্রত্যাহার"
+    },
+    "nid": "NID",
+    "nidLast3": "শেষ ৩ অঙ্ক: {digits}",
+    "duplicateNid": "একই NID অন্য অ্যাকাউন্টে",
+    "duplicateNidWarning": "এই NID নম্বর অন্য একটি অ্যাকাউন্ট থেকেও জমা পড়েছে। ভালো করে মিলিয়ে দেখুন — প্রয়োজনে বাতিল করুন।",
+    "visitRequested": "মাঠ পরিদর্শন চাওয়া হয়েছে",
+    "ownerLevel": "মালিকের যাচাই",
+    "ownerLevels": {
+      "none": "কিছুই না",
+      "phone_verified": "ফোন যাচাই",
+      "identity_checked": "পরিচয় যাচাই",
+      "business_verified": "ব্যবসা যাচাই"
+    },
+    "submitted": "জমার সময়",
+    "evidence": "প্রমাণ",
+    "purged": "সংরক্ষণের মেয়াদ শেষে ফাইল মুছে ফেলা হয়েছে।",
+    "linksExpire": "নিরাপত্তার জন্য লিংকগুলো {minutes} মিনিট পর কাজ করবে না — পাতা রিফ্রেশ করলে নতুন লিংক পাবেন।",
+    "openPdf": "PDF খুলুন",
+    "kind": {
+      "selfie": "সেলফি",
+      "trade_licence": "ট্রেড লাইসেন্স",
+      "shop_front": "দোকানের সামনে মালিক",
+      "visit_photo": "পরিদর্শনের ছবি"
+    },
+    "history": "আগের অনুরোধ",
+    "decided": "এই অনুরোধে সিদ্ধান্ত হয়ে গেছে।",
+    "decision": "সিদ্ধান্ত",
+    "note": "নোট (আবেদনকারী দেখতে পাবেন)",
+    "notePlaceholder": "যেমন: লাইসেন্সের ছবি অস্পষ্ট, আবার তুলুন",
+    "validUntil": "মেয়াদ (লাইসেন্সের শেষ তারিখ, ঐচ্ছিক)",
+    "approve": "অনুমোদন",
+    "reject": "বাতিল",
+    "rejectionReason": "বাতিলের কারণ",
+    "requestVisit": "মাঠ পরিদর্শন চাই",
+    "rejection": {
+      "document_unclear": "কাগজ অস্পষ্ট",
+      "document_expired": "কাগজের মেয়াদ শেষ",
+      "name_mismatch": "নাম মেলেনি",
+      "suspected_fraud": "প্রতারণার সন্দেহ",
+      "duplicate_submission": "একই অনুরোধ আবার",
+      "other": "অন্য কারণ"
+    }
+  },
+  "complaints": {
+    "pageTitle": "অভিযোগ",
+    "description": "সদস্যদের করা অভিযোগ — যার সময় আগে শেষ হবে সেটি আগে। দায়িত্ব দিন, অগ্রাধিকার ঠিক করুন, নিষ্পত্তি করুন।",
+    "filter": "ছাঁকুন",
+    "filters": {
+      "open": "খোলা",
+      "mine": "আমার",
+      "resolved": "নিষ্পত্তি হয়েছে"
+    },
+    "empty": "কোনো অভিযোগ নেই।",
+    "unnamed": "নাম নেই",
+    "subject": {
+      "user": "ব্যক্তি",
+      "store": "দোকান"
+    },
+    "category": {
+      "fake_seller": "ভুয়া বিক্রেতা",
+      "scam": "প্রতারণা",
+      "abuse": "দুর্ব্যবহার",
+      "other": "অন্যান্য"
+    },
+    "priority": {
+      "low": "কম",
+      "normal": "সাধারণ",
+      "high": "বেশি",
+      "urgent": "জরুরি"
+    },
+    "severity": {
+      "restricted": "সীমিত",
+      "banned": "নিষিদ্ধ",
+      "terminated": "বাতিল (স্থায়ী)",
+      "watch": "নজরে"
+    },
+    "alreadyBanned": "এখন {severity}",
+    "due": "{when}-এর মধ্যে",
+    "overdue": "সময় পেরিয়েছে ({when})",
+    "resolvedOn": "নিষ্পত্তি: {when}",
+    "reportedBy": "অভিযোগকারী: {name}",
+    "assignee": "দায়িত্বে",
+    "unassigned": "কেউ না",
+    "assigneeOption": "{name} ({open, number}টি খোলা)",
+    "priorityLabel": "অগ্রাধিকার",
+    "start": "কাজ শুরু",
+    "banPerson": "নিষেধাজ্ঞা দিন",
+    "resolution": "নিষ্পত্তি",
+    "resolutionPlaceholder": "কী করা হলো, সংক্ষেপে",
+    "resolve": "নিষ্পত্তি করুন"
+  },
+  "bans": {
+    "pageTitle": "নিষেধাজ্ঞা",
+    "description": "এই এলাকার নিষেধাজ্ঞা। মডারেটর দেন, এলাকার অ্যাডমিন তুলে নিতে পারেন।",
+    "showAll": "সবগুলো দেখুন",
+    "showActive": "শুধু চালু",
+    "issue": "নিষেধাজ্ঞা দিন",
+    "empty": "কোনো চালু নিষেধাজ্ঞা নেই।",
+    "unnamed": "নাম নেই",
+    "severity": {
+      "restricted": "সীমিত",
+      "banned": "নিষিদ্ধ"
+    },
+    "severityHelp": {
+      "restricted": "লগইন ও ব্রাউজ করতে পারবেন; পোস্ট, চ্যাট বা রিভিউ নয়।",
+      "banned": "লগইন করে শুধু নিষেধাজ্ঞা দেখা ও আপিল করা যাবে।"
+    },
+    "reason": {
+      "scam": "প্রতারণা",
+      "harassment": "হয়রানি",
+      "spam": "স্প্যাম",
+      "fake_listings": "ভুয়া বিজ্ঞাপন",
+      "payment_fraud": "পেমেন্ট জালিয়াতি",
+      "identity_fraud": "পরিচয় জালিয়াতি",
+      "repeated_violations": "বারবার নিয়ম ভাঙা",
+      "other": "অন্যান্য"
+    },
+    "status": {
+      "active": "চালু",
+      "expired": "মেয়াদ শেষ",
+      "revoked": "তুলে নেওয়া",
+      "superseded": "নতুনটি দিয়ে বদলানো"
+    },
+    "step": "ধাপ {step, number}",
+    "openAppeal": "আপিল খোলা আছে",
+    "permanent": "স্থায়ী",
+    "until": "{when} পর্যন্ত",
+    "by": "দিয়েছেন {name}",
+    "evidenceCount": "{count, number}টি প্রমাণ",
+    "liftedBecause": "তোলার কারণ: {reason}",
+    "liftReason": "তুলে নেওয়ার কারণ",
+    "lift": "তুলে নিন",
+    "issueTitle": "নিষেধাজ্ঞা দিন",
+    "issueDescription": "মেয়াদ নিয়ম অনুযায়ী (৭ দিন → ৩০ দিন → স্থায়ী) ঠিক হয়; অন্য মেয়াদে কারণ লিখতে হয়। ব্যক্তি শুধু কারণের ধরন দেখবেন, আপনার লেখা নয়।",
+    "subject": "যাকে",
+    "phone": "সদস্যের ফোন নম্বর",
+    "find": "খুঁজুন",
+    "noMember": "এই এলাকায় এই নম্বরে কোনো সদস্য নেই।",
+    "severityLabel": "মাত্রা",
+    "reasonLabel": "কারণের ধরন",
+    "reasonText": "কারণ (ভেতরের, তথ্যভিত্তিক)",
+    "reasonTextPlaceholder": "কী ঘটেছে, কোন রিপোর্ট/মেসেজে প্রমাণ",
+    "evidence": "প্রমাণ",
+    "evidenceType": {
+      "report": "রিপোর্ট",
+      "message": "মেসেজ",
+      "post": "পোস্ট",
+      "review": "রিভিউ",
+      "payment": "পেমেন্ট",
+      "media_asset": "ছবি/ফাইল",
+      "support_ticket": "সাপোর্ট টিকিট",
+      "complaint": "অভিযোগ",
+      "conversation": "চ্যাট"
+    },
+    "evidenceIdPlaceholder": "আইডি (uuid)",
+    "addEvidence": "যোগ করুন",
+    "remove": "বাদ দিন",
+    "length": "মেয়াদ",
+    "lengthLadder": "নিয়ম অনুযায়ী (সিঁড়ি)",
+    "lengthDays": "নির্দিষ্ট দিন",
+    "lengthPermanent": "স্থায়ী (প্রমাণ লাগবে)",
+    "overrideReason": "নিয়মের বাইরে যাওয়ার কারণ"
+  },
+  "appeals": {
+    "pageTitle": "আপিল",
+    "description": "এই এলাকার নিষেধাজ্ঞার বিরুদ্ধে আপিল। নির্ধারিত সময়ের মধ্যে সিদ্ধান্ত না দিলে প্ল্যাটফর্মে চলে যাবে।",
+    "platformTitle": "আপিল (প্ল্যাটফর্ম)",
+    "platformDescription": "এলাকা থেকে আসা আপিল আর গ্লোবাল ব্ল্যাকলিস্টের আপিল। এখানকার সিদ্ধান্তই চূড়ান্ত।",
+    "empty": "কোনো আপিল অপেক্ষায় নেই।",
+    "kind": {
+      "area": "এলাকার নিষেধাজ্ঞা",
+      "platform": "গ্লোবাল ব্ল্যাকলিস্ট"
+    },
+    "severity": {
+      "restricted": "সীমিত",
+      "banned": "নিষিদ্ধ",
+      "terminated": "বাতিল (স্থায়ী)",
+      "watch": "নজরে"
+    },
+    "channel": {
+      "in_app": "অ্যাপ থেকে",
+      "public_otp": "OTP দিয়ে (লগইন ছাড়া)"
+    },
+    "escalated": {
+      "timeout": "এলাকা সময়মতো সিদ্ধান্ত দেয়নি।",
+      "tenant_upheld": "এলাকা নিষেধাজ্ঞা বহাল রাখার সুপারিশ করেছে"
+    },
+    "theBan": "নিষেধাজ্ঞা",
+    "statement": "ব্যক্তির বক্তব্য",
+    "decideBy": "{when}-এর মধ্যে সিদ্ধান্ত দিন",
+    "note": "নোট (ভেতরের)",
+    "grant": "আপিল মঞ্জুর — তুলে নিন",
+    "reduceUntil": "নতুন শেষ তারিখ",
+    "reduce": "মেয়াদ কমান",
+    "recommendUphold": "বহাল রাখার সুপারিশ (প্ল্যাটফর্মে যাবে)",
+    "uphold": "বহাল রাখুন (চূড়ান্ত)",
+    "areaNotFinal": "নিজের দেওয়া নিষেধাজ্ঞায় এলাকা চূড়ান্ত বিচারক নয়: মঞ্জুর বা কমানো এখানেই শেষ, কিন্তু বহাল রাখার সিদ্ধান্ত প্ল্যাটফর্ম নেবে।"
+  },
+  "blacklist": {
+    "pageTitle": "গ্লোবাল ব্ল্যাকলিস্ট",
+    "description": "এলাকা শুধু সুপারিশ করতে পারে; অনুমোদন দেয় প্ল্যাটফর্ম। অনুমোদন হলে সব এলাকায়, সাইনআপ ও লগইনে কার্যকর।",
+    "platformTitle": "গ্লোবাল ব্ল্যাকলিস্ট",
+    "platformDescription": "এলাকাগুলোর সুপারিশ অনুমোদন বা বাতিল করুন; চালু তালিকা থেকে তুলে নিতে পারেন।",
+    "ours": "আমাদের সুপারিশ",
+    "empty": "কিছু নেই।",
+    "unnamed": "নাম নেই",
+    "recommend": "সুপারিশ করুন",
+    "sent": "সুপারিশ পাঠানো হয়েছে। প্ল্যাটফর্ম সিদ্ধান্ত নেবে।",
+    "reasonLabel": "কারণের ধরন",
+    "severityLabel": "মাত্রা",
+    "summary": "সারসংক্ষেপ (ভেতরের, তথ্যভিত্তিক)",
+    "reason": {
+      "advance_payment_scam": "অগ্রিম টাকা নিয়ে প্রতারণা",
+      "fake_product": "নকল পণ্য",
+      "identity_fraud": "পরিচয় জালিয়াতি",
+      "harassment": "হয়রানি",
+      "payment_fraud": "পেমেন্ট জালিয়াতি"
+    },
+    "severity": {
+      "restricted": "সীমিত",
+      "banned": "নিষিদ্ধ",
+      "terminated": "বাতিল (স্থায়ী)",
+      "watch": "নজরে"
+    },
+    "status": {
+      "recommended": "সুপারিশ",
+      "active": "চালু",
+      "rejected": "বাতিল",
+      "revoked": "তুলে নেওয়া",
+      "expired": "মেয়াদ শেষ"
+    },
+    "fromArea": "{area} থেকে",
+    "fromPlatform": "প্ল্যাটফর্ম থেকে",
+    "by": "{name}",
+    "evidenceCount": "{count, number}টি প্রমাণ",
+    "until": "{when} পর্যন্ত",
+    "permanent": "স্থায়ী",
+    "reviewNote": "সিদ্ধান্তের নোট: {note}",
+    "note": "নোট",
+    "approve": "অনুমোদন",
+    "reject": "বাতিল (কারণসহ)",
+    "revoke": "তুলে নিন (কারণসহ)"
   }
 }

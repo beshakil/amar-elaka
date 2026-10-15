@@ -17,15 +17,18 @@ const REFRESH_TIMEOUT_MS = 5_000;
 
 /**
  * A session is required: seller pages (post creation, my posts), chat and
- * notifications (ADR 060) — and the chat socket's token route, so an expired
+ * notifications (ADR 060), writing a review (ADR 061) — and the chat socket's token route, so an expired
  * access token is rotated on the way like any page's.
  */
 const PROTECTED_PREFIXES = [
   '/post',
   '/me',
+  // A banned account's notice and appeal (ADR 063); the public /appeal is not here.
+  '/account',
   '/seller',
   '/inbox',
   '/notifications',
+  '/reviews',
   '/api/chat-token',
 ];
 const LOGIN_PATH = '/login';

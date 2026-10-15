@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/auth/domain/auth_session_state.dart';
 import '../../features/tenant_bootstrap/domain/tenant_bootstrap_state.dart';
+import '../network/account_gate.dart';
 import 'route_paths.dart';
 
 const authRoutes = {
@@ -31,7 +32,24 @@ String? computeRedirect({
   required AsyncValue<TenantBootstrapState> tenantState,
   required AuthSessionState authState,
   required String location,
+  AccountGate accountGate = AccountGate.open,
 }) {
+  // A terminated account has no session: the public appeal path only.
+  // A banned one sees its notice and appeals — nothing else answers anyway.
+  switch (accountGate) {
+    case AccountGate.terminated:
+      return location == RoutePaths.publicAppeal
+          ? null
+          : RoutePaths.publicAppeal;
+    case AccountGate.banned
+        when authState is AuthSessionAuthenticated &&
+            location != RoutePaths.banNotice &&
+            !location.startsWith('/account/appeal/'):
+      return RoutePaths.banNotice;
+    case AccountGate.banned || AccountGate.open:
+      break;
+  }
+
   if (tenantState.isLoading || tenantState.hasError) {
     return location == RoutePaths.splash ? null : RoutePaths.splash;
   }

@@ -471,7 +471,11 @@ export class StoresRepository {
              st_y(pl.location::geometry) as pin_lat, st_x(pl.location::geometry) as pin_lng,
              logo.variants as logo_variants, logo.thumbhash as logo_thumbhash,
              cover.variants as cover_variants, cover.thumbhash as cover_thumbhash,
-             s.is_verified, sp.verification_level_code as seller_level,
+             s.is_verified,
+             -- The badge from the one rule (0058): a store's business verification, else its owner's level.
+             case public.verification_level_of_store(s.id)
+               when 'business_verified' then 'business' when 'identity_checked' then 'identity'
+               when 'phone_verified' then 'phone' else 'none' end as seller_level,
              s.rating_avg::float8 as rating, s.rating_count, s.follower_count,
              s.phone_e164, s.whatsapp_e164, t.slug as tenant_slug,
              exists (select 1 from public.store_follows f

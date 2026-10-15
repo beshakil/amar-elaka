@@ -1,6 +1,14 @@
 import { sql } from 'drizzle-orm';
 import { boolean, date, inet, jsonb, pgTable, smallint, text, uuid } from 'drizzle-orm/pg-core';
-import { auditColumns, id, softDeleteColumns, timestamptz, xid8 } from './columns';
+import {
+  auditColumns,
+  enumTableColumns,
+  id,
+  softDeleteColumns,
+  timestamptz,
+  xid8,
+} from './columns';
+import { leadEvents } from './communication';
 import {
   appealChannels,
   appealQueues,
@@ -69,6 +77,12 @@ export const blacklistEntries = pgTable('blacklist_entries', {
   expiresAt: timestamptz('expires_at'),
   revokedAt: timestamptz('revoked_at'),
   revokeReason: text('revoke_reason'),
+  // 0059 (ADR 063): shown to the person; HMAC of the phone (the raw number is no longer written).
+  referenceCode: text('reference_code')
+    .notNull()
+    .default(sql`public.ban_reference('BL')`),
+  phoneHash: text('phone_hash'),
+  reviewNote: text('review_note'),
   ...auditColumns(),
 });
 
@@ -103,6 +117,15 @@ export const reviews = pgTable('reviews', {
   moderationReasonCode: text('moderation_reason_code').references(() => moderationReasons.code, {
     onDelete: 'restrict',
   }),
+  // 0057 (ADR 061): the contact that proves it, the author's last edit, why it
+  // waits for a moderator, and a privacy scrub of its author (text gone, rating kept).
+  leadEventId: uuid('lead_event_id').references(() => leadEvents.id, { onDelete: 'set null' }),
+  editedAt: timestamptz('edited_at'),
+  flags: text('flags')
+    .array()
+    .notNull()
+    .default(sql`'{}'::text[]`),
+  authorScrubbedAt: timestamptz('author_scrubbed_at'),
   ...softDeleteColumns(),
 });
 
@@ -122,6 +145,7 @@ export const reviewResponses = pgTable('review_responses', {
     .notNull()
     .default('published')
     .references(() => reviewStatuses.code, { onDelete: 'restrict' }),
+  editedAt: timestamptz('edited_at'),
   ...softDeleteColumns(),
 });
 
@@ -318,6 +342,10 @@ export const bans = pgTable('bans', {
   revokedAt: timestamptz('revoked_at'),
   revokedByUserId: uuid('revoked_by_user_id').references(() => users.id, { onDelete: 'set null' }),
   revokeReason: text('revoke_reason'),
+  // 0059: the reference the person sees on the ban notice and appeals with.
+  referenceCode: text('reference_code')
+    .notNull()
+    .default(sql`public.ban_reference('BN')`),
   ...auditColumns(),
 });
 
@@ -363,6 +391,19 @@ export const banAppeals = pgTable('ban_appeals', {
   decisionNote: text('decision_note'),
   ipAddress: inet('ip_address'),
   userAgent: text('user_agent'),
+  // 0059: an area's "uphold" only recommends (the platform decides).
+  tenantRecommendation: text('tenant_recommendation'),
+  tenantNote: text('tenant_note'),
+  tenantReviewedByUserId: uuid('tenant_reviewed_by_user_id').references(() => users.id, {
+    onDelete: 'set null',
+  }),
+  tenantReviewedAt: timestamptz('tenant_reviewed_at'),
+  escalationReason: text('escalation_reason'),
+  replacementBanId: uuid('replacement_ban_id').references(() => bans.id, { onDelete: 'restrict' }),
+  replacementBlacklistEntryId: uuid('replacement_blacklist_entry_id').references(
+    () => blacklistEntries.id,
+    { onDelete: 'restrict' },
+  ),
   ...auditColumns(),
 });
 
@@ -376,12 +417,20 @@ export const moderationActions = pgTable('moderation_actions', {
   // Exactly one target (0042, 0050, 0054): composite FKs (tenant_id, post_id) ->
   // posts, (tenant_id, place_id) -> places, (tenant_id, place_claim_id) ->
   // place_claims, (tenant_id, store_id) -> stores, (tenant_id, conversation_id)
-  // -> conversations, all RESTRICT.
+  // -> conversations, (tenant_id, review_id) -> reviews (0057), (tenant_id,
+  // verification_id) -> verifications (0058), (tenant_id, ban_id) -> bans
+  // (0059), all RESTRICT; blacklist_entry_id -> blacklist_entries (global, 0059).
   postId: uuid('post_id'),
   placeId: uuid('place_id'),
   placeClaimId: uuid('place_claim_id'),
   storeId: uuid('store_id'),
   conversationId: uuid('conversation_id'),
+  reviewId: uuid('review_id'),
+  verificationId: uuid('verification_id'),
+  banId: uuid('ban_id'),
+  blacklistEntryId: uuid('blacklist_entry_id').references(() => blacklistEntries.id, {
+    onDelete: 'restrict',
+  }),
   actorUserId: uuid('actor_user_id').references(() => users.id, { onDelete: 'restrict' }),
   actionCode: text('action_code')
     .notNull()
@@ -442,5 +491,157 @@ export const moderationQueueItems = pgTable('moderation_queue_items', {
     onDelete: 'set null',
   }),
   resolvedAt: timestamptz('resolved_at'),
+  ...auditColumns(),
+});
+
+// ---- store_seller_scores (0057, ADR 061): TENANT-SCOPED, system-written ------
+// One per store; composite FK (tenant_id, store_id) -> stores CASCADE stays in SQL.
+export const storeSellerScores = pgTable('store_seller_scores', {
+  id: id(),
+  tenantId: uuid('tenant_id')
+    .notNull()
+    .references(() => tenants.id, { onDelete: 'restrict' })
+    .default(sql`public.current_tenant_id()`),
+  storeId: uuid('store_id').notNull(),
+  score: smallint('score').notNull(),
+  tierCode: text('tier_code').notNull(),
+  components: jsonb('components')
+    .$type<Record<string, number>>()
+    .notNull()
+    .default(sql`'{}'::jsonb`),
+  algorithmVersion: smallint('algorithm_version').notNull(),
+  computedAt: timestamptz('computed_at').notNull().defaultNow(),
+  nextRecomputeAt: timestamptz('next_recompute_at'),
+  ...auditColumns(),
+});
+
+// ---- review_prompts (0057, ADR 061): TENANT-SCOPED, system-written -----------
+// Once per member and store; composite FK (tenant_id, store_id) -> stores in SQL.
+export const reviewPrompts = pgTable('review_prompts', {
+  id: id(),
+  tenantId: uuid('tenant_id')
+    .notNull()
+    .references(() => tenants.id, { onDelete: 'restrict' })
+    .default(sql`public.current_tenant_id()`),
+  storeId: uuid('store_id').notNull(),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  leadEventId: uuid('lead_event_id').references(() => leadEvents.id, { onDelete: 'set null' }),
+  sentAt: timestamptz('sent_at').notNull().defaultNow(),
+  ...auditColumns(),
+});
+
+// ---- verifications (0058, ADR 062): TENANT-SCOPED (the reviewing area) -------
+// subject_id is the user (member) or the store; no FK (polymorphic by design).
+export const verifications = pgTable('verifications', {
+  id: id(),
+  tenantId: uuid('tenant_id')
+    .notNull()
+    .references(() => tenants.id, { onDelete: 'restrict' })
+    .default(sql`public.current_tenant_id()`),
+  subjectType: text('subject_type').notNull(),
+  subjectId: uuid('subject_id').notNull(),
+  levelCode: text('level_code').notNull(),
+  statusCode: text('status_code')
+    .notNull()
+    .default('submitted')
+    .references(() => verificationStatuses.code, { onDelete: 'restrict' }),
+  submittedByUserId: uuid('submitted_by_user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'restrict' }),
+  // Never the NID number: its peppered hash and last 3 digits only.
+  nidHash: text('nid_hash'),
+  nidLast3: text('nid_last3'),
+  nidDuplicate: boolean('nid_duplicate').notNull().default(false),
+  visitStatus: text('visit_status').notNull().default('not_needed'),
+  agentVisitId: uuid('agent_visit_id'),
+  reviewedByUserId: uuid('reviewed_by_user_id').references(() => users.id, {
+    onDelete: 'set null',
+  }),
+  reviewedAt: timestamptz('reviewed_at'),
+  rejectionReasonCode: text('rejection_reason_code').references(
+    () => verificationRejectionReasons.code,
+    {
+      onDelete: 'restrict',
+    },
+  ),
+  decisionNote: text('decision_note'),
+  expiresAt: timestamptz('expires_at'),
+  reminderSentAt: timestamptz('reminder_sent_at'),
+  documentsPurgedAt: timestamptz('documents_purged_at'),
+  ...auditColumns(),
+});
+
+// ---- verification_evidence (0058): TENANT-SCOPED; composite FKs in SQL ------
+export const verificationEvidence = pgTable('verification_evidence', {
+  id: id(),
+  tenantId: uuid('tenant_id')
+    .notNull()
+    .default(sql`public.current_tenant_id()`),
+  verificationId: uuid('verification_id').notNull(),
+  kindCode: text('kind_code').notNull(),
+  mediaAssetId: uuid('media_asset_id').notNull(),
+  ...auditColumns(),
+});
+
+// ---- complaints (0059, ADR 063): TENANT-SCOPED (the subject's area) ---------
+
+export const complaintPriorities = pgTable('complaint_priorities', {
+  ...enumTableColumns(),
+  slaSettingKey: text('sla_setting_key').notNull(),
+});
+
+export const complaintCategories = pgTable('complaint_categories', {
+  ...enumTableColumns(),
+  defaultPriorityCode: text('default_priority_code')
+    .notNull()
+    .references(() => complaintPriorities.code, { onDelete: 'restrict' }),
+});
+
+export const complaintStatuses = pgTable('complaint_statuses', enumTableColumns());
+
+export const complaints = pgTable('complaints', {
+  id: id(),
+  tenantId: uuid('tenant_id')
+    .notNull()
+    .references(() => tenants.id, { onDelete: 'restrict' })
+    .default(sql`public.current_tenant_id()`),
+  referenceCode: text('reference_code')
+    .notNull()
+    .default(sql`public.ban_reference('CP')`),
+  reporterUserId: uuid('reporter_user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'restrict' }),
+  subjectType: text('subject_type').notNull(),
+  subjectId: uuid('subject_id').notNull(),
+  categoryCode: text('category_code')
+    .notNull()
+    .references(() => complaintCategories.code, { onDelete: 'restrict' }),
+  priorityCode: text('priority_code')
+    .notNull()
+    .references(() => complaintPriorities.code, { onDelete: 'restrict' }),
+  statusCode: text('status_code')
+    .notNull()
+    .default('pending')
+    .references(() => complaintStatuses.code, { onDelete: 'restrict' }),
+  description: text('description').notNull(),
+  evidenceRefs: jsonb('evidence_refs')
+    .$type<EvidenceRef[]>()
+    .notNull()
+    .default(sql`'[]'::jsonb`),
+  assignedToUserId: uuid('assigned_to_user_id').references(() => users.id, {
+    onDelete: 'set null',
+  }),
+  assignedAt: timestamptz('assigned_at'),
+  dueAt: timestamptz('due_at').notNull(),
+  slaBreachedAt: timestamptz('sla_breached_at'),
+  resolution: text('resolution'),
+  resolvedByUserId: uuid('resolved_by_user_id').references(() => users.id, {
+    onDelete: 'set null',
+  }),
+  resolvedAt: timestamptz('resolved_at'),
+  // Composite FK (tenant_id, ban_id) -> bans, RESTRICT.
+  banId: uuid('ban_id'),
   ...auditColumns(),
 });

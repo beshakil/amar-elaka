@@ -148,6 +148,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 variant: AppButtonVariant.text,
                 onPressed: () => context.push(RoutePaths.emailLogin),
               ),
+              // A terminated account can't sign in; its appeal starts here (ADR 063).
+              AppButton(
+                key: const ValueKey('login-appeal'),
+                label: l10n.loginAppealLink,
+                variant: AppButtonVariant.text,
+                onPressed: () => context.push(RoutePaths.publicAppeal),
+              ),
             ],
           ),
         ),

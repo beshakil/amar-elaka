@@ -1,6 +1,13 @@
 import type { StorageBucket } from './storage.ports';
 
-export const MEDIA_KINDS = ['image', 'video', 'document', 'import', 'chat_image'] as const;
+export const MEDIA_KINDS = [
+  'image',
+  'video',
+  'document',
+  'import',
+  'chat_image',
+  'verification_image',
+] as const;
 export type MediaKind = (typeof MEDIA_KINDS)[number];
 
 /**
@@ -12,7 +19,7 @@ export const PRESIGNABLE_MEDIA_KINDS = ['image', 'video', 'document', 'import'] 
 
 /** Kinds the worker treats as photos: re-encoded without metadata, with WebP variants. */
 export function isImageKind(kind: MediaKind): boolean {
-  return kind === 'image' || kind === 'chat_image';
+  return kind === 'image' || kind === 'chat_image' || kind === 'verification_image';
 }
 
 interface MediaKindPolicy {
@@ -41,6 +48,15 @@ export const MEDIA_KIND_POLICIES: Record<MediaKind, MediaKindPolicy> = {
   // A photo sent in a chat (ADR 058): private, shown to the conversation's
   // participants through short-lived signed URLs only.
   chat_image: {
+    bucket: 'documents',
+    visibilityCode: 'private',
+    allowedContentTypes: ['image/jpeg', 'image/png', 'image/webp'],
+  },
+  // A verification photo (ADR 062) — a selfie, a shop front, a licence: private,
+  // re-encoded without metadata (GPS gone) like any photo, uploaded only
+  // through the verification endpoints, shown to moderators through
+  // short-lived signed URLs only, deleted after verification_doc_retention_days.
+  verification_image: {
     bucket: 'documents',
     visibilityCode: 'private',
     allowedContentTypes: ['image/jpeg', 'image/png', 'image/webp'],

@@ -5294,7 +5294,13 @@
                 "detect-duplicates",
                 "build-offline-maps",
                 "relay-notification-outbox",
-                "send-saved-search-digests"
+                "send-saved-search-digests",
+                "send-review-prompts",
+                "expire-verifications",
+                "purge-verification-documents",
+                "expire-bans",
+                "escalate-appeals",
+                "complaint-sla"
               ],
               "type": "string"
             }
@@ -5344,7 +5350,13 @@
                 "detect-duplicates",
                 "build-offline-maps",
                 "relay-notification-outbox",
-                "send-saved-search-digests"
+                "send-saved-search-digests",
+                "send-review-prompts",
+                "expire-verifications",
+                "purge-verification-documents",
+                "expire-bans",
+                "escalate-appeals",
+                "complaint-sla"
               ],
               "type": "string"
             }
@@ -7068,6 +7080,1834 @@
           "ChatReports"
         ]
       }
+    },
+    "/stores/{id}/reviews": {
+      "get": {
+        "operationId": "StoreReviewsController_page",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "before",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewPageDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "StoreReviews"
+        ]
+      },
+      "post": {
+        "operationId": "StoreReviewsController_submit",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WriteReviewDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WriteResultDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "StoreReviews"
+        ]
+      }
+    },
+    "/stores/{id}/reviews/eligibility": {
+      "get": {
+        "operationId": "StoreReviewsController_eligibility",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EligibilityDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "StoreReviews"
+        ]
+      }
+    },
+    "/stores/{id}/reviews/mine": {
+      "patch": {
+        "operationId": "StoreReviewsController_edit",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WriteReviewDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WriteResultDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "StoreReviews"
+        ]
+      }
+    },
+    "/stores/{id}/reviews/{reviewId}/response": {
+      "put": {
+        "operationId": "StoreReviewsController_respond",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "reviewId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RespondDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespondResultDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "StoreReviews"
+        ]
+      }
+    },
+    "/stores/{id}/reviews/{reviewId}/report": {
+      "post": {
+        "operationId": "StoreReviewsController_report",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "reviewId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportReviewDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewReportResultDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "StoreReviews"
+        ]
+      }
+    },
+    "/stores/{id}/reviews/images": {
+      "post": {
+        "operationId": "StoreReviewsController_presignImage",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewImagePresignDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewImagePresignedDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "StoreReviews"
+        ]
+      }
+    },
+    "/stores/{id}/reviews/images/{mediaId}/confirm": {
+      "post": {
+        "operationId": "StoreReviewsController_confirmImage",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "mediaId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewImageStatusDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "StoreReviews"
+        ]
+      }
+    },
+    "/stores/{id}/reviews/images/{mediaId}": {
+      "get": {
+        "operationId": "StoreReviewsController_imageStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "mediaId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewImageStatusDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "StoreReviews"
+        ]
+      }
+    },
+    "/reviews/queue": {
+      "get": {
+        "operationId": "ReviewModerationController_queue",
+        "parameters": [
+          {
+            "name": "after",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewModerationQueueDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "ReviewModeration"
+        ]
+      }
+    },
+    "/reviews/{id}/decision": {
+      "post": {
+        "operationId": "ReviewModerationController_decide",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewDecisionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewDecisionResultDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "ReviewModeration"
+        ]
+      }
+    },
+    "/platform/users/{userId}/reviews/scrub": {
+      "post": {
+        "operationId": "PlatformReviewsController_scrub",
+        "parameters": [
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScrubAuthorDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScrubResultDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "PlatformReviews"
+        ]
+      }
+    },
+    "/me/verifications": {
+      "get": {
+        "operationId": "MyVerificationController_mine",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyVerificationsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "MyVerification"
+        ]
+      }
+    },
+    "/me/verifications/identity": {
+      "post": {
+        "operationId": "MyVerificationController_identity",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitIdentityDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerificationSubmittedDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "MyVerification"
+        ]
+      }
+    },
+    "/me/verifications/evidence": {
+      "post": {
+        "operationId": "MyVerificationController_presign",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EvidencePresignDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvidencePresignedDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "MyVerification"
+        ]
+      }
+    },
+    "/me/verifications/evidence/{mediaId}/confirm": {
+      "post": {
+        "operationId": "MyVerificationController_confirm",
+        "parameters": [
+          {
+            "name": "mediaId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvidenceStatusDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "MyVerification"
+        ]
+      }
+    },
+    "/me/verifications/evidence/{mediaId}": {
+      "get": {
+        "operationId": "MyVerificationController_status",
+        "parameters": [
+          {
+            "name": "mediaId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvidenceStatusDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "MyVerification"
+        ]
+      }
+    },
+    "/stores/{id}/verification": {
+      "get": {
+        "operationId": "StoreVerificationController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreVerificationDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "StoreVerification"
+        ]
+      },
+      "post": {
+        "operationId": "StoreVerificationController_submit",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitBusinessDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerificationSubmittedDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "StoreVerification"
+        ]
+      }
+    },
+    "/stores/{id}/verification/evidence": {
+      "post": {
+        "operationId": "StoreVerificationController_presign",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EvidencePresignDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvidencePresignedDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "StoreVerification"
+        ]
+      }
+    },
+    "/stores/{id}/verification/evidence/{mediaId}/confirm": {
+      "post": {
+        "operationId": "StoreVerificationController_confirm",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "mediaId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvidenceStatusDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "StoreVerification"
+        ]
+      }
+    },
+    "/stores/{id}/verification/evidence/{mediaId}": {
+      "get": {
+        "operationId": "StoreVerificationController_status",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "mediaId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvidenceStatusDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "StoreVerification"
+        ]
+      }
+    },
+    "/verifications/queue": {
+      "get": {
+        "operationId": "VerificationModerationController_queue",
+        "parameters": [
+          {
+            "name": "after",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerificationQueueDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "VerificationModeration"
+        ]
+      }
+    },
+    "/verifications/{id}": {
+      "get": {
+        "operationId": "VerificationModerationController_detail",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerificationDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "VerificationModeration"
+        ]
+      }
+    },
+    "/verifications/{id}/decision": {
+      "post": {
+        "operationId": "VerificationModerationController_decide",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerificationDecisionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerificationDecisionResultDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "VerificationModeration"
+        ]
+      }
+    },
+    "/account/bans": {
+      "get": {
+        "operationId": "AccountBansController_bans",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BanNoticesDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "AccountBans"
+        ]
+      }
+    },
+    "/account/appeals": {
+      "get": {
+        "operationId": "AccountBansController_myAppeals",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountAppealsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "AccountBans"
+        ]
+      },
+      "post": {
+        "operationId": "AccountBansController_appeal",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountAppealSubmitDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppealSubmittedDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "AccountBans"
+        ]
+      }
+    },
+    "/appeals/request-otp": {
+      "post": {
+        "operationId": "PublicAppealsController_requestOtp",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppealOtpRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppealOtpAcceptedDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "PublicAppeals"
+        ]
+      }
+    },
+    "/appeals/status": {
+      "post": {
+        "operationId": "PublicAppealsController_status",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppealStatusRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicAppealStatusDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "PublicAppeals"
+        ]
+      }
+    },
+    "/appeals/submit": {
+      "post": {
+        "operationId": "PublicAppealsController_submit",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublicAppealSubmitDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppealSubmittedDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "PublicAppeals"
+        ]
+      }
+    },
+    "/bans": {
+      "get": {
+        "operationId": "BanModerationController_list",
+        "parameters": [
+          {
+            "name": "active",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "true",
+                "false"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "after",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BanListDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "BanModeration"
+        ]
+      },
+      "post": {
+        "operationId": "BanModerationController_issue",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IssueBanDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssuedBanDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "BanModeration"
+        ]
+      }
+    },
+    "/bans/members": {
+      "get": {
+        "operationId": "BanModerationController_findMember",
+        "parameters": [
+          {
+            "name": "phone",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BanMemberLookupDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "BanModeration"
+        ]
+      }
+    },
+    "/bans/{id}/lift": {
+      "post": {
+        "operationId": "BanModerationController_lift",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LiftBanDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LiftedBanDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "BanModeration"
+        ]
+      }
+    },
+    "/appeals/queue": {
+      "get": {
+        "operationId": "AppealModerationController_queue",
+        "parameters": [
+          {
+            "name": "after",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppealQueueDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "AppealModeration"
+        ]
+      }
+    },
+    "/appeals/{id}/decision": {
+      "post": {
+        "operationId": "AppealModerationController_decide",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppealDecisionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppealDecisionResultDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "AppealModeration"
+        ]
+      }
+    },
+    "/platform/appeals": {
+      "get": {
+        "operationId": "PlatformAppealsController_queue",
+        "parameters": [
+          {
+            "name": "after",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppealQueueDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "PlatformAppeals"
+        ]
+      }
+    },
+    "/platform/appeals/{id}/decision": {
+      "post": {
+        "operationId": "PlatformAppealsController_decide",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppealDecisionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppealDecisionResultDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "PlatformAppeals"
+        ]
+      }
+    },
+    "/blacklist/recommendations": {
+      "get": {
+        "operationId": "BlacklistRecommendationsController_mine",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "recommended",
+                "active",
+                "rejected",
+                "revoked",
+                "expired"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "after",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlacklistPageDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "BlacklistRecommendations"
+        ]
+      },
+      "post": {
+        "operationId": "BlacklistRecommendationsController_recommend",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecommendBlacklistDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlacklistRecommendedDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "BlacklistRecommendations"
+        ]
+      }
+    },
+    "/platform/blacklist": {
+      "get": {
+        "operationId": "PlatformBlacklistController_page",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "recommended",
+                "active",
+                "rejected",
+                "revoked",
+                "expired"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "after",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlacklistPageDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "PlatformBlacklist"
+        ]
+      }
+    },
+    "/platform/blacklist/{id}/decision": {
+      "post": {
+        "operationId": "PlatformBlacklistController_decide",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BlacklistDecisionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlacklistDecisionResultDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "PlatformBlacklist"
+        ]
+      }
+    },
+    "/platform/blacklist/{id}/revoke": {
+      "post": {
+        "operationId": "PlatformBlacklistController_revoke",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RevokeBlacklistDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LiftedBanDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "PlatformBlacklist"
+        ]
+      }
+    },
+    "/complaints": {
+      "post": {
+        "operationId": "ComplaintsController_submit",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitComplaintDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComplaintSubmittedDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Complaints"
+        ]
+      }
+    },
+    "/complaints/mine": {
+      "get": {
+        "operationId": "ComplaintsController_mine",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyComplaintsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Complaints"
+        ]
+      }
+    },
+    "/complaints/queue": {
+      "get": {
+        "operationId": "ComplaintsController_queue",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "pending",
+                "in_progress",
+                "resolved"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "mine",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "true",
+                "false"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "after",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComplaintQueueDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Complaints"
+        ]
+      }
+    },
+    "/complaints/assignees": {
+      "get": {
+        "operationId": "ComplaintsController_assignees",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComplaintAssigneesDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Complaints"
+        ]
+      }
+    },
+    "/complaints/{id}": {
+      "patch": {
+        "operationId": "ComplaintsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateComplaintDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComplaintUpdatedDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Complaints"
+        ]
+      }
+    },
+    "/complaints/{id}/resolve": {
+      "post": {
+        "operationId": "ComplaintsController_resolve",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveComplaintDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComplaintResolvedDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Complaints"
+        ]
+      }
     }
   },
   "info": {
@@ -7167,11 +9007,20 @@
           },
           "refreshToken": {
             "type": "string"
+          },
+          "accountState": {
+            "type": "string",
+            "enum": [
+              "active",
+              "restricted",
+              "banned"
+            ]
           }
         },
         "required": [
           "accessToken",
-          "refreshToken"
+          "refreshToken",
+          "accountState"
         ]
       },
       "GoogleLinkedDto": {
@@ -8722,7 +10571,8 @@
               "video",
               "document",
               "import",
-              "chat_image"
+              "chat_image",
+              "verification_image"
             ]
           },
           "mimeType": {
@@ -14445,6 +16295,7 @@
                   "enum": [
                     "trusted",
                     "phone_verified",
+                    "identity_checked",
                     "verified_store"
                   ]
                 }
@@ -14477,13 +16328,24 @@
                   },
                   "verified": {
                     "type": "boolean"
+                  },
+                  "tier": {
+                    "type": "string",
+                    "enum": [
+                      "top",
+                      "trusted",
+                      "good",
+                      "new",
+                      "none"
+                    ]
                   }
                 },
                 "required": [
                   "id",
                   "slug",
                   "name",
-                  "verified"
+                  "verified",
+                  "tier"
                 ],
                 "nullable": true
               },
@@ -16832,7 +18694,13 @@
               "detect-duplicates",
               "build-offline-maps",
               "relay-notification-outbox",
-              "send-saved-search-digests"
+              "send-saved-search-digests",
+              "send-review-prompts",
+              "expire-verifications",
+              "purge-verification-documents",
+              "expire-bans",
+              "escalate-appeals",
+              "complaint-sla"
             ]
           },
           "queue": {
@@ -17102,7 +18970,13 @@
               "detect-duplicates",
               "build-offline-maps",
               "relay-notification-outbox",
-              "send-saved-search-digests"
+              "send-saved-search-digests",
+              "send-review-prompts",
+              "expire-verifications",
+              "purge-verification-documents",
+              "expire-bans",
+              "escalate-appeals",
+              "complaint-sla"
             ]
           },
           "queue": {
@@ -17917,6 +19791,16 @@
           "ratingCount": {
             "type": "number"
           },
+          "sellerTier": {
+            "type": "string",
+            "enum": [
+              "top",
+              "trusted",
+              "good",
+              "new",
+              "none"
+            ]
+          },
           "followerCount": {
             "type": "number"
           },
@@ -18221,6 +20105,7 @@
           "verification",
           "rating",
           "ratingCount",
+          "sellerTier",
           "followerCount",
           "stats",
           "hours",
@@ -21713,6 +23598,3050 @@
           "conversationId",
           "decision",
           "moderationActionId"
+        ]
+      },
+      "ReviewPageDto": {
+        "type": "object",
+        "properties": {
+          "summary": {
+            "type": "object",
+            "properties": {
+              "average": {
+                "type": "number",
+                "nullable": true
+              },
+              "count": {
+                "type": "number"
+              },
+              "histogram": {
+                "type": "object",
+                "properties": {
+                  "1": {
+                    "type": "number"
+                  },
+                  "2": {
+                    "type": "number"
+                  },
+                  "3": {
+                    "type": "number"
+                  },
+                  "4": {
+                    "type": "number"
+                  },
+                  "5": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "1",
+                  "2",
+                  "3",
+                  "4",
+                  "5"
+                ]
+              },
+              "tier": {
+                "type": "string",
+                "enum": [
+                  "top",
+                  "trusted",
+                  "good",
+                  "new",
+                  "none"
+                ]
+              }
+            },
+            "required": [
+              "average",
+              "count",
+              "histogram",
+              "tier"
+            ]
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "rating": {
+                  "type": "number"
+                },
+                "text": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "authorName": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "authorRemoved": {
+                  "type": "boolean"
+                },
+                "verifiedContact": {
+                  "type": "boolean",
+                  "enum": [
+                    true
+                  ]
+                },
+                "createdAt": {
+                  "type": "string"
+                },
+                "editedAt": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "photos": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "thumbhash": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "thumbUrl": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "cardUrl": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "fullUrl": {
+                        "type": "string",
+                        "nullable": true
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "thumbhash",
+                      "thumbUrl",
+                      "cardUrl",
+                      "fullUrl"
+                    ]
+                  }
+                },
+                "response": {
+                  "type": "object",
+                  "properties": {
+                    "text": {
+                      "type": "string"
+                    },
+                    "createdAt": {
+                      "type": "string"
+                    },
+                    "editedAt": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "text",
+                    "createdAt",
+                    "editedAt"
+                  ],
+                  "nullable": true
+                }
+              },
+              "required": [
+                "id",
+                "rating",
+                "text",
+                "authorName",
+                "authorRemoved",
+                "verifiedContact",
+                "createdAt",
+                "editedAt",
+                "photos",
+                "response"
+              ]
+            }
+          },
+          "nextBefore": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "summary",
+          "items",
+          "nextBefore"
+        ]
+      },
+      "EligibilityDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "eligible",
+              "already_reviewed",
+              "no_contact",
+              "too_soon",
+              "expired",
+              "own_store",
+              "store_unavailable",
+              "signed_out"
+            ]
+          },
+          "eligibleAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "expiresAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "myReview": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "rating": {
+                "type": "number"
+              },
+              "text": {
+                "type": "string",
+                "nullable": true
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "pending",
+                  "published",
+                  "hidden",
+                  "removed"
+                ]
+              },
+              "createdAt": {
+                "type": "string"
+              },
+              "editedAt": {
+                "type": "string",
+                "nullable": true
+              },
+              "editableUntil": {
+                "type": "string"
+              },
+              "photos": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "thumbhash": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "thumbUrl": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "cardUrl": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "fullUrl": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "thumbhash",
+                    "thumbUrl",
+                    "cardUrl",
+                    "fullUrl"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "id",
+              "rating",
+              "text",
+              "status",
+              "createdAt",
+              "editedAt",
+              "editableUntil",
+              "photos"
+            ],
+            "nullable": true
+          }
+        },
+        "required": [
+          "status",
+          "eligibleAt",
+          "expiresAt",
+          "myReview"
+        ]
+      },
+      "WriteReviewDto": {
+        "type": "object",
+        "properties": {
+          "rating": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5
+          },
+          "text": {
+            "type": "string",
+            "nullable": true
+          },
+          "photoIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "rating"
+        ]
+      },
+      "WriteResultDto": {
+        "type": "object",
+        "properties": {
+          "review": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "rating": {
+                "type": "number"
+              },
+              "text": {
+                "type": "string",
+                "nullable": true
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "pending",
+                  "published",
+                  "hidden",
+                  "removed"
+                ]
+              },
+              "createdAt": {
+                "type": "string"
+              },
+              "editedAt": {
+                "type": "string",
+                "nullable": true
+              },
+              "editableUntil": {
+                "type": "string"
+              },
+              "photos": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "thumbhash": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "thumbUrl": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "cardUrl": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "fullUrl": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "thumbhash",
+                    "thumbUrl",
+                    "cardUrl",
+                    "fullUrl"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "id",
+              "rating",
+              "text",
+              "status",
+              "createdAt",
+              "editedAt",
+              "editableUntil",
+              "photos"
+            ]
+          },
+          "needsReview": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "review",
+          "needsReview"
+        ]
+      },
+      "RespondDto": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "text"
+        ]
+      },
+      "RespondResultDto": {
+        "type": "object",
+        "properties": {
+          "created": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "created"
+        ]
+      },
+      "ReportReviewDto": {
+        "type": "object",
+        "properties": {
+          "reasonCode": {
+            "type": "string",
+            "enum": [
+              "fake_review",
+              "harassment",
+              "spam",
+              "other"
+            ]
+          },
+          "details": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "reasonCode"
+        ]
+      },
+      "ReviewReportResultDto": {
+        "type": "object",
+        "properties": {
+          "reportId": {
+            "type": "string"
+          },
+          "created": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "reportId",
+          "created"
+        ]
+      },
+      "ReviewImagePresignDto": {
+        "type": "object",
+        "properties": {
+          "contentType": {
+            "type": "string",
+            "minLength": 1
+          },
+          "byteSize": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "checksumSha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "required": [
+          "contentType",
+          "byteSize",
+          "checksumSha256"
+        ]
+      },
+      "ReviewImagePresignedDto": {
+        "type": "object",
+        "properties": {
+          "mediaId": {
+            "type": "string"
+          },
+          "upload": {
+            "type": "object",
+            "properties": {
+              "url": {
+                "type": "string"
+              },
+              "method": {
+                "type": "string",
+                "enum": [
+                  "PUT"
+                ]
+              },
+              "headers": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                }
+              },
+              "expiresInSeconds": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "url",
+              "method",
+              "headers",
+              "expiresInSeconds"
+            ]
+          }
+        },
+        "required": [
+          "mediaId",
+          "upload"
+        ]
+      },
+      "ReviewImageStatusDto": {
+        "type": "object",
+        "properties": {
+          "mediaId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending_upload",
+              "processing",
+              "ready",
+              "rejected",
+              "quarantined"
+            ]
+          }
+        },
+        "required": [
+          "mediaId",
+          "status"
+        ]
+      },
+      "ReviewModerationQueueDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "storeId": {
+                  "type": "string"
+                },
+                "storeName": {
+                  "type": "string"
+                },
+                "rating": {
+                  "type": "number"
+                },
+                "text": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "pending",
+                    "published",
+                    "hidden",
+                    "removed"
+                  ]
+                },
+                "flags": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "low_trust",
+                      "burst",
+                      "shared_device",
+                      "phone_pattern",
+                      "similar_text"
+                    ]
+                  }
+                },
+                "openReports": {
+                  "type": "number"
+                },
+                "reportReasons": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "authorName": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "createdAt": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "storeId",
+                "storeName",
+                "rating",
+                "text",
+                "status",
+                "flags",
+                "openReports",
+                "reportReasons",
+                "authorName",
+                "createdAt"
+              ]
+            }
+          },
+          "nextAfter": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "items",
+          "nextAfter"
+        ]
+      },
+      "ReviewDecisionDto": {
+        "type": "object",
+        "properties": {
+          "decision": {
+            "type": "string",
+            "enum": [
+              "publish",
+              "hide",
+              "remove"
+            ]
+          },
+          "reasonCode": {
+            "type": "string",
+            "enum": [
+              "meets_guidelines",
+              "fake_review",
+              "harassment",
+              "spam",
+              "policy_violation",
+              "illegal_content",
+              "doxxing"
+            ]
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "decision",
+          "reasonCode"
+        ]
+      },
+      "ReviewDecisionResultDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "published",
+              "hidden",
+              "removed"
+            ]
+          },
+          "reportsClosed": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "status",
+          "reportsClosed"
+        ]
+      },
+      "ScrubAuthorDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "ScrubResultDto": {
+        "type": "object",
+        "properties": {
+          "scrubbed": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "scrubbed"
+        ]
+      },
+      "MyVerificationsDto": {
+        "type": "object",
+        "properties": {
+          "level": {
+            "type": "string",
+            "enum": [
+              "none",
+              "phone_verified",
+              "identity_checked",
+              "business_verified"
+            ]
+          },
+          "identityRequest": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "open_request",
+              "already_verified"
+            ]
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "subjectType": {
+                  "type": "string",
+                  "enum": [
+                    "member",
+                    "store"
+                  ]
+                },
+                "subjectId": {
+                  "type": "string"
+                },
+                "level": {
+                  "type": "string",
+                  "enum": [
+                    "identity_checked",
+                    "business_verified"
+                  ]
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "submitted",
+                    "in_review",
+                    "approved",
+                    "rejected",
+                    "expired",
+                    "revoked"
+                  ]
+                },
+                "rejectionReason": {
+                  "type": "string",
+                  "enum": [
+                    "document_unclear",
+                    "document_expired",
+                    "name_mismatch",
+                    "suspected_fraud",
+                    "duplicate_submission",
+                    "other"
+                  ],
+                  "nullable": true
+                },
+                "note": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "expiresAt": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "createdAt": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "subjectType",
+                "subjectId",
+                "level",
+                "status",
+                "rejectionReason",
+                "note",
+                "expiresAt",
+                "createdAt"
+              ]
+            }
+          }
+        },
+        "required": [
+          "level",
+          "identityRequest",
+          "items"
+        ]
+      },
+      "SubmitIdentityDto": {
+        "type": "object",
+        "properties": {
+          "nid": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40
+          },
+          "selfieMediaId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "nid",
+          "selfieMediaId"
+        ]
+      },
+      "VerificationSubmittedDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "submitted"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "status"
+        ]
+      },
+      "EvidencePresignDto": {
+        "type": "object",
+        "properties": {
+          "contentType": {
+            "type": "string",
+            "minLength": 1
+          },
+          "byteSize": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "checksumSha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "required": [
+          "contentType",
+          "byteSize",
+          "checksumSha256"
+        ]
+      },
+      "EvidencePresignedDto": {
+        "type": "object",
+        "properties": {
+          "mediaId": {
+            "type": "string"
+          },
+          "upload": {
+            "type": "object",
+            "properties": {
+              "url": {
+                "type": "string"
+              },
+              "method": {
+                "type": "string",
+                "enum": [
+                  "PUT"
+                ]
+              },
+              "headers": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                }
+              },
+              "expiresInSeconds": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "url",
+              "method",
+              "headers",
+              "expiresInSeconds"
+            ]
+          }
+        },
+        "required": [
+          "mediaId",
+          "upload"
+        ]
+      },
+      "EvidenceStatusDto": {
+        "type": "object",
+        "properties": {
+          "mediaId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending_upload",
+              "processing",
+              "ready",
+              "rejected",
+              "quarantined"
+            ]
+          }
+        },
+        "required": [
+          "mediaId",
+          "status"
+        ]
+      },
+      "StoreVerificationDto": {
+        "type": "object",
+        "properties": {
+          "level": {
+            "type": "string",
+            "enum": [
+              "none",
+              "phone_verified",
+              "identity_checked",
+              "business_verified"
+            ]
+          },
+          "request": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "open_request",
+              "already_verified"
+            ]
+          },
+          "ownerIdentityChecked": {
+            "type": "boolean"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "subjectType": {
+                  "type": "string",
+                  "enum": [
+                    "member",
+                    "store"
+                  ]
+                },
+                "subjectId": {
+                  "type": "string"
+                },
+                "level": {
+                  "type": "string",
+                  "enum": [
+                    "identity_checked",
+                    "business_verified"
+                  ]
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "submitted",
+                    "in_review",
+                    "approved",
+                    "rejected",
+                    "expired",
+                    "revoked"
+                  ]
+                },
+                "rejectionReason": {
+                  "type": "string",
+                  "enum": [
+                    "document_unclear",
+                    "document_expired",
+                    "name_mismatch",
+                    "suspected_fraud",
+                    "duplicate_submission",
+                    "other"
+                  ],
+                  "nullable": true
+                },
+                "note": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "expiresAt": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "createdAt": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "subjectType",
+                "subjectId",
+                "level",
+                "status",
+                "rejectionReason",
+                "note",
+                "expiresAt",
+                "createdAt"
+              ]
+            }
+          }
+        },
+        "required": [
+          "level",
+          "request",
+          "ownerIdentityChecked",
+          "items"
+        ]
+      },
+      "SubmitBusinessDto": {
+        "type": "object",
+        "properties": {
+          "licenceMediaId": {
+            "type": "string"
+          },
+          "shopFrontMediaId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "licenceMediaId",
+          "shopFrontMediaId"
+        ]
+      },
+      "VerificationQueueDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "subjectType": {
+                  "type": "string",
+                  "enum": [
+                    "member",
+                    "store"
+                  ]
+                },
+                "subjectId": {
+                  "type": "string"
+                },
+                "subjectName": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "level": {
+                  "type": "string",
+                  "enum": [
+                    "identity_checked",
+                    "business_verified"
+                  ]
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "submitted",
+                    "in_review",
+                    "approved",
+                    "rejected",
+                    "expired",
+                    "revoked"
+                  ]
+                },
+                "nidLast3": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "nidDuplicate": {
+                  "type": "boolean"
+                },
+                "visitStatus": {
+                  "type": "string",
+                  "enum": [
+                    "not_needed",
+                    "requested",
+                    "done"
+                  ]
+                },
+                "evidenceCount": {
+                  "type": "number"
+                },
+                "createdAt": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "subjectType",
+                "subjectId",
+                "subjectName",
+                "level",
+                "status",
+                "nidLast3",
+                "nidDuplicate",
+                "visitStatus",
+                "evidenceCount",
+                "createdAt"
+              ]
+            }
+          },
+          "nextAfter": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "items",
+          "nextAfter"
+        ]
+      },
+      "VerificationDetailDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "subjectType": {
+            "type": "string",
+            "enum": [
+              "member",
+              "store"
+            ]
+          },
+          "subjectId": {
+            "type": "string"
+          },
+          "subjectName": {
+            "type": "string",
+            "nullable": true
+          },
+          "level": {
+            "type": "string",
+            "enum": [
+              "identity_checked",
+              "business_verified"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "submitted",
+              "in_review",
+              "approved",
+              "rejected",
+              "expired",
+              "revoked"
+            ]
+          },
+          "nidLast3": {
+            "type": "string",
+            "nullable": true
+          },
+          "nidDuplicate": {
+            "type": "boolean"
+          },
+          "visitStatus": {
+            "type": "string",
+            "enum": [
+              "not_needed",
+              "requested",
+              "done"
+            ]
+          },
+          "evidenceCount": {
+            "type": "number"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          },
+          "rejectionReason": {
+            "type": "string",
+            "enum": [
+              "document_unclear",
+              "document_expired",
+              "name_mismatch",
+              "suspected_fraud",
+              "duplicate_submission",
+              "other"
+            ],
+            "nullable": true
+          },
+          "expiresAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "documentsPurged": {
+            "type": "boolean"
+          },
+          "ownerLevel": {
+            "type": "string",
+            "enum": [
+              "none",
+              "phone_verified",
+              "identity_checked",
+              "business_verified"
+            ],
+            "nullable": true
+          },
+          "urlExpiresInSeconds": {
+            "type": "number"
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "selfie",
+                    "trade_licence",
+                    "shop_front",
+                    "visit_photo"
+                  ]
+                },
+                "mimeType": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "url": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "previewUrl": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "purged": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "kind",
+                "mimeType",
+                "url",
+                "previewUrl",
+                "purged"
+              ]
+            }
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "submitted",
+                    "in_review",
+                    "approved",
+                    "rejected",
+                    "expired",
+                    "revoked"
+                  ]
+                },
+                "createdAt": {
+                  "type": "string"
+                },
+                "reviewedAt": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "rejectionReason": {
+                  "type": "string",
+                  "nullable": true
+                }
+              },
+              "required": [
+                "id",
+                "status",
+                "createdAt",
+                "reviewedAt",
+                "rejectionReason"
+              ]
+            }
+          }
+        },
+        "required": [
+          "id",
+          "subjectType",
+          "subjectId",
+          "subjectName",
+          "level",
+          "status",
+          "nidLast3",
+          "nidDuplicate",
+          "visitStatus",
+          "evidenceCount",
+          "createdAt",
+          "note",
+          "rejectionReason",
+          "expiresAt",
+          "documentsPurged",
+          "ownerLevel",
+          "urlExpiresInSeconds",
+          "evidence",
+          "history"
+        ]
+      },
+      "VerificationDecisionDto": {
+        "type": "object",
+        "properties": {
+          "decision": {
+            "type": "string",
+            "enum": [
+              "approve",
+              "reject",
+              "request_visit"
+            ]
+          },
+          "rejectionReason": {
+            "type": "string",
+            "enum": [
+              "document_unclear",
+              "document_expired",
+              "name_mismatch",
+              "suspected_fraud",
+              "duplicate_submission",
+              "other"
+            ]
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 2000,
+            "nullable": true
+          },
+          "expiresAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "decision"
+        ]
+      },
+      "VerificationDecisionResultDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "submitted",
+              "in_review",
+              "approved",
+              "rejected",
+              "expired",
+              "revoked"
+            ]
+          },
+          "expiresAt": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "status",
+          "expiresAt"
+        ]
+      },
+      "BanNoticesDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "area",
+                    "platform"
+                  ]
+                },
+                "id": {
+                  "type": "string"
+                },
+                "reference": {
+                  "type": "string"
+                },
+                "severity": {
+                  "type": "string",
+                  "enum": [
+                    "restricted",
+                    "banned",
+                    "terminated"
+                  ]
+                },
+                "reasonCode": {
+                  "type": "string"
+                },
+                "areaName": {
+                  "type": "object",
+                  "properties": {
+                    "bn": {
+                      "type": "string"
+                    },
+                    "en": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "bn",
+                    "en"
+                  ],
+                  "nullable": true
+                },
+                "startsAt": {
+                  "type": "string"
+                },
+                "expiresAt": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "permanent": {
+                  "type": "boolean"
+                },
+                "appeal": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "reference": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "submitted",
+                        "in_review",
+                        "escalated",
+                        "upheld",
+                        "granted",
+                        "reduced",
+                        "withdrawn"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "reference",
+                    "status"
+                  ],
+                  "nullable": true
+                },
+                "canAppeal": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "kind",
+                "id",
+                "reference",
+                "severity",
+                "reasonCode",
+                "areaName",
+                "startsAt",
+                "expiresAt",
+                "permanent",
+                "appeal",
+                "canAppeal"
+              ]
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "AccountAppealsDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "reference": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "submitted",
+                    "in_review",
+                    "escalated",
+                    "upheld",
+                    "granted",
+                    "reduced",
+                    "withdrawn"
+                  ]
+                },
+                "targetReference": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "submittedAt": {
+                  "type": "string"
+                },
+                "decidedAt": {
+                  "type": "string",
+                  "nullable": true
+                }
+              },
+              "required": [
+                "id",
+                "reference",
+                "status",
+                "targetReference",
+                "submittedAt",
+                "decidedAt"
+              ]
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "AccountAppealSubmitDto": {
+        "type": "object",
+        "properties": {
+          "targetId": {
+            "type": "string"
+          },
+          "statement": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 10000
+          }
+        },
+        "required": [
+          "targetId",
+          "statement"
+        ]
+      },
+      "AppealSubmittedDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "submitted",
+              "in_review",
+              "escalated",
+              "upheld",
+              "granted",
+              "reduced",
+              "withdrawn"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "reference",
+          "status"
+        ]
+      },
+      "AppealOtpRequestDto": {
+        "type": "object",
+        "properties": {
+          "phone": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "phone"
+        ]
+      },
+      "AppealOtpAcceptedDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "accepted"
+            ]
+          },
+          "resendAfterSeconds": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "status",
+          "resendAfterSeconds"
+        ]
+      },
+      "AppealStatusRequestDto": {
+        "type": "object",
+        "properties": {
+          "phone": {
+            "type": "string"
+          },
+          "otp": {
+            "type": "string",
+            "pattern": "^\\d{4,8}$"
+          }
+        },
+        "required": [
+          "phone",
+          "otp"
+        ]
+      },
+      "PublicAppealStatusDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "area",
+                    "platform"
+                  ]
+                },
+                "id": {
+                  "type": "string"
+                },
+                "reference": {
+                  "type": "string"
+                },
+                "severity": {
+                  "type": "string",
+                  "enum": [
+                    "restricted",
+                    "banned",
+                    "terminated"
+                  ]
+                },
+                "reasonCode": {
+                  "type": "string"
+                },
+                "areaName": {
+                  "type": "object",
+                  "properties": {
+                    "bn": {
+                      "type": "string"
+                    },
+                    "en": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "bn",
+                    "en"
+                  ],
+                  "nullable": true
+                },
+                "startsAt": {
+                  "type": "string"
+                },
+                "expiresAt": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "permanent": {
+                  "type": "boolean"
+                },
+                "appeal": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "reference": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "submitted",
+                        "in_review",
+                        "escalated",
+                        "upheld",
+                        "granted",
+                        "reduced",
+                        "withdrawn"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "reference",
+                    "status"
+                  ],
+                  "nullable": true
+                },
+                "canAppeal": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "kind",
+                "id",
+                "reference",
+                "severity",
+                "reasonCode",
+                "areaName",
+                "startsAt",
+                "expiresAt",
+                "permanent",
+                "appeal",
+                "canAppeal"
+              ]
+            }
+          },
+          "appealsLeftToday": {
+            "type": "number"
+          },
+          "appealToken": {
+            "type": "string"
+          },
+          "appealTokenExpiresInSeconds": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "items",
+          "appealsLeftToday",
+          "appealToken",
+          "appealTokenExpiresInSeconds"
+        ]
+      },
+      "PublicAppealSubmitDto": {
+        "type": "object",
+        "properties": {
+          "phone": {
+            "type": "string"
+          },
+          "otp": {
+            "type": "string",
+            "pattern": "^\\d{4,8}$"
+          },
+          "appealToken": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{20,100}$"
+          },
+          "reference": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 20
+          },
+          "statement": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 10000
+          }
+        },
+        "required": [
+          "phone",
+          "reference",
+          "statement"
+        ]
+      },
+      "BanListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "reference": {
+                  "type": "string"
+                },
+                "userId": {
+                  "type": "string"
+                },
+                "displayName": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "severity": {
+                  "type": "string",
+                  "enum": [
+                    "restricted",
+                    "banned"
+                  ]
+                },
+                "reasonCode": {
+                  "type": "string",
+                  "enum": [
+                    "scam",
+                    "harassment",
+                    "spam",
+                    "fake_listings",
+                    "payment_fraud",
+                    "identity_fraud",
+                    "repeated_violations",
+                    "other"
+                  ]
+                },
+                "reasonText": {
+                  "type": "string"
+                },
+                "evidence": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string"
+                      },
+                      "id": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "id"
+                    ]
+                  }
+                },
+                "permanent": {
+                  "type": "boolean"
+                },
+                "startsAt": {
+                  "type": "string"
+                },
+                "expiresAt": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "escalationStep": {
+                  "type": "number"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "active",
+                    "expired",
+                    "revoked",
+                    "superseded"
+                  ]
+                },
+                "bannedByName": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "revokeReason": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "openAppeal": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "id",
+                "reference",
+                "userId",
+                "displayName",
+                "severity",
+                "reasonCode",
+                "reasonText",
+                "evidence",
+                "permanent",
+                "startsAt",
+                "expiresAt",
+                "escalationStep",
+                "status",
+                "bannedByName",
+                "revokeReason",
+                "openAppeal"
+              ]
+            }
+          },
+          "nextAfter": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "items",
+          "nextAfter"
+        ]
+      },
+      "BanMemberLookupDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "userId": {
+                  "type": "string"
+                },
+                "displayName": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "role": {
+                  "type": "string"
+                },
+                "banSeverity": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "priorBans": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "userId",
+                "displayName",
+                "role",
+                "banSeverity",
+                "priorBans"
+              ]
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "IssueBanDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "restricted",
+              "banned"
+            ]
+          },
+          "reasonCode": {
+            "type": "string",
+            "enum": [
+              "scam",
+              "harassment",
+              "spam",
+              "fake_listings",
+              "payment_fraud",
+              "identity_fraud",
+              "repeated_violations",
+              "other"
+            ]
+          },
+          "reasonText": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 10000
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "report",
+                    "message",
+                    "post",
+                    "review",
+                    "payment",
+                    "media_asset",
+                    "support_ticket",
+                    "complaint",
+                    "conversation"
+                  ]
+                },
+                "id": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "id"
+              ]
+            }
+          },
+          "durationDays": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "permanent": {
+            "type": "boolean"
+          },
+          "overrideReason": {
+            "type": "string",
+            "maxLength": 10000
+          },
+          "complaintId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "userId",
+          "severity",
+          "reasonCode",
+          "reasonText"
+        ]
+      },
+      "IssuedBanDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "startsAt": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "permanent": {
+            "type": "boolean"
+          },
+          "escalationStep": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "reference",
+          "startsAt",
+          "expiresAt",
+          "permanent",
+          "escalationStep"
+        ]
+      },
+      "LiftBanDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 10000
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "LiftedBanDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "revoked"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "AppealQueueDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "reference": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "submitted",
+                    "in_review",
+                    "escalated",
+                    "upheld",
+                    "granted",
+                    "reduced",
+                    "withdrawn"
+                  ]
+                },
+                "queue": {
+                  "type": "string",
+                  "enum": [
+                    "tenant_admin",
+                    "platform"
+                  ]
+                },
+                "channel": {
+                  "type": "string",
+                  "enum": [
+                    "in_app",
+                    "public_otp"
+                  ]
+                },
+                "statement": {
+                  "type": "string"
+                },
+                "submittedAt": {
+                  "type": "string"
+                },
+                "escalateAt": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "escalatedAt": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "escalationReason": {
+                  "type": "string",
+                  "enum": [
+                    "timeout",
+                    "tenant_upheld"
+                  ],
+                  "nullable": true
+                },
+                "tenantRecommendation": {
+                  "type": "string",
+                  "enum": [
+                    "uphold"
+                  ],
+                  "nullable": true
+                },
+                "tenantNote": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "area",
+                    "platform"
+                  ]
+                },
+                "targetId": {
+                  "type": "string"
+                },
+                "targetReference": {
+                  "type": "string"
+                },
+                "severity": {
+                  "type": "string"
+                },
+                "reasonCode": {
+                  "type": "string"
+                },
+                "reasonText": {
+                  "type": "string"
+                },
+                "evidence": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string"
+                      },
+                      "id": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "id"
+                    ]
+                  }
+                },
+                "permanent": {
+                  "type": "boolean"
+                },
+                "expiresAt": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "areaName": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "appellantUserId": {
+                  "type": "string"
+                },
+                "appellantName": {
+                  "type": "string",
+                  "nullable": true
+                }
+              },
+              "required": [
+                "id",
+                "reference",
+                "status",
+                "queue",
+                "channel",
+                "statement",
+                "submittedAt",
+                "escalateAt",
+                "escalatedAt",
+                "escalationReason",
+                "tenantRecommendation",
+                "tenantNote",
+                "kind",
+                "targetId",
+                "targetReference",
+                "severity",
+                "reasonCode",
+                "reasonText",
+                "evidence",
+                "permanent",
+                "expiresAt",
+                "areaName",
+                "appellantUserId",
+                "appellantName"
+              ]
+            }
+          },
+          "nextAfter": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "items",
+          "nextAfter"
+        ]
+      },
+      "AppealDecisionDto": {
+        "type": "object",
+        "properties": {
+          "decision": {
+            "type": "string",
+            "enum": [
+              "grant",
+              "reduce",
+              "uphold"
+            ]
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 10000
+          },
+          "reducedUntil": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "decision"
+        ]
+      },
+      "AppealDecisionResultDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "submitted",
+              "in_review",
+              "escalated",
+              "upheld",
+              "granted",
+              "reduced",
+              "withdrawn"
+            ]
+          },
+          "replacementReference": {
+            "type": "string",
+            "nullable": true
+          },
+          "replacementUntil": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "status",
+          "replacementReference",
+          "replacementUntil"
+        ]
+      },
+      "BlacklistPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "reference": {
+                  "type": "string"
+                },
+                "userId": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "displayName": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "reasonCode": {
+                  "type": "string",
+                  "enum": [
+                    "advance_payment_scam",
+                    "fake_product",
+                    "identity_fraud",
+                    "harassment",
+                    "payment_fraud"
+                  ]
+                },
+                "severity": {
+                  "type": "string",
+                  "enum": [
+                    "watch",
+                    "restricted",
+                    "banned",
+                    "terminated"
+                  ]
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "recommended",
+                    "active",
+                    "rejected",
+                    "revoked",
+                    "expired"
+                  ]
+                },
+                "summary": {
+                  "type": "string"
+                },
+                "evidence": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string"
+                      },
+                      "id": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "id"
+                    ]
+                  }
+                },
+                "expiresAt": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "sourceAreaName": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "recommendedByName": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "createdAt": {
+                  "type": "string"
+                },
+                "reviewedAt": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "reviewNote": {
+                  "type": "string",
+                  "nullable": true
+                }
+              },
+              "required": [
+                "id",
+                "reference",
+                "userId",
+                "displayName",
+                "reasonCode",
+                "severity",
+                "status",
+                "summary",
+                "evidence",
+                "expiresAt",
+                "sourceAreaName",
+                "recommendedByName",
+                "createdAt",
+                "reviewedAt",
+                "reviewNote"
+              ]
+            }
+          },
+          "nextAfter": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "items",
+          "nextAfter"
+        ]
+      },
+      "RecommendBlacklistDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "reasonCode": {
+            "type": "string",
+            "enum": [
+              "advance_payment_scam",
+              "fake_product",
+              "identity_fraud",
+              "harassment",
+              "payment_fraud"
+            ]
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "watch",
+              "restricted",
+              "banned",
+              "terminated"
+            ]
+          },
+          "summary": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 10000
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "report",
+                    "message",
+                    "post",
+                    "review",
+                    "payment",
+                    "media_asset",
+                    "support_ticket",
+                    "complaint",
+                    "conversation"
+                  ]
+                },
+                "id": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "id"
+              ]
+            }
+          },
+          "expiresAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "userId",
+          "reasonCode",
+          "severity",
+          "summary",
+          "evidence"
+        ]
+      },
+      "BlacklistRecommendedDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "reference": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "reference"
+        ]
+      },
+      "BlacklistDecisionDto": {
+        "type": "object",
+        "properties": {
+          "decision": {
+            "type": "string",
+            "enum": [
+              "approve",
+              "reject"
+            ]
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 10000
+          }
+        },
+        "required": [
+          "decision"
+        ]
+      },
+      "BlacklistDecisionResultDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "recommended",
+              "active",
+              "rejected",
+              "revoked",
+              "expired"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "RevokeBlacklistDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 10000
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "SubmitComplaintDto": {
+        "type": "object",
+        "properties": {
+          "subjectType": {
+            "type": "string",
+            "enum": [
+              "user",
+              "store"
+            ]
+          },
+          "subjectId": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "fake_seller",
+              "scam",
+              "abuse",
+              "other"
+            ]
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 10000
+          },
+          "postId": {
+            "type": "string"
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "report",
+                    "message",
+                    "post",
+                    "review",
+                    "payment",
+                    "media_asset",
+                    "support_ticket",
+                    "complaint",
+                    "conversation"
+                  ]
+                },
+                "id": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "id"
+              ]
+            }
+          }
+        },
+        "required": [
+          "subjectType",
+          "category",
+          "description"
+        ]
+      },
+      "ComplaintSubmittedDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "in_progress",
+              "resolved"
+            ]
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "low",
+              "normal",
+              "high",
+              "urgent"
+            ]
+          },
+          "dueAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "reference",
+          "status",
+          "priority",
+          "dueAt"
+        ]
+      },
+      "MyComplaintsDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "reference": {
+                  "type": "string"
+                },
+                "subjectType": {
+                  "type": "string",
+                  "enum": [
+                    "user",
+                    "store"
+                  ]
+                },
+                "subjectName": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "category": {
+                  "type": "string",
+                  "enum": [
+                    "fake_seller",
+                    "scam",
+                    "abuse",
+                    "other"
+                  ]
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "pending",
+                    "in_progress",
+                    "resolved"
+                  ]
+                },
+                "createdAt": {
+                  "type": "string"
+                },
+                "resolvedAt": {
+                  "type": "string",
+                  "nullable": true
+                }
+              },
+              "required": [
+                "id",
+                "reference",
+                "subjectType",
+                "subjectName",
+                "category",
+                "status",
+                "createdAt",
+                "resolvedAt"
+              ]
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "ComplaintQueueDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "reference": {
+                  "type": "string"
+                },
+                "subjectType": {
+                  "type": "string",
+                  "enum": [
+                    "user",
+                    "store"
+                  ]
+                },
+                "subjectId": {
+                  "type": "string"
+                },
+                "subjectUserId": {
+                  "type": "string"
+                },
+                "subjectName": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "subjectBanSeverity": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "reporterName": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "category": {
+                  "type": "string",
+                  "enum": [
+                    "fake_seller",
+                    "scam",
+                    "abuse",
+                    "other"
+                  ]
+                },
+                "priority": {
+                  "type": "string",
+                  "enum": [
+                    "low",
+                    "normal",
+                    "high",
+                    "urgent"
+                  ]
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "pending",
+                    "in_progress",
+                    "resolved"
+                  ]
+                },
+                "description": {
+                  "type": "string"
+                },
+                "evidence": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string"
+                      },
+                      "id": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "id"
+                    ]
+                  }
+                },
+                "assignedToUserId": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "assignedToName": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "dueAt": {
+                  "type": "string"
+                },
+                "overdue": {
+                  "type": "boolean"
+                },
+                "createdAt": {
+                  "type": "string"
+                },
+                "resolution": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "resolvedAt": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "banId": {
+                  "type": "string",
+                  "nullable": true
+                }
+              },
+              "required": [
+                "id",
+                "reference",
+                "subjectType",
+                "subjectId",
+                "subjectUserId",
+                "subjectName",
+                "subjectBanSeverity",
+                "reporterName",
+                "category",
+                "priority",
+                "status",
+                "description",
+                "evidence",
+                "assignedToUserId",
+                "assignedToName",
+                "dueAt",
+                "overdue",
+                "createdAt",
+                "resolution",
+                "resolvedAt",
+                "banId"
+              ]
+            }
+          },
+          "nextAfter": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "items",
+          "nextAfter"
+        ]
+      },
+      "ComplaintAssigneesDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "userId": {
+                  "type": "string"
+                },
+                "displayName": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "role": {
+                  "type": "string"
+                },
+                "openCount": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "userId",
+                "displayName",
+                "role",
+                "openCount"
+              ]
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "UpdateComplaintDto": {
+        "type": "object",
+        "properties": {
+          "assigneeUserId": {
+            "type": "string",
+            "nullable": true
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "low",
+              "normal",
+              "high",
+              "urgent"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "in_progress"
+            ]
+          }
+        }
+      },
+      "ComplaintUpdatedDto": {
+        "type": "object",
+        "properties": {
+          "reference": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "in_progress",
+              "resolved"
+            ]
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "low",
+              "normal",
+              "high",
+              "urgent"
+            ]
+          },
+          "assignedToUserId": {
+            "type": "string",
+            "nullable": true
+          },
+          "dueAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "reference",
+          "status",
+          "priority",
+          "assignedToUserId",
+          "dueAt"
+        ]
+      },
+      "ResolveComplaintDto": {
+        "type": "object",
+        "properties": {
+          "resolution": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 10000
+          },
+          "banId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "resolution"
+        ]
+      },
+      "ComplaintResolvedDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "resolved"
+            ]
+          }
+        },
+        "required": [
+          "status"
         ]
       }
     }

@@ -468,6 +468,8 @@ describe('Feed ranking functions (0030)', () => {
 
   describe('feed_stores', () => {
     afterEach(async () => {
+      await admin`delete from store_seller_scores where tenant_id::text like ${FIXTURE}`;
+      await admin`delete from review_prompts where tenant_id::text like ${FIXTURE}`;
       await admin`delete from stores where tenant_id::text like ${FIXTURE}`;
     });
 

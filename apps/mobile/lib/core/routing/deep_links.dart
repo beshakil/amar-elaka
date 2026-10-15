@@ -9,6 +9,11 @@ import 'route_paths.dart';
 ///   /posts/<id>[?action=repost]        a post (the repost action included)
 ///   /saved-searches[/<id>], /saved     saved searches and their new results, saved items
 ///   /places/<id>                       a place
+///   /stores/<id>/review                the review form (a review prompt)
+///   /verification                      the member's own verification (ADR 062)
+///   /account/bans                      the ban notice and appeals (ADR 063)
+///   /complaints                        the member's complaints
+///   /stores/<id>/verification          a store's business verification
 ///   /stores/me, /stores/<id>/imports/… "আমার দোকান" (the import report is on the web panel)
 /// ```
 String? appRouteForDeepLink(String? link) {
@@ -34,8 +39,20 @@ String? appRouteForDeepLink(String? link) {
       return RoutePaths.saved;
     case 'places' when segments.length >= 2:
       return RoutePaths.placeFor(segments[1]);
+    // "How was it?" (ADR 061): the review form for that store.
+    case 'stores' when segments.length == 3 && segments[2] == 'review':
+      return RoutePaths.writeReviewFor(segments[1]);
+    // Verification decisions, expiry and renewal reminders (ADR 062).
+    case 'stores' when segments.length == 3 && segments[2] == 'verification':
+      return RoutePaths.storeVerificationFor(segments[1]);
     case 'stores':
       return RoutePaths.myStore;
+    case 'verification':
+      return RoutePaths.verification;
+    case 'account' when segments.length >= 2 && segments[1] == 'bans':
+      return RoutePaths.banNotice;
+    case 'complaints':
+      return RoutePaths.myComplaints;
     default:
       return null;
   }

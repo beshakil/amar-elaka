@@ -1,5 +1,7 @@
 import 'package:amar_elaka_api/amar_elaka_api.dart';
 
+import '../../reviews/data/review_models.dart';
+
 /// The store screens' data (ADR 054/057), read from the API's JSON by hand
 /// like the other feature APIs. Names come in Bengali and, sometimes, English.
 
@@ -166,9 +168,11 @@ class StorePageData {
     required this.logo,
     required this.cover,
     required this.isVerified,
+    this.ownerIdentityChecked = false,
     required this.isFollowing,
     required this.followerCount,
     required this.livePosts,
+    this.sellerTier = SellerTier.newStore,
     required this.contactChannels,
     required this.hours,
     required this.categories,
@@ -200,9 +204,14 @@ class StorePageData {
       logo: StoreImage.fromJson(json['logo'] as Map<String, dynamic>?),
       cover: StoreImage.fromJson(json['cover'] as Map<String, dynamic>?),
       isVerified: json['isVerified'] as bool? ?? false,
+      ownerIdentityChecked: switch (json['verification']) {
+        {'badge': 'identity'} => true,
+        _ => false,
+      },
       isFollowing: json['isFollowing'] as bool? ?? false,
       followerCount: (json['followerCount'] as num?)?.toInt() ?? 0,
       livePosts: (stats?['livePosts'] as num?)?.toInt() ?? 0,
+      sellerTier: sellerTierOf(json['sellerTier']),
       contactChannels: [
         for (final c in json['contactChannels'] as List? ?? const [])
           c as String,
@@ -237,7 +246,13 @@ class StorePageData {
   final StoreImage? logo;
   final StoreImage? cover;
   final bool isVerified;
+
+  /// Not a verified business, but its owner's identity is checked (ADR 062).
+  final bool ownerIdentityChecked;
   final bool isFollowing;
+
+  /// The seller score as a badge (ADR 061); never the number.
+  final SellerTier sellerTier;
   final int followerCount;
   final int livePosts;
 
@@ -266,7 +281,9 @@ class StorePageData {
     logo: logo,
     cover: cover,
     isVerified: isVerified,
+    ownerIdentityChecked: ownerIdentityChecked,
     isFollowing: isFollowing ?? this.isFollowing,
+    sellerTier: sellerTier,
     followerCount: followerCount ?? this.followerCount,
     livePosts: livePosts,
     contactChannels: contactChannels,

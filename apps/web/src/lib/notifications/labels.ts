@@ -32,7 +32,10 @@ export function notificationTypeGroup(type: string): string {
       return 'store_status';
     case 'ban_issued':
     case 'appeal_decided':
+    case 'ban_lifted':
       return 'account';
+    case 'complaint_resolved':
+      return 'complaints';
     default:
       return 'other';
   }

@@ -19,6 +19,7 @@ export function LoginForm({ next }: { next: string }) {
   const [phone, setPhone] = useState('');
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [appeal, setAppeal] = useState(false);
   const [busy, setBusy] = useState(false);
   const [now, setNow] = useState(() => Date.now());
 
@@ -45,7 +46,10 @@ export function LoginForm({ next }: { next: string }) {
       });
       const payload = (await response.json().catch(() => ({}))) as Record<string, unknown>;
       if (!response.ok) {
-        setError(describe(typeof payload.code === 'string' ? payload.code : 'unknown'));
+        const errorCode = typeof payload.code === 'string' ? payload.code : 'unknown';
+        setError(describe(errorCode));
+        // A closed account, or a phone or device on the blacklist: the way out is an appeal.
+        setAppeal(errorCode === 'ACCOUNT_TERMINATED' || errorCode === 'ACCOUNT_BLOCKED');
         return null;
       }
       return payload;
@@ -72,6 +76,10 @@ export function LoginForm({ next }: { next: string }) {
     if (step.kind !== 'code') return;
     const verified = await call('/api/auth/otp/verify', { phone: step.phone, code });
     if (!verified) return;
+    if (verified.accountState === 'banned') {
+      window.location.assign('/account/bans');
+      return;
+    }
     // A full load, not router.replace + refresh (those can race, leaving the
     // seller on this page): the next page and the header render afresh with
     // the new session cookies.
@@ -98,6 +106,11 @@ export function LoginForm({ next }: { next: string }) {
           <p role="alert" className="text-sm text-destructive">
             {error}
           </p>
+        )}
+        {appeal && (
+          <a href="/appeal" className="block text-sm underline" data-testid="login-appeal">
+            {t('appealLink')}
+          </a>
         )}
         <Button type="submit" disabled={busy || !phone.trim()}>
           {t('sendCode')}
@@ -126,6 +139,11 @@ export function LoginForm({ next }: { next: string }) {
         <p role="alert" className="text-sm text-destructive">
           {error}
         </p>
+      )}
+      {appeal && (
+        <a href="/appeal" className="block text-sm underline" data-testid="login-appeal">
+          {t('appealLink')}
+        </a>
       )}
       <div className="flex flex-wrap items-center gap-3">
         <Button type="submit" disabled={busy || !code.trim()}>

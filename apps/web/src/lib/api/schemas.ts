@@ -96,7 +96,12 @@ export type _ApiContract = [
 
 // ---- auth -------------------------------------------------------------------
 
-export const sessionTokensSchema = z.object({ accessToken: z.string(), refreshToken: z.string() });
+export const sessionTokensSchema = z.object({
+  accessToken: z.string(),
+  refreshToken: z.string(),
+  /** ADR 063: a banned account signs in to its notice and appeal only. */
+  accountState: z.enum(['active', 'restricted', 'banned']).optional(),
+});
 export const otpSentSchema = z.object({
   status: z.literal('otp_sent'),
   resendAfterSeconds: z.number(),
@@ -341,7 +346,14 @@ export const postDetailSchema = z.object({
     memberSince: z.string().nullable(),
     badges: z.array(z.string()),
     store: z
-      .object({ id: z.string(), slug: z.string(), name: localizedText, verified: z.boolean() })
+      .object({
+        id: z.string(),
+        slug: z.string(),
+        name: localizedText,
+        verified: z.boolean(),
+        /** The seller score as a badge (ADR 061), never the number. */
+        tier: z.enum(['top', 'trusted', 'good', 'new', 'none']),
+      })
       .nullable(),
   }),
   contact: z.object({
@@ -403,8 +415,12 @@ export const storePageSchema = z.object({
   logo: image,
   cover: image,
   isVerified: z.boolean(),
+  /** The badge (ADR 062): business = verified store; else the owner's own level. */
+  verification: z.object({ badge: z.enum(['none', 'phone', 'identity', 'business']) }),
   rating: z.number().nullable(),
   ratingCount: z.number(),
+  /** The seller score as a badge (ADR 061), never the number. */
+  sellerTier: z.enum(['top', 'trusted', 'good', 'new', 'none']),
   followerCount: z.number(),
   createdAt: z.string(),
   updatedAt: z.string(),
@@ -1044,4 +1060,141 @@ export type _ChatContract = [
   Assert<Accepts<NotificationInbox, Api['InboxPageDto']>>,
   Assert<Accepts<z.infer<typeof unreadCountSchema>, Api['UnreadCountDto']>>,
   Assert<Accepts<NotificationPreferences, Api['PreferencesDto']>>,
+];
+
+// ---- reviews (ADR 061) ---------------------------------------------------------
+
+export const sellerTierSchema = z.enum(['top', 'trusted', 'good', 'new', 'none']);
+export type SellerTier = z.infer<typeof sellerTierSchema>;
+const reviewPhotoSchema = z.object({
+  id: z.string(),
+  thumbhash: z.string().nullable(),
+  thumbUrl: z.string().nullable(),
+  cardUrl: z.string().nullable(),
+  fullUrl: z.string().nullable(),
+});
+export const reviewPageSchema = z.object({
+  summary: z.object({
+    average: z.number().nullable(),
+    count: z.number(),
+    histogram: z.object({
+      '1': z.number(),
+      '2': z.number(),
+      '3': z.number(),
+      '4': z.number(),
+      '5': z.number(),
+    }),
+    tier: sellerTierSchema,
+  }),
+  items: z.array(
+    z.object({
+      id: z.string(),
+      rating: z.number(),
+      text: z.string().nullable(),
+      authorName: z.string().nullable(),
+      authorRemoved: z.boolean(),
+      verifiedContact: z.literal(true),
+      createdAt: z.string(),
+      editedAt: z.string().nullable(),
+      photos: z.array(reviewPhotoSchema),
+      response: z
+        .object({ text: z.string(), createdAt: z.string(), editedAt: z.string().nullable() })
+        .nullable(),
+    }),
+  ),
+  nextBefore: z.string().nullable(),
+});
+export type ReviewPage = z.infer<typeof reviewPageSchema>;
+export type StoreReview = ReviewPage['items'][number];
+const myReviewSchema = z.object({
+  id: z.string(),
+  rating: z.number(),
+  text: z.string().nullable(),
+  status: z.enum(['pending', 'published', 'hidden', 'removed']),
+  createdAt: z.string(),
+  editedAt: z.string().nullable(),
+  editableUntil: z.string(),
+  photos: z.array(reviewPhotoSchema),
+});
+export type MyReview = z.infer<typeof myReviewSchema>;
+export const reviewEligibilitySchema = z.object({
+  status: z.enum([
+    'eligible',
+    'already_reviewed',
+    'no_contact',
+    'too_soon',
+    'expired',
+    'own_store',
+    'store_unavailable',
+    'signed_out',
+  ]),
+  eligibleAt: z.string().nullable(),
+  expiresAt: z.string().nullable(),
+  myReview: myReviewSchema.nullable(),
+});
+export type ReviewEligibility = z.infer<typeof reviewEligibilitySchema>;
+export const reviewWriteResultSchema = z.object({
+  review: myReviewSchema,
+  needsReview: z.boolean(),
+});
+export type ReviewWriteResult = z.infer<typeof reviewWriteResultSchema>;
+export const reviewRespondResultSchema = z.object({ created: z.boolean() });
+export const reviewReportResultSchema = z.object({ reportId: z.string(), created: z.boolean() });
+
+export type _ReviewsContract = [
+  Assert<Accepts<ReviewPage, Api['ReviewPageDto']>>,
+  Assert<Accepts<ReviewEligibility, Api['EligibilityDto']>>,
+  Assert<Accepts<ReviewWriteResult, Api['WriteResultDto']>>,
+  Assert<Accepts<z.infer<typeof reviewRespondResultSchema>, Api['RespondResultDto']>>,
+  Assert<Accepts<z.infer<typeof reviewReportResultSchema>, Api['ReviewReportResultDto']>>,
+];
+
+// ---- Bans and appeals (ADR 063; apps/api/src/bans/dto/bans.dto.ts) ----
+
+const appealStatus = z.enum([
+  'submitted',
+  'in_review',
+  'escalated',
+  'upheld',
+  'granted',
+  'reduced',
+  'withdrawn',
+]);
+export const banNoticeSchema = z.object({
+  kind: z.enum(['area', 'platform']),
+  id: z.string(),
+  reference: z.string(),
+  severity: z.enum(['restricted', 'banned', 'terminated']),
+  reasonCode: z.string(),
+  areaName: z.object({ bn: z.string(), en: z.string().nullable() }).nullable(),
+  startsAt: z.string(),
+  expiresAt: z.string().nullable(),
+  permanent: z.boolean(),
+  appeal: z.object({ id: z.string(), reference: z.string(), status: appealStatus }).nullable(),
+  canAppeal: z.boolean(),
+});
+export type BanNotice = z.infer<typeof banNoticeSchema>;
+export const banNoticesSchema = z.object({ items: z.array(banNoticeSchema) });
+export const appealSubmittedSchema = z.object({
+  id: z.string(),
+  reference: z.string(),
+  status: appealStatus,
+});
+export const appealOtpAcceptedSchema = z.object({
+  status: z.literal('accepted'),
+  resendAfterSeconds: z.number(),
+});
+export const publicAppealStatusSchema = z.object({
+  items: z.array(banNoticeSchema),
+  appealsLeftToday: z.number(),
+  appealToken: z.string(),
+  appealTokenExpiresInSeconds: z.number(),
+});
+export type PublicAppealStatus = z.infer<typeof publicAppealStatusSchema>;
+
+export type _BanContract = [
+  Assert<Accepts<z.infer<typeof banNoticesSchema>, Api['BanNoticesDto']>>,
+  Assert<Accepts<z.infer<typeof appealSubmittedSchema>, Api['AppealSubmittedDto']>>,
+  Assert<Accepts<z.infer<typeof appealOtpAcceptedSchema>, Api['AppealOtpAcceptedDto']>>,
+  Assert<Accepts<PublicAppealStatus, Api['PublicAppealStatusDto']>>,
 ];

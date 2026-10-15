@@ -26,7 +26,11 @@ const ONE_DAY_SECONDS = 24 * 60 * 60;
  * Cooldown and daily limits stay per phone across purposes — they protect
  * the recipient from SMS bombing.
  */
-export type OtpPurpose = { kind: 'login' } | { kind: 'place_claim'; scope: string };
+export type OtpPurpose =
+  | { kind: 'login' }
+  | { kind: 'place_claim'; scope: string }
+  // The public appeal path (ADR 063): proves the phone, opens no session.
+  | { kind: 'appeal'; scope: string };
 
 const LOGIN: OtpPurpose = { kind: 'login' };
 

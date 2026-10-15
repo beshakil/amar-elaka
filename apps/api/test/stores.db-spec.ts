@@ -82,6 +82,8 @@ describe('stores in the database (0050)', () => {
       await tx`delete from store_members where tenant_id::text like ${FIXTURE}`;
       await tx`delete from place_revisions where tenant_id::text like ${FIXTURE}`;
       await tx`delete from places where tenant_id::text like ${FIXTURE}`;
+      await tx`delete from store_seller_scores where tenant_id::text like ${FIXTURE}`;
+      await tx`delete from review_prompts where tenant_id::text like ${FIXTURE}`;
       await tx`delete from stores where tenant_id::text like ${FIXTURE}`;
       await tx`delete from tenant_categories where tenant_id::text like ${FIXTURE}`;
       await tx`delete from tenant_members where tenant_id::text like ${FIXTURE}`;

@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { SellerScoreModule } from '../reviews/seller-score.module';
 import { AnalyticsCountersModule } from '../analytics/seller/analytics-counters.module';
 import { AuthModule } from '../auth/auth.module';
 import { EngagementModule } from '../engagement/engagement.module';
@@ -46,6 +47,7 @@ import { StoresService } from './stores.service';
     HoursModule,
     FeedModule,
     TrustModule,
+    SellerScoreModule,
     AnalyticsCountersModule,
     EngagementModule,
   ],

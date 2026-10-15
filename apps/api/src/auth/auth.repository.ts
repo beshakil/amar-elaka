@@ -74,6 +74,31 @@ export class AuthRepository {
     return { userId: row.user_id, isNew: row.is_new, blacklistSeverity: row.blacklist_severity };
   }
 
+  /**
+   * The blacklist at sign-in (blacklist_match, 0059): the account's own entry,
+   * and another account's entry matched by this phone (hash) or device.
+   */
+  async blacklistMatch(
+    tx: DatabaseTransaction,
+    userId: string | null,
+    phoneHash: string | null,
+    deviceHash: string | null,
+  ): Promise<{ own: string | null; identifier: string | null }> {
+    const rows = await tx.execute(
+      sql`select own_severity, identifier_severity from public.blacklist_match(${userId}::uuid, ${phoneHash}, ${deviceHash})`,
+    );
+    const [row] = z
+      .array(
+        z.object({
+          own_severity: z.string().nullable(),
+          identifier_severity: z.string().nullable(),
+        }),
+      )
+      .length(1)
+      .parse([...rows]);
+    return { own: row!.own_severity, identifier: row!.identifier_severity };
+  }
+
   async getByGoogleId(
     tx: DatabaseTransaction,
     googleId: string,

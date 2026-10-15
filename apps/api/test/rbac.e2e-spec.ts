@@ -201,6 +201,8 @@ describe('Role & permission system (e2e)', () => {
   afterAll(async () => {
     await app.close();
     try {
+      await admin`delete from store_seller_scores where tenant_id::text like ${FIXTURE_PREFIX}`;
+      await admin`delete from review_prompts where tenant_id::text like ${FIXTURE_PREFIX}`;
       await admin`delete from stores where tenant_id::text like ${FIXTURE_PREFIX}`;
       await admin`delete from roles where tenant_id::text like ${FIXTURE_PREFIX}`;
       await admin`delete from tenant_members where tenant_id::text like ${FIXTURE_PREFIX}`;

@@ -131,8 +131,9 @@ describe('Notifications in the database (0055)', () => {
         .filter((r) => r.sms_eligible)
         .map((r) => r.code)
         .sort(),
-    ).toEqual(['appeal_decided', 'ban_issued']);
-    for (const code of ['ban_issued', 'appeal_decided']) {
+      // ban_lifted (0059): a terminated person has no app, so a lift reaches them by SMS too.
+    ).toEqual(['appeal_decided', 'ban_issued', 'ban_lifted']);
+    for (const code of ['ban_issued', 'appeal_decided', 'ban_lifted']) {
       expect(rows.find((r) => r.code === code)).toMatchObject({
         is_urgent: true,
         user_configurable: false,

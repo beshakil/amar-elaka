@@ -50,6 +50,11 @@ export interface NewLead {
   storeId: string | null;
   targetMemberId: string | null;
   actorMemberId: string | null;
+  /**
+   * The signed-in contact (0057), also when they have no membership in this
+   * tenant yet (actorMemberId is then null): the proof a review needs.
+   */
+  actorUserId: string | null;
   viewerKey: string;
 }
 
@@ -258,10 +263,23 @@ export class EngagementRepository {
   async insertLead(tx: DatabaseTransaction, lead: NewLead): Promise<void> {
     await tx.execute(sql`
       insert into public.lead_events
-        (channel_code, source_code, post_id, store_id, target_member_id, actor_member_id, anon_session_hash)
+        (channel_code, source_code, post_id, store_id, target_member_id, actor_member_id, actor_user_id,
+         anon_session_hash)
       values
         (${lead.channel}, ${lead.source}, ${lead.postId}::uuid, ${lead.storeId}::uuid,
-         ${lead.targetMemberId}::uuid, ${lead.actorMemberId}::uuid, ${lead.viewerKey})`);
+         ${lead.targetMemberId}::uuid, ${lead.actorMemberId}::uuid, ${lead.actorUserId}::uuid,
+         ${lead.viewerKey})`);
+  }
+
+  /** The author's verification level (0058, the one rule). */
+  async memberLevel(tx: DatabaseTransaction, memberId: string): Promise<string> {
+    const rows = await tx.execute(
+      sql`select public.verification_level_of_member(${memberId}::uuid) as level`,
+    );
+    return z
+      .array(z.object({ level: z.string() }))
+      .length(1)
+      .parse([...rows])[0]!.level;
   }
 
   /** report_post (0031): files the caller's report; may auto-hide the post. */

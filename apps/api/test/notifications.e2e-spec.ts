@@ -318,7 +318,7 @@ describe('Notifications (e2e)', () => {
     );
     expect(held).toMatchObject({ channels: ['push'], deferredUntil: MORNING });
     const urgent = await dispatcher.dispatch(
-      notify(4, { type: 'ban_issued', params: { reasonCode: 'spam' } }),
+      notify(4, { type: 'ban_issued', params: { reference: 'BN-0A1B2C3D4E', until: null } }),
       NIGHT,
     );
     expect(urgent.channels).toEqual(['push', 'sms']);
@@ -341,7 +341,8 @@ describe('Notifications (e2e)', () => {
     // The urgent SMS goes now, in Bengali, billed to the tenant.
     expect(await dispatcher.deliver(smsNow!.id)).toBe('sent');
     expect(sms.at(-1)!.text).toBe(
-      'আমার এলাকা: আপনার অ্যাকাউন্টে নিষেধাজ্ঞা দেওয়া হয়েছে। কারণ: স্প্যাম। অ্যাপে আপিল করতে পারেন।',
+      // 0059 (ADR 063): the reference — a terminated person appeals with it, without the app.
+      'আমার এলাকা: আপনার অ্যাকাউন্টে নিষেধাজ্ঞা দেওয়া হয়েছে। রেফারেন্স BN-0A1B2C3D4E। আপিল করতে পারেন।',
     );
     const [billed] = await admin<
       { billed_tenant_id: string; sms_segments: number; recipient_masked: string }[]

@@ -3,7 +3,10 @@ import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../features/account_ban/presentation/ban_screens.dart';
+import '../../features/account_ban/presentation/complaint_screens.dart';
 import '../../features/auth/application/auth_controller.dart';
+import '../network/account_gate.dart';
 import '../../features/auth/presentation/email_login_screen.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/otp_verify_screen.dart';
@@ -30,6 +33,7 @@ import '../../features/tenant_bootstrap/presentation/tenant_confirm_screen.dart'
 import '../../features/tenant_bootstrap/presentation/tenant_picker_screen.dart';
 import '../../features/chat/presentation/chat_inbox_screen.dart';
 import '../../features/chat/presentation/conversation_screen.dart';
+import '../../features/reviews/presentation/review_screens.dart';
 import '../../features/notifications/presentation/notification_preferences_screen.dart';
 import '../../features/notifications/presentation/notifications_screen.dart';
 import '../../features/notifications/presentation/push_rationale.dart';
@@ -45,6 +49,7 @@ import '../../features/my_store/presentation/stock_screen.dart';
 import '../../features/saved/presentation/saved_screen.dart';
 import '../../features/seller_dashboard/presentation/seller_dashboard_screen.dart';
 import '../../features/store/presentation/store_screen.dart';
+import '../../features/verification/presentation/verification_screens.dart';
 import 'app_shell.dart';
 import 'redirect_logic.dart';
 import 'route_paths.dart';
@@ -58,6 +63,7 @@ class _RouterRefreshNotifier extends ChangeNotifier {
   _RouterRefreshNotifier(Ref ref) {
     ref.listen(tenantBootstrapControllerProvider, (_, _) => notifyListeners());
     ref.listen(authControllerProvider, (_, _) => notifyListeners());
+    ref.listen(accountGateProvider, (_, _) => notifyListeners());
   }
 }
 
@@ -73,6 +79,7 @@ GoRouter appRouter(Ref ref) {
       tenantState: ref.read(tenantBootstrapControllerProvider),
       authState: ref.read(authControllerProvider),
       location: state.matchedLocation,
+      accountGate: ref.read(accountGateProvider),
     ),
     routes: [
       GoRoute(
@@ -194,6 +201,16 @@ GoRouter appRouter(Ref ref) {
         ],
       ),
       GoRoute(
+        path: '${RoutePaths.storeReviews}/:storeId',
+        builder: (context, state) =>
+            StoreReviewsScreen(storeId: state.pathParameters['storeId']!),
+      ),
+      GoRoute(
+        path: '${RoutePaths.writeReview}/:storeId',
+        builder: (context, state) =>
+            WriteReviewScreen(storeId: state.pathParameters['storeId']!),
+      ),
+      GoRoute(
         path: RoutePaths.pushRationale,
         builder: (context, state) => const PushRationaleScreen(),
       ),
@@ -249,7 +266,33 @@ GoRouter appRouter(Ref ref) {
             builder: (context, state) =>
                 SellerDashboardScreen(storeId: state.pathParameters['id']!),
           ),
+          GoRoute(
+            path: ':id/verification',
+            builder: (context, state) =>
+                StoreVerificationScreen(storeId: state.pathParameters['id']!),
+          ),
         ],
+      ),
+      GoRoute(
+        path: RoutePaths.banNotice,
+        builder: (context, state) => const BanNoticeScreen(),
+      ),
+      GoRoute(
+        path: '/account/appeal/:targetId',
+        builder: (context, state) =>
+            AppealScreen(targetId: state.pathParameters['targetId']!),
+      ),
+      GoRoute(
+        path: RoutePaths.publicAppeal,
+        builder: (context, state) => const PublicAppealScreen(),
+      ),
+      GoRoute(
+        path: RoutePaths.myComplaints,
+        builder: (context, state) => const MyComplaintsScreen(),
+      ),
+      GoRoute(
+        path: RoutePaths.verification,
+        builder: (context, state) => const VerificationScreen(),
       ),
       // Debug-only: `kDebugMode` is a compile-time constant, so this branch
       // (and DesignSystemScreen's tree) is tree-shaken out of release builds.

@@ -24,9 +24,20 @@ export const NOTIFICATION_TYPES = [
   'store_suspended',
   'store_reinstated',
   'store_import_finished',
+  'review_prompt',
+  'verification_approved',
+  'verification_rejected',
+  'verification_expiring',
+  'verification_expired',
   'new_message',
   'ban_issued',
   'appeal_decided',
+  'ban_lifted',
+  'appeal_received',
+  'blacklist_recommended',
+  'complaint_assigned',
+  'complaint_sla_breached',
+  'complaint_resolved',
 ] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
 

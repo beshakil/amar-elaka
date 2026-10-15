@@ -1,6 +1,8 @@
 import 'package:amar_elaka_app/core/design/app_theme.dart';
 import 'package:amar_elaka_app/core/design/widgets/network_photo.dart';
 import 'package:amar_elaka_app/core/map/base_map.dart';
+import 'package:amar_elaka_app/features/auth/application/auth_controller.dart';
+import 'package:amar_elaka_app/features/reviews/data/reviews_api.dart';
 import 'package:amar_elaka_app/features/seller_dashboard/data/seller_analytics_api.dart';
 import 'package:amar_elaka_app/features/seller_dashboard/presentation/seller_dashboard_screen.dart';
 import 'package:amar_elaka_app/features/store/data/store_api.dart';
@@ -13,6 +15,7 @@ import 'package:flutter_test/flutter_test.dart';
 import '../../feed/feed_test_harness.dart';
 import '../../feed/goldens/feed_golden_test.dart' show decodeImages;
 import '../../post/goldens/golden_fonts.dart';
+import '../../reviews/review_test_fakes.dart';
 import '../store_test_fakes.dart';
 
 /// The store page and the seller dashboard in Bengali, light and dark, with
@@ -35,6 +38,8 @@ void main() {
       ProviderScope(
         overrides: [
           storeApiProvider.overrideWithValue(FakeStoreApi(storePage())),
+          reviewsApiProvider.overrideWithValue(FakeReviewsApi()),
+          authControllerProvider.overrideWith(GuestAuthController.new),
           sellerAnalyticsApiProvider.overrideWithValue(
             FakeSellerAnalyticsApi(),
           ),
@@ -66,7 +71,7 @@ void main() {
         tester,
         theme,
         const StoreScreen(slug: 'rahim-electronics'),
-        const Size(1080, 3400),
+        const Size(1080, 5600),
       );
       expect(find.text('এখন খোলা'), findsOneWidget);
       expect(find.text('স্টকে নেই'), findsOneWidget);

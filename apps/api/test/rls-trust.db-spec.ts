@@ -234,6 +234,8 @@ describe('Row level security: trust domain (0010)', () => {
       await admin`delete from verification_requests where id::text like ${FIXTURE_PREFIX}`;
       await admin`delete from review_responses where tenant_id::text like ${FIXTURE_PREFIX}`;
       await admin`delete from reviews where tenant_id::text like ${FIXTURE_PREFIX}`;
+      await admin`delete from store_seller_scores where tenant_id::text like ${FIXTURE_PREFIX}`;
+      await admin`delete from review_prompts where tenant_id::text like ${FIXTURE_PREFIX}`;
       await admin`delete from stores where tenant_id::text like ${FIXTURE_PREFIX}`;
       await admin`delete from posts where tenant_id::text like ${FIXTURE_PREFIX}`;
       await admin`delete from category_field_schemas where id::text like ${FIXTURE_PREFIX}`;
@@ -265,32 +267,35 @@ describe('Row level security: trust domain (0010)', () => {
       expect(asTenantB).toHaveLength(0);
     });
 
-    it('lets the reviewer update/soft-delete their own review, not the reviewed target', async () => {
-      const asReviewer = await withContext(
-        app,
-        AS_STRANGER,
-        (tx) => tx`update reviews set body = 'Updated my mind' where id = ${REVIEW_1}`,
-      );
-      expect(asReviewer.count).toBe(1);
-
-      // Alice owns the reviewed store but is not the reviewer — "the review
-      // target can't edit or hide reviews" (spec).
-      await expectNoRowsAffected(
-        withContext(
+    // 0057 (ADR 061): no direct write by anyone in the app role — the
+    // reviewer edits through edit_review (the window), the store reports and
+    // never deletes, staff decide through decide_review (moderation_actions).
+    it('lets nobody write a review row directly: reviewer, reviewed target, staff', async () => {
+      for (const who of [AS_STRANGER, AS_ALICE, AS_ADMIN]) {
+        const denied = await withContext(
           app,
-          AS_ALICE,
+          who,
           (tx) => tx`update reviews set body = 'hijacked' where id = ${REVIEW_1}`,
-        ),
-      );
+        ).then(
+          () => 'allowed',
+          (e: unknown) => (e as { code?: string }).code,
+        );
+        expect(denied).toBe('42501');
+      }
+      const [row] = await admin<
+        { body: string | null }[]
+      >`select body from reviews where id = ${REVIEW_1}`;
+      expect(row!.body).not.toBe('hijacked');
     });
 
-    it('lets staff moderate it', async () => {
-      const result = await withContext(
+    it('lets staff read it, whatever its status', async () => {
+      await admin`update reviews set status_code = 'pending' where id = ${REVIEW_1}`;
+      const rows = await withContext(
         app,
         AS_ADMIN,
-        (tx) => tx`update reviews set status_code = 'hidden' where id = ${REVIEW_1}`,
+        (tx) => tx`select id from reviews where id = ${REVIEW_1}`,
       );
-      expect(result.count).toBe(1);
+      expect(rows).toHaveLength(1);
       await admin`update reviews set status_code = 'published' where id = ${REVIEW_1}`;
     });
   });
@@ -305,22 +310,19 @@ describe('Row level security: trust domain (0010)', () => {
       expect(rows).toHaveLength(1);
     });
 
-    it("lets the reviewed target's owner write it, not the reviewer or a stranger", async () => {
-      const asOwner = await withContext(
-        app,
-        AS_ALICE,
-        (tx) =>
-          tx`update review_responses set body = 'Thanks again!' where id = ${REVIEW_RESPONSE_1}`,
-      );
-      expect(asOwner.count).toBe(1);
-
-      await expectNoRowsAffected(
-        withContext(
+    // 0057: written only through respond_to_review (owner or accepted manager).
+    it('lets nobody write it directly, the target owner included', async () => {
+      for (const who of [AS_ALICE, AS_STRANGER]) {
+        const denied = await withContext(
           app,
-          AS_STRANGER,
+          who,
           (tx) => tx`update review_responses set body = 'hijacked' where id = ${REVIEW_RESPONSE_1}`,
-        ),
-      );
+        ).then(
+          () => 'allowed',
+          (e: unknown) => (e as { code?: string }).code,
+        );
+        expect(denied).toBe('42501');
+      }
     });
   });
 
@@ -520,15 +522,27 @@ describe('Row level security: trust domain (0010)', () => {
       expect(rows[0]?.severity_code).toBe('restricted');
     });
 
-    it('lets a tenant_admin revoke, not a plain member', async () => {
-      const result = await withContext(
+    // Since 0059 (ADR 063) a ban changes only through its functions: no
+    // direct write for anyone; the area's admin lifts with lift_ban().
+    it('refuses a direct write even to a tenant_admin; lift_ban() revokes', async () => {
+      await expect(
+        withContext(
+          app,
+          AS_ADMIN,
+          (tx) =>
+            tx`update bans set status_code = 'revoked', revoked_at = now(), revoked_by_user_id = ${USER_ADMIN}, revoke_reason = 'appeal granted'
+               where id = ${BAN_1}`,
+        ),
+      ).rejects.toMatchObject({ code: '42501' });
+      const [lifted] = await withContext(
         app,
         AS_ADMIN,
         (tx) =>
-          tx`update bans set status_code = 'revoked', revoked_at = now(), revoked_by_user_id = ${USER_ADMIN}, revoke_reason = 'appeal granted'
-             where id = ${BAN_1}`,
+          tx<
+            { reference_code: string }[]
+          >`select reference_code from public.lift_ban(${BAN_1}::uuid, 'appeal granted')`,
       );
-      expect(result.count).toBe(1);
+      expect(lifted!.reference_code).toMatch(/^BN-/);
     });
   });
 
@@ -556,13 +570,16 @@ describe('Row level security: trust domain (0010)', () => {
       expect(asOtherTenant).toHaveLength(0);
     });
 
-    it('lets the tenant_admin of the ban decide it while still queued', async () => {
-      const result = await withContext(
-        app,
-        AS_ADMIN,
-        (tx) => tx`update ban_appeals set status_code = 'in_review' where id = ${BAN_APPEAL_1}`,
-      );
-      expect(result.count).toBe(1);
+    // Since 0059 an appeal is decided only through decide_appeal(), which
+    // never lets the area be the final judge of its own ban (ADR 063).
+    it('refuses a direct write even to the tenant_admin of the ban', async () => {
+      await expect(
+        withContext(
+          app,
+          AS_ADMIN,
+          (tx) => tx`update ban_appeals set status_code = 'in_review' where id = ${BAN_APPEAL_1}`,
+        ),
+      ).rejects.toMatchObject({ code: '42501' });
     });
   });
 

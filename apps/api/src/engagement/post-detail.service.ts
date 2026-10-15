@@ -10,6 +10,8 @@ import { isStaffRole, visibilityOf, type PostViewer } from '../posts/post-visibi
 import { PostNotFoundException } from '../posts/posts.exceptions';
 import { PostsRepository, type PostMediaRow, type PostRow } from '../posts/posts.repository';
 import { SettingsService } from '../settings/settings.service';
+import { SellerScoreService } from '../reviews/seller-score.service';
+import type { SellerTier } from '../reviews/seller-score-formula';
 import { STORAGE_SERVICE, type StorageService } from '../storage/storage.ports';
 import { offeredChannels } from './contact-payload';
 import type { PostDetail, PostDetailQuery } from './dto/engagement.dto';
@@ -46,6 +48,7 @@ export class PostDetailService {
     private readonly feed: FeedService,
     private readonly settings: SettingsService,
     @Inject(STORAGE_SERVICE) private readonly storage: StorageService,
+    private readonly scores: SellerScoreService,
   ) {}
 
   async detail(postId: string, query: PostDetailQuery): Promise<PostDetail> {
@@ -91,6 +94,9 @@ export class PostDetailService {
             detail: await this.repo.detail(tx, postId, viewerAt),
             media: await this.posts.mediaOf(tx, [postId]),
             seller: await this.repo.sellerCard(tx, postId, trustedMin),
+            authorLevel: row.author_member_id
+              ? await this.repo.memberLevel(tx, row.author_member_id)
+              : 'none',
             counts: viewer === 'public' ? undefined : await this.repo.counts(tx, postId),
             slug: await this.repo.tenantSlug(tx, tenantId),
             saved: signedIn ? await this.repo.isSaved(tx, postId) : false,
@@ -106,7 +112,7 @@ export class PostDetailService {
     });
     if (!found) throw new PostNotFoundException();
 
-    const { row, viewer, detail, media, seller, counts, slug, code, saved } = found;
+    const { row, viewer, detail, media, seller, counts, slug, code, saved, authorLevel } = found;
     const similar =
       row.status_code === 'live' && row.lat !== null && row.lng !== null
         ? await this.feed.similarPosts({
@@ -143,7 +149,11 @@ export class PostDetailService {
           ? null
           : { bn: detail.area_bn, en: detail.area_en },
       distanceMeters: detail.distance_m === null ? null : Math.round(detail.distance_m),
-      seller: toSeller(seller),
+      seller: toSeller(
+        seller,
+        authorLevel,
+        seller?.store_id ? await this.scores.tier(tenantId, seller.store_id) : 'new',
+      ),
       contact: {
         name: row.contact_name,
         channels: offeredChannels({
@@ -214,11 +224,16 @@ function localized(text: { bn?: string | undefined; en?: string | undefined }): 
   return { bn: text.bn ?? null, en: text.en ?? null };
 }
 
-function toSeller(row: SellerRow | undefined): PostDetail['seller'] {
+function toSeller(
+  row: SellerRow | undefined,
+  authorLevel: string,
+  tier: SellerTier,
+): PostDetail['seller'] {
   if (!row) return { name: null, memberSince: null, badges: [], store: null, responseHint: null };
   const badges: PostDetail['seller']['badges'] = [];
   if (row.trusted) badges.push('trusted');
   if (row.phone_verified) badges.push('phone_verified');
+  if (authorLevel === 'identity_checked') badges.push('identity_checked');
   if (row.store_verified) badges.push('verified_store');
   return {
     name: row.display_name,
@@ -231,6 +246,7 @@ function toSeller(row: SellerRow | undefined): PostDetail['seller'] {
             slug: row.store_slug,
             name: { bn: row.store_name_bn, en: row.store_name_en },
             verified: row.store_verified ?? false,
+            tier,
           }
         : null,
     responseHint:

@@ -122,6 +122,8 @@ describe('Business hours and open now (0044)', () => {
     await admin`delete from store_hours where tenant_id::text like ${FIXTURE}`;
     await admin`delete from place_hours where tenant_id::text like ${FIXTURE}`;
     await admin`update places set claimed_by_member_id = null where tenant_id::text like ${FIXTURE}`;
+    await admin`delete from store_seller_scores where tenant_id::text like ${FIXTURE}`;
+    await admin`delete from review_prompts where tenant_id::text like ${FIXTURE}`;
     await admin`delete from stores where tenant_id::text like ${FIXTURE}`;
     await admin`delete from places where tenant_id::text like ${FIXTURE}`;
     if (ids.length > 0) await admin`delete from outbox_events where aggregate_id in ${admin(ids)}`;

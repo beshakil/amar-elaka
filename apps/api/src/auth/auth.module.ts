@@ -2,7 +2,9 @@ import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { APP_CONFIG } from '../config/config.module';
 import type { Env } from '../config/env.schema';
+import { CacheModule } from '../cache/cache.module';
 import { SettingsModule } from '../settings/settings.module';
+import { BanStateService } from './ban-state.service';
 import { AuthController } from './auth.controller';
 import { AuthRepository } from './auth.repository';
 import { AuthService } from './auth.service';
@@ -19,6 +21,7 @@ import { TokenService } from './tokens/token.service';
 @Module({
   imports: [
     SettingsModule,
+    CacheModule,
     SmsProviderModule,
     JwtModule.registerAsync({
       inject: [APP_CONFIG],
@@ -39,12 +42,14 @@ import { TokenService } from './tokens/token.service';
     GoogleTokenVerifierService,
     JwtAuthGuard,
     OptionalJwtAuthGuard,
+    BanStateService,
   ],
   // JwtAuthGuard is reused outside this module (@UseGuards in RbacModule and
   // StorageModule, and by PlatformAdminGuard). A guard named in @UseGuards is
   // constructed in the *consuming* module's scope, so its own dependency —
   // TokenService — must be exported too, or that module cannot build it.
-  // OtpService: the place-claim OTP (PlacesModule, ADR 047).
-  exports: [JwtAuthGuard, TokenService, OtpService],
+  // OtpService: the place-claim OTP (PlacesModule, ADR 047) and the public
+  // appeal OTP (BansModule). BanStateService: both JWT guards read it (ADR 063).
+  exports: [JwtAuthGuard, OptionalJwtAuthGuard, TokenService, OtpService, BanStateService],
 })
 export class AuthModule {}

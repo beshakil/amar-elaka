@@ -75,7 +75,29 @@ abstract final class RoutePaths {
   static String sellerDashboardFor(String storeId) =>
       '$myStore/$storeId/dashboard';
 
+  /// Bans and appeals (ADR 063): the notice (also the ban notifications'
+  /// deep link), one ban's appeal, and the public appeal path for a
+  /// terminated person (no session).
+  static const String banNotice = '/account/bans';
+  static String appealFor(String targetId) => '/account/appeal/$targetId';
+  static const String publicAppeal = '/appeal';
+
+  /// "আমার অভিযোগ" (the complaint_resolved deep link, `/complaints`).
+  static const String myComplaints = '/complaints';
+
+  /// Verification (ADR 062): the member's own identity, and a store's
+  /// business verification (its owner only).
+  static const String verification = '/verification';
+  static String storeVerificationFor(String storeId) =>
+      '$myStore/$storeId/verification';
+
   /// "এলাকার ম্যাপ ডাউনলোড" (ADR 050).
+  // Reviews (ADR 061): a store's full list, and writing (or editing) one.
+  static const String storeReviews = '/store-reviews';
+  static String storeReviewsFor(String storeId) => '$storeReviews/$storeId';
+  static const String writeReview = '/write-review';
+  static String writeReviewFor(String storeId) => '$writeReview/$storeId';
+
   static const String offlineMap = '/offline-map';
 
   static const String designSystem = '/design-system';

@@ -3,7 +3,7 @@ import { cache } from 'react';
 import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import { apiFetch } from '../api/fetch';
-import { meSchema, type Me } from '../api/schemas';
+import { banNoticesSchema, meSchema, type BanNotice, type Me } from '../api/schemas';
 import { currentTenantId } from '../tenant';
 import { readSession, type Session } from './session';
 
@@ -11,6 +11,8 @@ export interface Viewer {
   me: Me;
   session: Session;
   tenantId: string;
+  /** The account's bans (ADR 063): a restricted seller sees a banner; a banned one never gets here. */
+  bans: BanNotice[];
 }
 
 /**
@@ -28,13 +30,14 @@ export const requireViewer = cache(async (): Promise<Viewer> => {
   const toLogin = `/login?next=${encodeURIComponent(here)}` as Route;
   if (!session || !tenantId) redirect(toLogin);
   try {
-    const me = await apiFetch({
-      path: '/auth/me',
-      schema: meSchema,
-      tenantId,
-      accessToken: session.accessToken,
-    });
-    return { me, session, tenantId };
+    const auth = { tenantId, accessToken: session.accessToken };
+    const [me, bans] = await Promise.all([
+      apiFetch({ path: '/auth/me', schema: meSchema, ...auth }),
+      apiFetch({ path: '/account/bans', schema: banNoticesSchema, ...auth }),
+    ]);
+    // Banned: nothing but the notice and the appeal answers (schema.md §9.10).
+    if (bans.items.some((b) => b.severity !== 'restricted')) redirect('/account/bans');
+    return { me, session, tenantId, bans: bans.items };
   } catch (error) {
     if (
       error instanceof Error &&

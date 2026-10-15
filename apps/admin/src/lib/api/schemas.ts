@@ -264,3 +264,305 @@ export const moderationResultSchema = z.object({
   status: z.string(),
   scrubbed: z.boolean(),
 });
+
+// ---- verification (ADR 062) -------------------------------------------------
+
+const verificationStatus = z.enum([
+  'submitted',
+  'in_review',
+  'approved',
+  'rejected',
+  'expired',
+  'revoked',
+]);
+const verificationLevel = z.enum(['identity_checked', 'business_verified']);
+export const verificationQueueItemSchema = z.object({
+  id: z.string(),
+  subjectType: z.enum(['member', 'store']),
+  subjectId: z.string(),
+  subjectName: z.string().nullable(),
+  level: verificationLevel,
+  status: verificationStatus,
+  nidLast3: z.string().nullable(),
+  nidDuplicate: z.boolean(),
+  visitStatus: z.enum(['not_needed', 'requested', 'done']),
+  evidenceCount: z.number(),
+  createdAt: z.string(),
+});
+export type VerificationQueueItem = z.infer<typeof verificationQueueItemSchema>;
+export const verificationQueueSchema = z.object({
+  items: z.array(verificationQueueItemSchema),
+  nextAfter: z.string().nullable(),
+});
+export const verificationDetailSchema = verificationQueueItemSchema.extend({
+  note: z.string().nullable(),
+  rejectionReason: z
+    .enum([
+      'document_unclear',
+      'document_expired',
+      'name_mismatch',
+      'suspected_fraud',
+      'duplicate_submission',
+      'other',
+    ])
+    .nullable(),
+  expiresAt: z.string().nullable(),
+  documentsPurged: z.boolean(),
+  ownerLevel: z
+    .enum(['none', 'phone_verified', 'identity_checked', 'business_verified'])
+    .nullable(),
+  urlExpiresInSeconds: z.number(),
+  evidence: z.array(
+    z.object({
+      kind: z.enum(['selfie', 'trade_licence', 'shop_front', 'visit_photo']),
+      mimeType: z.string().nullable(),
+      url: z.string().nullable(),
+      previewUrl: z.string().nullable(),
+      purged: z.boolean(),
+    }),
+  ),
+  history: z.array(
+    z.object({
+      id: z.string(),
+      status: verificationStatus,
+      createdAt: z.string(),
+      reviewedAt: z.string().nullable(),
+      rejectionReason: z.string().nullable(),
+    }),
+  ),
+});
+export type VerificationDetail = z.infer<typeof verificationDetailSchema>;
+export const verificationDecisionResultSchema = z.object({
+  status: verificationStatus,
+  expiresAt: z.string().nullable(),
+});
+
+export type _VerificationContract = [
+  Assert<Accepts<z.infer<typeof verificationQueueSchema>, Api['VerificationQueueDto']>>,
+  Assert<Accepts<VerificationDetail, Api['VerificationDetailDto']>>,
+  Assert<
+    Accepts<z.infer<typeof verificationDecisionResultSchema>, Api['VerificationDecisionResultDto']>
+  >,
+];
+
+// ---- Bans, appeals, blacklist, complaints (ADR 063; apps/api/src/bans/dto/bans.dto.ts) ----
+
+export const BAN_REASONS = [
+  'scam',
+  'harassment',
+  'spam',
+  'fake_listings',
+  'payment_fraud',
+  'identity_fraud',
+  'repeated_violations',
+  'other',
+] as const;
+export const BLACKLIST_REASONS = [
+  'advance_payment_scam',
+  'fake_product',
+  'identity_fraud',
+  'harassment',
+  'payment_fraud',
+] as const;
+export const BLACKLIST_SEVERITIES = ['watch', 'restricted', 'banned', 'terminated'] as const;
+export const COMPLAINT_PRIORITIES = ['low', 'normal', 'high', 'urgent'] as const;
+export const EVIDENCE_TYPES = [
+  'report',
+  'message',
+  'post',
+  'review',
+  'payment',
+  'media_asset',
+  'support_ticket',
+  'complaint',
+  'conversation',
+] as const;
+const appealStatus = z.enum([
+  'submitted',
+  'in_review',
+  'escalated',
+  'upheld',
+  'granted',
+  'reduced',
+  'withdrawn',
+]);
+const evidenceRefs = z.array(z.object({ type: z.string(), id: z.string() }));
+
+export const banListSchema = z.object({
+  items: z.array(
+    z.object({
+      id: z.string(),
+      reference: z.string(),
+      userId: z.string(),
+      displayName: z.string().nullable(),
+      severity: z.enum(['restricted', 'banned']),
+      reasonCode: z.enum(BAN_REASONS),
+      reasonText: z.string(),
+      evidence: evidenceRefs,
+      permanent: z.boolean(),
+      startsAt: z.string(),
+      expiresAt: z.string().nullable(),
+      escalationStep: z.number(),
+      status: z.enum(['active', 'expired', 'revoked', 'superseded']),
+      bannedByName: z.string().nullable(),
+      revokeReason: z.string().nullable(),
+      openAppeal: z.boolean(),
+    }),
+  ),
+  nextAfter: z.string().nullable(),
+});
+export type BanListItem = z.infer<typeof banListSchema>['items'][number];
+
+export const banMemberLookupSchema = z.object({
+  items: z.array(
+    z.object({
+      userId: z.string(),
+      displayName: z.string().nullable(),
+      role: z.string(),
+      banSeverity: z.string().nullable(),
+      priorBans: z.number(),
+    }),
+  ),
+});
+export type BanMember = z.infer<typeof banMemberLookupSchema>['items'][number];
+
+export const issuedBanSchema = z.object({
+  id: z.string(),
+  reference: z.string(),
+  startsAt: z.string(),
+  expiresAt: z.string().nullable(),
+  permanent: z.boolean(),
+  escalationStep: z.number(),
+});
+
+export const appealQueueSchema = z.object({
+  items: z.array(
+    z.object({
+      id: z.string(),
+      reference: z.string(),
+      status: appealStatus,
+      queue: z.enum(['tenant_admin', 'platform']),
+      channel: z.enum(['in_app', 'public_otp']),
+      statement: z.string(),
+      submittedAt: z.string(),
+      escalateAt: z.string().nullable(),
+      escalatedAt: z.string().nullable(),
+      escalationReason: z.enum(['timeout', 'tenant_upheld']).nullable(),
+      tenantRecommendation: z.literal('uphold').nullable(),
+      tenantNote: z.string().nullable(),
+      kind: z.enum(['area', 'platform']),
+      targetId: z.string(),
+      targetReference: z.string(),
+      severity: z.string(),
+      reasonCode: z.string(),
+      reasonText: z.string(),
+      evidence: evidenceRefs,
+      permanent: z.boolean(),
+      expiresAt: z.string().nullable(),
+      areaName: z.string().nullable(),
+      appellantUserId: z.string(),
+      appellantName: z.string().nullable(),
+    }),
+  ),
+  nextAfter: z.string().nullable(),
+});
+export type AppealQueueItem = z.infer<typeof appealQueueSchema>['items'][number];
+export const appealDecisionResultSchema = z.object({
+  status: appealStatus,
+  replacementReference: z.string().nullable(),
+  replacementUntil: z.string().nullable(),
+});
+
+export const blacklistPageSchema = z.object({
+  items: z.array(
+    z.object({
+      id: z.string(),
+      reference: z.string(),
+      userId: z.string().nullable(),
+      displayName: z.string().nullable(),
+      reasonCode: z.enum(BLACKLIST_REASONS),
+      severity: z.enum(BLACKLIST_SEVERITIES),
+      status: z.enum(['recommended', 'active', 'rejected', 'revoked', 'expired']),
+      summary: z.string(),
+      evidence: evidenceRefs,
+      expiresAt: z.string().nullable(),
+      sourceAreaName: z.string().nullable(),
+      recommendedByName: z.string().nullable(),
+      createdAt: z.string(),
+      reviewedAt: z.string().nullable(),
+      reviewNote: z.string().nullable(),
+    }),
+  ),
+  nextAfter: z.string().nullable(),
+});
+export type BlacklistItem = z.infer<typeof blacklistPageSchema>['items'][number];
+export const blacklistRecommendedSchema = z.object({ id: z.string(), reference: z.string() });
+export const blacklistDecisionResultSchema = z.object({
+  status: z.enum(['recommended', 'active', 'rejected', 'revoked', 'expired']),
+});
+export const revokedSchema = z.object({ status: z.literal('revoked') });
+
+export const complaintQueueSchema = z.object({
+  items: z.array(
+    z.object({
+      id: z.string(),
+      reference: z.string(),
+      subjectType: z.enum(['user', 'store']),
+      subjectId: z.string(),
+      subjectUserId: z.string(),
+      subjectName: z.string().nullable(),
+      subjectBanSeverity: z.string().nullable(),
+      reporterName: z.string().nullable(),
+      category: z.enum(['fake_seller', 'scam', 'abuse', 'other']),
+      priority: z.enum(COMPLAINT_PRIORITIES),
+      status: z.enum(['pending', 'in_progress', 'resolved']),
+      description: z.string(),
+      evidence: evidenceRefs,
+      assignedToUserId: z.string().nullable(),
+      assignedToName: z.string().nullable(),
+      dueAt: z.string(),
+      overdue: z.boolean(),
+      createdAt: z.string(),
+      resolution: z.string().nullable(),
+      resolvedAt: z.string().nullable(),
+      banId: z.string().nullable(),
+    }),
+  ),
+  nextAfter: z.string().nullable(),
+});
+export type ComplaintItem = z.infer<typeof complaintQueueSchema>['items'][number];
+export const complaintAssigneesSchema = z.object({
+  items: z.array(
+    z.object({
+      userId: z.string(),
+      displayName: z.string().nullable(),
+      role: z.string(),
+      openCount: z.number(),
+    }),
+  ),
+});
+export type ComplaintAssignee = z.infer<typeof complaintAssigneesSchema>['items'][number];
+export const complaintUpdatedSchema = z.object({
+  reference: z.string(),
+  status: z.enum(['pending', 'in_progress', 'resolved']),
+  priority: z.enum(COMPLAINT_PRIORITIES),
+  assignedToUserId: z.string().nullable(),
+  dueAt: z.string(),
+});
+export const complaintResolvedSchema = z.object({ status: z.literal('resolved') });
+
+export type _BansContract = [
+  Assert<Accepts<z.infer<typeof banListSchema>, Api['BanListDto']>>,
+  Assert<Accepts<z.infer<typeof banMemberLookupSchema>, Api['BanMemberLookupDto']>>,
+  Assert<Accepts<z.infer<typeof issuedBanSchema>, Api['IssuedBanDto']>>,
+  Assert<Accepts<z.infer<typeof appealQueueSchema>, Api['AppealQueueDto']>>,
+  Assert<Accepts<z.infer<typeof appealDecisionResultSchema>, Api['AppealDecisionResultDto']>>,
+  Assert<Accepts<z.infer<typeof blacklistPageSchema>, Api['BlacklistPageDto']>>,
+  Assert<Accepts<z.infer<typeof blacklistRecommendedSchema>, Api['BlacklistRecommendedDto']>>,
+  Assert<Accepts<z.infer<typeof blacklistDecisionResultSchema>, Api['BlacklistDecisionResultDto']>>,
+  Assert<Accepts<z.infer<typeof revokedSchema>, Api['LiftedBanDto']>>,
+  Assert<Accepts<z.infer<typeof complaintQueueSchema>, Api['ComplaintQueueDto']>>,
+  Assert<Accepts<z.infer<typeof complaintAssigneesSchema>, Api['ComplaintAssigneesDto']>>,
+  Assert<Accepts<z.infer<typeof complaintUpdatedSchema>, Api['ComplaintUpdatedDto']>>,
+  Assert<Accepts<z.infer<typeof complaintResolvedSchema>, Api['ComplaintResolvedDto']>>,
+];

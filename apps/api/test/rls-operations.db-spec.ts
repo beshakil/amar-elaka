@@ -218,6 +218,8 @@ describe('Row level security: operations domain (0012)', () => {
   afterAll(async () => {
     try {
       await admin`delete from agent_cash_remittances where tenant_id::text like ${FIXTURE_PREFIX}`;
+      await admin`delete from store_seller_scores where tenant_id::text like ${FIXTURE_PREFIX}`;
+      await admin`delete from review_prompts where tenant_id::text like ${FIXTURE_PREFIX}`;
       await admin`delete from stores where tenant_id::text like ${FIXTURE_PREFIX}`;
       await admin`delete from legal_holds where id::text like ${FIXTURE_PREFIX}`;
       await admin`delete from posts where tenant_id::text like ${FIXTURE_PREFIX}`;

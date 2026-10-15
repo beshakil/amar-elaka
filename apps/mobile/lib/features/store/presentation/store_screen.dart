@@ -18,9 +18,12 @@ import '../../../core/platform/external_apps.dart';
 import '../../../core/routing/auth_gate.dart';
 import '../../../core/routing/route_paths.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../account_ban/presentation/complaint_screens.dart';
 import '../../chat/data/chat_api.dart';
 import '../../chat/presentation/open_chat.dart';
 import '../../post_detail/application/contact_actions.dart';
+import '../../reviews/presentation/review_screens.dart';
+import '../../reviews/presentation/widgets/review_widgets.dart';
 import '../../post_detail/presentation/detail_messages.dart';
 import '../../post_detail/presentation/widgets/detail_sheets.dart';
 import '../application/store_page_controller.dart';
@@ -200,6 +203,24 @@ class _StoreBodyState extends ConsumerState<_StoreBody> {
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   _OpenPill(hours: page.hours),
+                  SellerTierBadge(tier: page.sellerTier, dense: true),
+                  if (!page.isVerified && page.ownerIdentityChecked)
+                    Row(
+                      key: const ValueKey('store-owner-identity'),
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.shield_outlined,
+                          size: 16,
+                          color: theme.colorScheme.primary,
+                        ),
+                        const SizedBox(width: AppSpacing.xs),
+                        Text(
+                          l10n.storeOwnerIdentityChecked,
+                          style: theme.textTheme.bodySmall,
+                        ),
+                      ],
+                    ),
                   Text(
                     '${l10n.storeFollowers(n(page.followerCount))} · '
                     '${l10n.storeProductCount(n(page.livePosts))}',
@@ -293,6 +314,23 @@ class _StoreBodyState extends ConsumerState<_StoreBody> {
                           ),
                     ),
                   ),
+                  // A complaint about the store itself (ADR 063), not one post.
+                  IconButton.outlined(
+                    key: const ValueKey('store-complain'),
+                    tooltip: l10n.complaintAction,
+                    icon: const Icon(Icons.report_outlined),
+                    onPressed: () {
+                      if (!requireLogin(context, ref)) return;
+                      unawaited(
+                        showComplaintSheet(
+                          context,
+                          subjectType: 'store',
+                          subjectId: page.id,
+                          subjectName: page.name.of(locale),
+                        ),
+                      );
+                    },
+                  ),
                 ],
               ),
               if (page.pin case final pin?) ...[
@@ -306,6 +344,8 @@ class _StoreBodyState extends ConsumerState<_StoreBody> {
                   onDirections: () => unawaited(_directions(pin)),
                 ),
               ],
+              const SizedBox(height: AppSpacing.lg),
+              StoreReviewsSection(storeId: page.id),
               const SizedBox(height: AppSpacing.lg),
               Text(l10n.storeCatalogTitle, style: theme.textTheme.titleMedium),
               const SizedBox(height: AppSpacing.xs),

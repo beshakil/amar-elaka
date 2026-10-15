@@ -61,6 +61,22 @@ describe('visibleNav', () => {
   });
 
   it('gives a platform admin the platform set', () => {
-    expect(keys(visibleNav(platformAdmin))).toEqual(['overview', 'tenants', 'roles']);
+    expect(keys(visibleNav(platformAdmin))).toEqual([
+      'overview',
+      'tenants',
+      'platformAppeals',
+      'platformBlacklist',
+      'roles',
+    ]);
+  });
+
+  it('opens moderation to an executive who only works complaints (ADR 063)', () => {
+    const executive = {
+      ...tenantAdmin,
+      isPlatformAdmin: false,
+      role: 'executive',
+      grants: [{ module: 'complaints', action: 'read' }],
+    };
+    expect(keys(visibleNav(executive as typeof tenantAdmin))).toContain('moderation');
   });
 });

@@ -77,6 +77,18 @@ export class AccountTerminatedException extends DomainException {
   }
 }
 
+/**
+ * This phone or device belongs to someone on the global blacklist (ADR 063).
+ * Deliberately says no more: which identifier matched is not disclosed.
+ */
+export class AccountBlockedException extends DomainException {
+  readonly code = 'ACCOUNT_BLOCKED';
+  readonly httpStatus = HttpStatus.FORBIDDEN;
+  constructor() {
+    super('This phone or device cannot be used to sign in. You can appeal.');
+  }
+}
+
 // --- Credentials -------------------------------------------------------------
 
 export class InvalidCredentialsException extends DomainException {

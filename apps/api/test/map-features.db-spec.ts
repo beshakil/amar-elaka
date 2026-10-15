@@ -139,6 +139,8 @@ describe('map_features (0039–0041)', () => {
     await admin`delete from place_hours where tenant_id::text like ${FIXTURE}`;
     await admin`delete from posts where tenant_id::text like ${FIXTURE}`;
     await admin`delete from places where tenant_id::text like ${FIXTURE}`;
+    await admin`delete from store_seller_scores where tenant_id::text like ${FIXTURE}`;
+    await admin`delete from review_prompts where tenant_id::text like ${FIXTURE}`;
     await admin`delete from stores where tenant_id::text like ${FIXTURE}`;
     await admin`delete from category_field_schemas where category_id::text like ${FIXTURE}`;
     await admin`delete from categories where id::text like ${FIXTURE} and parent_id is not null`;

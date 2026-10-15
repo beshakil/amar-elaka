@@ -159,6 +159,8 @@ describe('Row level security: stores domain (0006)', () => {
     try {
       await admin`delete from store_follows where tenant_id::text like ${FIXTURE_PREFIX}`;
       await admin`delete from store_members where tenant_id::text like ${FIXTURE_PREFIX}`;
+      await admin`delete from store_seller_scores where tenant_id::text like ${FIXTURE_PREFIX}`;
+      await admin`delete from review_prompts where tenant_id::text like ${FIXTURE_PREFIX}`;
       await admin`delete from stores where tenant_id::text like ${FIXTURE_PREFIX}`;
       await admin`delete from seller_profiles where tenant_id::text like ${FIXTURE_PREFIX}`;
       await admin`delete from tenant_members where tenant_id::text like ${FIXTURE_PREFIX}`;

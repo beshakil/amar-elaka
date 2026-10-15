@@ -65,6 +65,52 @@ import '../data/notifications_api.dart';
       title: l10n.notePlaceEditRejected,
       body: join([p['placeName'], reason]),
     ),
+    'review_prompt' => (title: l10n.noteReviewPrompt, body: p['storeName']),
+    // Bans and appeals (ADR 063): the reference is what the person appeals with.
+    'ban_issued' => (title: l10n.noteBanIssued, body: p['reference']),
+    'ban_lifted' => (title: l10n.noteBanLifted, body: p['reference']),
+    'appeal_decided' => (
+      title: p['granted'] != null
+          ? l10n.noteAppealGranted
+          : p['reduced'] != null
+          ? l10n.noteAppealReduced
+          : l10n.noteAppealUpheld,
+      body: p['reference'],
+    ),
+    'appeal_received' => (title: l10n.noteAppealReceived, body: p['reference']),
+    'blacklist_recommended' => (
+      title: l10n.noteBlacklistRecommended,
+      body: p['reference'],
+    ),
+    'complaint_assigned' => (
+      title: l10n.noteComplaintAssigned,
+      body: p['reference'],
+    ),
+    'complaint_sla_breached' => (
+      title: l10n.noteComplaintOverdue,
+      body: p['reference'],
+    ),
+    'complaint_resolved' => (
+      title: l10n.noteComplaintResolved,
+      body: p['reference'],
+    ),
+    // A store's verification names the store; a member's own names nothing.
+    'verification_approved' => (
+      title: l10n.noteVerificationApproved,
+      body: p['storeName'],
+    ),
+    'verification_rejected' => (
+      title: l10n.noteVerificationRejected,
+      body: p['storeName'],
+    ),
+    'verification_expiring' => (
+      title: l10n.noteVerificationExpiring,
+      body: p['storeName'],
+    ),
+    'verification_expired' => (
+      title: l10n.noteVerificationExpired,
+      body: p['storeName'],
+    ),
     _ => (title: l10n.noteGeneric, body: null),
   };
 }

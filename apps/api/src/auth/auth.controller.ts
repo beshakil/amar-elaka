@@ -29,6 +29,7 @@ import { GoogleAuthDto } from './dto/google-auth.dto';
 import { OtpRequestDto } from './dto/otp-request.dto';
 import { OtpVerifyDto } from './dto/otp-verify.dto';
 import { LogoutDto, RefreshDto } from './dto/refresh.dto';
+import { AppealAllowed } from './ban-access.decorator';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from './guards/optional-jwt-auth.guard';
@@ -118,6 +119,7 @@ export class AuthController {
   }
 
   @Post('logout')
+  @AppealAllowed()
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   @ApiOkResponse({ type: LoggedOutDto })
@@ -127,6 +129,7 @@ export class AuthController {
   }
 
   @Post('logout-all')
+  @AppealAllowed()
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   @ApiOkResponse({ type: LoggedOutDto })
@@ -136,6 +139,7 @@ export class AuthController {
   }
 
   @Get('me')
+  @AppealAllowed()
   @UseGuards(JwtAuthGuard)
   @ApiOkResponse({ type: MeResultDto })
   me(): Promise<MeResult> {

@@ -1,5 +1,6 @@
 import { STORE_CONTACT_CHANNELS } from '../../engagement/store-channels';
 import { z } from 'zod';
+import { SELLER_TIERS } from '../../reviews/seller-score-formula';
 import { createZodDto } from '../../common/pipes/zod-dto';
 import { postCardSchema } from '../../feed/dto/feed.dto';
 import { hoursViewSchema, weeklyHoursSchema } from '../../hours/dto/hours.dto';
@@ -245,6 +246,8 @@ export const storePageSchema = z.object({
   }),
   rating: z.number().nullable(),
   ratingCount: z.number(),
+  /** The seller score as a badge (ADR 061): top | trusted | good | new | none — never the number. */
+  sellerTier: z.enum(SELLER_TIERS),
   followerCount: z.number(),
   stats: z.object({
     followers: z.number(),

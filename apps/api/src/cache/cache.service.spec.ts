@@ -11,6 +11,9 @@ const fakeRedis = {
     return Promise.resolve(1);
   }),
   disconnect: jest.fn(),
+  quit: jest.fn(() => Promise.resolve('OK')),
+  on: jest.fn(),
+  status: 'wait',
 };
 
 jest.mock('ioredis', () => ({

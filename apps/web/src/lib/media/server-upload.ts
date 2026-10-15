@@ -36,17 +36,24 @@ export async function uploadThroughApi(
      * so it lands in that conversation's tenant and is attached nowhere else.
      */
     conversationId?: string | undefined;
+    /** A review photo (ADR 061): through the store's review image endpoints, in the store's area. */
+    reviewStoreId?: string | undefined;
   },
 ): Promise<ServerUploadResult> {
-  const base = file.conversationId ? `/conversations/${file.conversationId}/images` : '/media';
+  const scoped = file.conversationId
+    ? `/conversations/${file.conversationId}/images`
+    : file.reviewStoreId
+      ? `/stores/${file.reviewStoreId}/reviews/images`
+      : null;
+  const base = scoped ?? '/media';
   const checksum = {
     contentType: file.contentType,
     byteSize: file.bytes.byteLength,
     checksumSha256: file.sha256,
   };
-  const presigned = file.conversationId
+  const presigned = scoped
     ? await apiFetch({
-        path: base,
+        path: scoped,
         method: 'POST',
         schema: chatImagePresignedSchema,
         ...auth,
@@ -73,8 +80,8 @@ export async function uploadThroughApi(
       : { ok: false, code: 'UPLOAD_REJECTED', status: 400 };
   }
 
-  // Both answer { status } (a chat photo's has no other fields worth reading here).
-  const statusSchema = file.conversationId ? chatImageStatusSchema : mediaStatusSchema;
+  // All answer { status } (a chat or review photo's has no other fields worth reading here).
+  const statusSchema = scoped ? chatImageStatusSchema : mediaStatusSchema;
   let status: { status: string } = await apiFetch({
     path: `${base}/${presigned.id}/confirm`,
     method: 'POST',

@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { SellerScoreModule } from '../reviews/seller-score.module';
 import { AnalyticsCountersModule } from '../analytics/seller/analytics-counters.module';
 import { AuthModule } from '../auth/auth.module';
 import { FeedModule } from '../feed/feed.module';
@@ -28,6 +29,7 @@ import { ShareService } from './share.service';
     PostsModule,
     FeedModule,
     AnalyticsCountersModule,
+    SellerScoreModule,
   ],
   controllers: [EngagementController, StoreContactController, ShareController],
   // The stores module's catalog export links products by their share links (ADR 056);

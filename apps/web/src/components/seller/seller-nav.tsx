@@ -11,6 +11,7 @@ const TABS = [
   ['products', '/products'],
   ['import', '/import'],
   ['catalog', '/catalog'],
+  ['reviews', '/reviews'],
 ] as const;
 
 /** The panel's sections; the current one marked for screen readers too. */
