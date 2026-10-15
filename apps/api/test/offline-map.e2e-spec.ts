@@ -209,8 +209,11 @@ describe('Offline map areas (e2e)', () => {
     expect(createHash('sha256').update(bytes).digest('hex')).toBe(row!.sha256);
     expect(statSync(path).size).toBeLessThan(statSync(join(root, national.file)).size);
 
-    // Nothing to do on the next run: every tenant has this version.
-    expect((await builder.run({ batchSize: 50, maxBatches: 2 })).rows).toBe(0);
+    // Nothing to do on the next run for a tenant that has this version. (The
+    // builder walks every active tenant: a suite running in parallel may have
+    // just created one, so the count is checked per tenant, not globally.)
+    await builder.run({ batchSize: 50, maxBatches: 2 });
+    expect(await rows(TENANT)).toHaveLength(1);
   });
 
   it('GET /map/offline describes the file and every asset the style needs, with sizes and checksums', async () => {
