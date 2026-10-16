@@ -8,7 +8,9 @@ import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 
 import 'json_list_converter.dart';
+import 'tables/agent_capture_tables.dart';
 import 'tables/emergency_contact_table.dart';
+import 'tables/emergency_page_cache_table.dart';
 import 'tables/feed_cache_table.dart';
 import 'tables/offline_map_tables.dart';
 import 'tables/pending_chat_messages_table.dart';
@@ -23,6 +25,8 @@ part 'app_database.g.dart';
 /// truth for posts not yet on the server. `OfflineMaps` / `OfflinePoints`:
 /// the downloaded map area and its essential points (ADR 050).
 /// `PendingChatMessages`: chat messages not yet on the server (ADR 060).
+/// `EmergencyPageCache`: the emergency page per area, for no network (ADR 064).
+/// `AgentCaptures` / `AgentCapturePhotos`: a field agent's offline outbox (ADR 066).
 @DriftDatabase(
   tables: [
     TenantConfigCache,
@@ -32,6 +36,9 @@ part 'app_database.g.dart';
     OfflineMaps,
     OfflinePoints,
     PendingChatMessages,
+    EmergencyPageCache,
+    AgentCaptures,
+    AgentCapturePhotos,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -41,7 +48,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -65,6 +72,13 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 6) {
         await m.createTable(pendingChatMessages);
+      }
+      if (from < 7) {
+        await m.createTable(emergencyPageCache);
+      }
+      if (from < 8) {
+        await m.createTable(agentCaptures);
+        await m.createTable(agentCapturePhotos);
       }
     },
   );

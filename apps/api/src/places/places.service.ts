@@ -458,7 +458,8 @@ export class PlacesService {
     return trust.score >= threshold;
   }
 
-  private async checkNames(nameBn: string | undefined, nameEn: string | undefined): Promise<void> {
+  /** The name length rule (also field agent captures, ADR 066). */
+  async checkNames(nameBn: string | undefined, nameEn: string | undefined): Promise<void> {
     const max = await this.settings.get('place_name_max_length');
     if (nameBn !== undefined && [...nameBn].length > max) {
       throw new PlaceNameTooLongException('nameBn', max);
@@ -468,7 +469,8 @@ export class PlacesService {
     }
   }
 
-  private async normalizePhones(raw: readonly string[]): Promise<string[]> {
+  /** BD phone normalisation and the per-place limit (also field agent captures). */
+  async normalizePhones(raw: readonly string[]): Promise<string[]> {
     const max = await this.settings.get('place_max_phones');
     const normalized = raw.map((p) => normalizeBdPhone(p));
     const invalid = raw.filter((_, i) => normalized[i] === undefined);
@@ -487,7 +489,8 @@ export class PlacesService {
   }
 
   /** The most specific area at the point (areas come ordered country → ward). */
-  private async geoAreaAt(lat: number, lng: number): Promise<string | null> {
+  /** The smallest geo area at a point. */
+  async geoAreaAt(lat: number, lng: number): Promise<string | null> {
     const areas = await this.locations.areasAt(lat, lng);
     return areas.at(-1)?.id ?? null;
   }

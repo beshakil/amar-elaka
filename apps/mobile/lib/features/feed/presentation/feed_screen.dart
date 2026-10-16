@@ -14,6 +14,8 @@ import '../../../core/network/api_exception.dart';
 import '../../../core/routing/auth_gate.dart';
 import '../../../core/routing/route_paths.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../info/presentation/info_card_tile.dart';
+import '../../info/presentation/prayer_screen.dart';
 import '../../post/application/post_editor.dart';
 import '../application/feed_controller.dart';
 import '../domain/feed_query.dart';
@@ -116,6 +118,12 @@ class _FeedItemView extends ConsumerWidget {
     final FeedLandmarkCard landmark => LandmarkListingCard(card: landmark),
     final FeedBazarCard bazar => BazarPricesCard(card: bazar),
     final FeedEmergencyCard emergency => EmergencyCard(card: emergency),
+    final FeedBloodCard blood => BloodRequestsCard(card: blood),
+    final FeedInfoCard info => InfoCardTile(card: info.card, showType: true),
+    FeedPrayerCard() => const Padding(
+      padding: EdgeInsets.only(bottom: AppSpacing.sm),
+      child: PrayerFeedCard(),
+    ),
   };
 
   Future<void> _toggleSaved(

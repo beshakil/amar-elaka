@@ -1,5 +1,7 @@
 import 'package:json_annotation/json_annotation.dart';
 
+import '../info/info_card.dart';
+
 part 'feed.g.dart';
 
 /// A `{bn, en}` pair where either side may be missing (area names, store
@@ -75,6 +77,9 @@ sealed class FeedItem {
         'landmark' => FeedLandmarkCard.fromJson(json),
         'bazar_prices' => FeedBazarCard.fromJson(json),
         'emergency' => FeedEmergencyCard.fromJson(json),
+        'blood' => FeedBloodCard.fromJson(json),
+        'info' => FeedInfoCard.fromJson(json),
+        'prayer' => const FeedPrayerCard(),
         _ => null,
       };
 }
@@ -185,16 +190,28 @@ class FeedLandmarkCard extends FeedItem {
   Map<String, dynamic> toJson() => _$FeedLandmarkCardToJson(this);
 }
 
-/// Today's bazar prices (Asia/Dhaka date).
+/// The bazar prices card (ADR 064): today's prices, or — not updated today —
+/// the last day entered, flagged [isStale].
 @JsonSerializable()
 class FeedBazarCard extends FeedItem {
-  const FeedBazarCard({required this.date, required this.items});
+  const FeedBazarCard({
+    required this.date,
+    required this.items,
+    this.isStale = false,
+    this.sponsor,
+  });
 
   factory FeedBazarCard.fromJson(Map<String, dynamic> json) =>
       _$FeedBazarCardFromJson(json);
 
+  /// The day the prices are from, in the area's zone (YYYY-MM-DD).
   final String date;
   final List<BazarPrice> items;
+  @JsonKey(defaultValue: false)
+  final bool isStale;
+
+  /// The board's sponsor (display only).
+  final BazarCardSponsor? sponsor;
 
   Map<String, dynamic> toJson() => _$FeedBazarCardToJson(this);
 }
@@ -207,6 +224,7 @@ class BazarPrice {
     required this.unit,
     required this.minPrice,
     required this.maxPrice,
+    this.direction,
   });
 
   factory BazarPrice.fromJson(Map<String, dynamic> json) =>
@@ -218,7 +236,46 @@ class BazarPrice {
   final String minPrice;
   final String maxPrice;
 
+  /// `up`, `down` or `same` against yesterday; null without both days.
+  final String? direction;
+
   Map<String, dynamic> toJson() => _$BazarPriceToJson(this);
+}
+
+@JsonSerializable()
+class BazarCardSponsor {
+  const BazarCardSponsor({required this.name, this.linkUrl});
+
+  factory BazarCardSponsor.fromJson(Map<String, dynamic> json) =>
+      _$BazarCardSponsorFromJson(json);
+
+  final OptionalName name;
+  final String? linkUrl;
+
+  Map<String, dynamic> toJson() => _$BazarCardSponsorToJson(this);
+}
+
+/// Open urgent blood requests near the viewer: counts only (ADR 064).
+@JsonSerializable()
+class FeedBloodCard extends FeedItem {
+  const FeedBloodCard({
+    required this.openRequests,
+    required this.groups,
+    this.mostUrgent,
+  });
+
+  factory FeedBloodCard.fromJson(Map<String, dynamic> json) =>
+      _$FeedBloodCardFromJson(json);
+
+  final int openRequests;
+
+  /// blood_groups codes (`o_pos`, `ab_neg`…).
+  final List<String> groups;
+
+  /// critical | urgent | planned.
+  final String? mostUrgent;
+
+  Map<String, dynamic> toJson() => _$FeedBloodCardToJson(this);
 }
 
 /// The emergency shortcut: hotlines to dial.
@@ -250,4 +307,23 @@ class Hotline {
   final String dial;
 
   Map<String, dynamic> toJson() => _$HotlineToJson(this);
+}
+
+/// A local information card on the feed (kind `info`).
+class FeedInfoCard extends FeedItem {
+  const FeedInfoCard(this.card);
+
+  factory FeedInfoCard.fromJson(Map<String, dynamic> json) =>
+      FeedInfoCard(InfoCard.fromJson(json['card'] as Map<String, dynamic>));
+
+  final InfoCard card;
+
+  Map<String, dynamic> toJson() => {'kind': 'info', 'card': card.toJson()};
+}
+
+/// The prayer times card (kind `prayer`): the app calculates the times.
+class FeedPrayerCard extends FeedItem {
+  const FeedPrayerCard();
+
+  Map<String, dynamic> toJson() => {'kind': 'prayer'};
 }

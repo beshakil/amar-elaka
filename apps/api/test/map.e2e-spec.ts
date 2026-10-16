@@ -199,7 +199,7 @@ describe('Base map (e2e)', () => {
         pinLabelMax: 40,
       },
     });
-    // The seeded map_kinds: the Map tab's eight toggles, in order.
+    // The seeded map_kinds: the Map tab's toggles, in order (0061 adds the info engine's).
     const kinds = response.json<{
       kinds: { code: string; icon: string; label: { bn: string } }[];
     }>().kinds;
@@ -212,6 +212,10 @@ describe('Base map (e2e)', () => {
       'bus_stand',
       'shops',
       'listings',
+      'education',
+      'lost_found',
+      'gov_offices',
+      'outages',
     ]);
     expect(kinds[0]).toEqual({
       code: 'hospital',

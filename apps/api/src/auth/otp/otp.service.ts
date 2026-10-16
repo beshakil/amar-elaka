@@ -30,7 +30,9 @@ export type OtpPurpose =
   | { kind: 'login' }
   | { kind: 'place_claim'; scope: string }
   // The public appeal path (ADR 063): proves the phone, opens no session.
-  | { kind: 'appeal'; scope: string };
+  | { kind: 'appeal'; scope: string }
+  // A field agent checks a shop's phone while listing it (ADR 066); scoped to the submission.
+  | { kind: 'agent_shop_phone'; scope: string };
 
 const LOGIN: OtpPurpose = { kind: 'login' };
 

@@ -3,15 +3,24 @@ import {
   boolean,
   date,
   integer,
+  jsonb,
   numeric,
   pgTable,
+  primaryKey,
   smallint,
   text,
   time,
   uuid,
 } from 'drizzle-orm/pg-core';
 import { geoAreas } from './catalog';
-import { auditColumns, geographyPoint, id, softDeleteColumns, timestamptz } from './columns';
+import {
+  auditColumns,
+  enumTableColumns,
+  geographyPoint,
+  id,
+  softDeleteColumns,
+  timestamptz,
+} from './columns';
 import {
   bloodGroups,
   bloodRequestStatuses,
@@ -138,6 +147,12 @@ export const bloodDonors = pgTable('blood_donors', {
   localityId: uuid('locality_id'),
   approxLocation: geographyPoint('approx_location'),
   eligibilityConfirmedAt: timestamptz('eligibility_confirmed_at').notNull(),
+  // 0060: when the donor may be contacted; urgent-request pushes on or off.
+  contactWindowCode: text('contact_window_code')
+    .notNull()
+    .default('any')
+    .references(() => donorContactWindows.code, { onDelete: 'restrict' }),
+  alertsEnabled: boolean('alerts_enabled').notNull().default(true),
   ...softDeleteColumns(),
 });
 
@@ -168,6 +183,9 @@ export const bloodRequests = pgTable('blood_requests', {
     .default('open')
     .references(() => bloodRequestStatuses.code, { onDelete: 'restrict' }),
   fulfilledAt: timestamptz('fulfilled_at'),
+  // 0060: the hospital's point (donors near it are alerted) and when they were.
+  location: geographyPoint('location'),
+  alertedAt: timestamptz('alerted_at'),
   ...softDeleteColumns(),
 });
 
@@ -262,6 +280,12 @@ export const notices = pgTable('notices', {
     .default('pending_review')
     .references(() => noticeStatuses.code, { onDelete: 'restrict' }),
   publishedAt: timestamptz('published_at'),
+  // 0061: the respectful janaza/condolence template, and the validity window's start.
+  templateCode: text('template_code'),
+  templateFields: jsonb('template_fields')
+    .notNull()
+    .default(sql`'{}'::jsonb`),
+  validFrom: timestamptz('valid_from'),
   ...softDeleteColumns(),
 });
 
@@ -378,5 +402,185 @@ export const lostFoundItems = pgTable('lost_found_items', {
   resolvedAt: timestamptz('resolved_at'),
   resolutionNote: text('resolution_note'),
   expiresAt: timestamptz('expires_at'),
+  // 0061: when the person, pet or item was last seen.
+  lastSeenAt: timestamptz('last_seen_at'),
   ...softDeleteColumns(),
+});
+
+// ---- 0060 (ADR 064): local information services ----------------------------
+
+export const donorContactWindows = pgTable('donor_contact_windows', {
+  ...enumTableColumns(),
+  startsAt: time('starts_at'),
+  endsAt: time('ends_at'),
+});
+
+export const bloodGroupCompatibility = pgTable(
+  'blood_group_compatibility',
+  {
+    recipientCode: text('recipient_code')
+      .notNull()
+      .references(() => bloodGroups.code, { onDelete: 'restrict' }),
+    donorCode: text('donor_code')
+      .notNull()
+      .references(() => bloodGroups.code, { onDelete: 'restrict' }),
+    ...auditColumns(),
+  },
+  (t) => [primaryKey({ columns: [t.recipientCode, t.donorCode] })],
+);
+
+// TENANT-SCOPED: the area's price board (which commodities, unit, order).
+export const tenantBazarItems = pgTable('tenant_bazar_items', {
+  id: id(),
+  tenantId: uuid('tenant_id')
+    .notNull()
+    .references(() => tenants.id, { onDelete: 'restrict' }),
+  commodityId: uuid('commodity_id')
+    .notNull()
+    .references(() => bazarCommodities.id, { onDelete: 'restrict' }),
+  unitCode: text('unit_code')
+    .notNull()
+    .references(() => measurementUnits.code, { onDelete: 'restrict' }),
+  sortOrder: integer('sort_order').notNull().default(0),
+  isActive: boolean('is_active').notNull().default(true),
+  ...auditColumns(),
+});
+
+// TENANT-SCOPED: the sponsorship slot on the board (display only).
+export const bazarBoardSponsors = pgTable('bazar_board_sponsors', {
+  id: id(),
+  tenantId: uuid('tenant_id')
+    .notNull()
+    .references(() => tenants.id, { onDelete: 'restrict' }),
+  nameBn: text('name_bn').notNull(),
+  nameEn: text('name_en'),
+  taglineBn: text('tagline_bn'),
+  linkUrl: text('link_url'),
+  startsOn: date('starts_on').notNull(),
+  endsOn: date('ends_on'),
+  isActive: boolean('is_active').notNull().default(true),
+  ...auditColumns(),
+});
+
+// TENANT-SCOPED (the donor's area): every contact of a donor.
+export const bloodDonorContacts = pgTable('blood_donor_contacts', {
+  id: id(),
+  tenantId: uuid('tenant_id').notNull(),
+  // Composite FK (tenant_id, blood_donor_id) -> blood_donors, CASCADE.
+  bloodDonorId: uuid('blood_donor_id').notNull(),
+  requesterUserId: uuid('requester_user_id').references(() => users.id, { onDelete: 'set null' }),
+  bloodRequestId: uuid('blood_request_id').references(() => bloodRequests.id, {
+    onDelete: 'set null',
+  }),
+  channelCode: text('channel_code').notNull(),
+  ...auditColumns(),
+});
+
+// TENANT-SCOPED (the donor's area): one row per urgent-request push.
+export const bloodRequestAlerts = pgTable('blood_request_alerts', {
+  id: id(),
+  tenantId: uuid('tenant_id').notNull(),
+  // Composite FK (tenant_id, blood_donor_id) -> blood_donors, CASCADE.
+  bloodDonorId: uuid('blood_donor_id').notNull(),
+  bloodRequestId: uuid('blood_request_id')
+    .notNull()
+    .references(() => bloodRequests.id, { onDelete: 'cascade' }),
+  distanceM: integer('distance_m').notNull(),
+  ...auditColumns(),
+});
+
+// ---- 0061 (ADR 065): the remaining information services ---------------------
+
+export const utilityTypes = pgTable('utility_types', enumTableColumns());
+export const govServiceCategories = pgTable('gov_service_categories', enumTableColumns());
+
+// TENANT-SCOPED: scheduled outages the partner enters.
+export const utilityOutages = pgTable('utility_outages', {
+  id: id(),
+  tenantId: uuid('tenant_id')
+    .notNull()
+    .references(() => tenants.id, { onDelete: 'restrict' }),
+  utilityCode: text('utility_code')
+    .notNull()
+    .references(() => utilityTypes.code, { onDelete: 'restrict' }),
+  // Composite FK (tenant_id, locality_id) -> localities, SET NULL.
+  localityId: uuid('locality_id'),
+  areaText: text('area_text'),
+  startsAt: timestamptz('starts_at').notNull(),
+  endsAt: timestamptz('ends_at').notNull(),
+  reasonText: text('reason_text'),
+  statusCode: text('status_code').notNull().default('scheduled'),
+  createdByUserId: uuid('created_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+  ...softDeleteColumns(),
+});
+
+// TENANT-SCOPED: "no power here now", written by report_outage() only.
+export const outageReports = pgTable('outage_reports', {
+  id: id(),
+  tenantId: uuid('tenant_id')
+    .notNull()
+    .references(() => tenants.id, { onDelete: 'restrict' }),
+  utilityCode: text('utility_code')
+    .notNull()
+    .references(() => utilityTypes.code, { onDelete: 'restrict' }),
+  // Composite FK (tenant_id, locality_id) -> localities, SET NULL.
+  localityId: uuid('locality_id'),
+  reporterUserId: uuid('reporter_user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  expiresAt: timestamptz('expires_at').notNull(),
+  ...auditColumns(),
+});
+
+// TENANT-SCOPED: the area's government service guide entries.
+export const govServices = pgTable('gov_services', {
+  id: id(),
+  tenantId: uuid('tenant_id')
+    .notNull()
+    .references(() => tenants.id, { onDelete: 'restrict' }),
+  slug: text('slug').notNull(),
+  categoryCode: text('category_code')
+    .notNull()
+    .references(() => govServiceCategories.code, { onDelete: 'restrict' }),
+  // Composite FK (tenant_id, current_version_id) -> gov_service_versions, SET NULL.
+  currentVersionId: uuid('current_version_id'),
+  lastVerifiedOn: date('last_verified_on').notNull(),
+  verifiedByUserId: uuid('verified_by_user_id').references(() => users.id, {
+    onDelete: 'set null',
+  }),
+  isActive: boolean('is_active').notNull().default(true),
+  ...softDeleteColumns(),
+});
+
+// TENANT-SCOPED, append-only: one row per published version.
+export const govServiceVersions = pgTable('gov_service_versions', {
+  id: id(),
+  tenantId: uuid('tenant_id').notNull(),
+  // Composite FK (tenant_id, gov_service_id) -> gov_services, CASCADE.
+  govServiceId: uuid('gov_service_id').notNull(),
+  versionNo: integer('version_no').notNull(),
+  nameBn: text('name_bn').notNull(),
+  nameEn: text('name_en'),
+  summaryBn: text('summary_bn'),
+  officeName: text('office_name').notNull(),
+  // Composite FK (tenant_id, office_place_id) -> places, SET NULL.
+  officePlaceId: uuid('office_place_id'),
+  addressText: text('address_text'),
+  location: geographyPoint('location'),
+  hoursText: text('hours_text'),
+  documents: jsonb('documents')
+    .notNull()
+    .default(sql`'[]'::jsonb`),
+  fees: jsonb('fees')
+    .notNull()
+    .default(sql`'[]'::jsonb`),
+  steps: jsonb('steps')
+    .notNull()
+    .default(sql`'[]'::jsonb`),
+  links: jsonb('links')
+    .notNull()
+    .default(sql`'[]'::jsonb`),
+  changeNote: text('change_note'),
+  createdByUserId: uuid('created_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+  ...auditColumns(),
 });

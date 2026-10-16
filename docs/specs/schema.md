@@ -4130,6 +4130,76 @@ A lost or found item/person/animal report.
 
 ---
 
+### 10.14 Local information services (0060, ADR 064)
+
+Added when the §10 tables got their services:
+
+| table / column                          | scope | what                                                                                                                                   |
+| --------------------------------------- | ----- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `tenant_bazar_items`                    | T     | The area's price board: `commodity_id`, `unit_code`, `sort_order`, `is_active`. None = every active commodity (`bazar_catalogue()`).   |
+| `bazar_board_sponsors`                  | T     | The board's sponsor slot (display only): `name_bn`, `tagline_bn`, `link_url` (https), `starts_on`, `ends_on`.                          |
+| `donor_contact_windows`                 | G     | Lookup with `starts_at`/`ends_at` (local time; NULL = any). `blood_donors.contact_window_code` points here.                            |
+| `blood_group_compatibility`             | G     | `(recipient_code, donor_code)`: red-cell compatibility for matching urgent requests.                                                   |
+| `blood_donor_contacts`                  | T     | Every contact of a donor (the donor's area): requester, optional request, channel. The donor reads their own; the daily cap counts it. |
+| `blood_request_alerts`                  | T     | One row per urgent-request push (the donor's area), unique per request and donor; the per-donor daily alert cap counts it.             |
+| `blood_donors.contact_window_code`      |       | When the donor may be contacted.                                                                                                       |
+| `blood_donors.alerts_enabled`           |       | Urgent-request pushes on/off.                                                                                                          |
+| `blood_requests.location`, `alerted_at` |       | The hospital's point (donors near it are alerted) and when they were.                                                                  |
+| `moderation_actions.blood_request_id`   |       | A removed blood request is a takedown target.                                                                                          |
+
+Writes to `blood_donor_contacts`, `blood_request_alerts` and published consolidated `bazar_prices` go
+through `blood_donor_record_contact()`, `blood_request_alert_donors()` and `bazar_enter_prices()` only.
+
+### 10.15 The info engine (0061, ADR 065)
+
+The remaining local information services, on one engine (shared card, moderation, expiry). There is no
+`info_posts` table: each type keeps its own table; the engine is the code and the rules around them.
+
+| table / column                                           | scope | what                                                                                                                                                                                        |
+| -------------------------------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `utility_types`                                          | G     | Lookup: `electricity`, `gas`, `water`.                                                                                                                                                      |
+| `utility_outages`                                        | T     | A scheduled outage: `utility_code`, `locality_id` (NULL = whole area), `area_text`, `starts_at`/`ends_at`, `reason_text`, `status_code` (`scheduled` → `ended` by the job, or `cancelled`). |
+| `outage_reports`                                         | T     | "No power here": reporter, `utility_code`, point, nearest `locality_id`. Shown only once `outage_report_min_reports` people agree within `outage_report_window_minutes`; never who.         |
+| `gov_service_categories`                                 | G     | Lookup for the guide.                                                                                                                                                                       |
+| `gov_services`                                           | T     | The guide's entry: `slug`, `category_code`, `current_version_id`, `last_verified_on`, `is_active`.                                                                                          |
+| `gov_service_versions`                                   | T     | Append-only versions: name, office, address, point, hours, `documents`/`fees`/`steps`/`links` (jsonb), `change_note`.                                                                       |
+| `notices.template_code`, `template_fields`, `valid_from` |       | Janaza / condolence notices (respectful wording is the apps'); the validity window's start.                                                                                                 |
+| `notice_types.category_code`, `member_allowed`           |       | `local` / `community` / `advisory`; which types a member may post (held for review).                                                                                                        |
+| `lost_found_items.last_seen_at`                          |       | When last seen.                                                                                                                                                                             |
+| `commodity_groups.board_code`                            |       | `bazar` or `agri`: fertilizer, seed and pesticide prices are the agri board's.                                                                                                              |
+| `moderation_actions.notice_id`, `lost_found_item_id`     |       | Takedown targets.                                                                                                                                                                           |
+
+Gaps in 0011 fixed here: a member could insert their own lost & found report already `open` (now every non-staff insert
+is `pending_review`, a content edit goes back to review, a member may only move `open` → `resolved`); a member's notice
+could not be read back by its author (`notices_author_read`); `notices_enforce_member_limits` now allows only
+`member_allowed` types and holds them for review, while field agents publish.
+
+Functions (SECURITY DEFINER, owner `ae_rls_bypass`): `report_outage`, `outage_report_clusters`, `utility_outages_near`,
+`notices_near`, `lost_found_near`, `transport_routes_near`, `transport_next_departures`, `place_is_24h`,
+`directory_places_near`, `gov_service_publish`, `gov_service_verify`, `decide_info_item` (status + `moderation_actions`
+in one transaction; `approve` on a live, reported item keeps it), `expire_info_items` (job `expire-info-items`),
+`bazar_catalogue_for(tenant, board)`. `map_features` adds open lost & found, government offices and outages on now to
+the `info` layer (`map_kinds` `lost_found`, `gov_offices`, `outages`; `education` for schools). Errors AE910–AE914.
+Notification types `info_item_decided`, `lost_found_contacted`.
+
+### 10.16 Field agent mode (0062, ADR 066)
+
+| table / column                                                                              | scope | what                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| ------------------------------------------------------------------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `field_agents.commission_rate`                                                              |       | Taka per approved new shop for this agent; NULL = `agent_commission_per_shop`.                                                                                                                                                                                                                                                                                                                                            |
+| `field_agents.targets`                                                                      |       | `{daily_shops, weekly_shops}`.                                                                                                                                                                                                                                                                                                                                                                                            |
+| `agent_task_types` / `agent_task_statuses` / `agent_submission_kinds` / `agent_fraud_flags` | G     | Lookups.                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `agent_tasks`                                                                               | T     | What an agent is asked to do (`map_shop` / `verify_shop` / `update_info`), where (locality, point or the place), by when; `open` → `done` (by the submission that answers it) / `cancelled`.                                                                                                                                                                                                                              |
+| `agent_submissions`                                                                         | T     | One synced capture. **PK = the phone's UUID** (the sync's idempotency key). Captured time, point, accuracy, the shutter's fix, photo media ids, payload; what it made (`place_id`, `place_edit_suggestion_id`, `agent_visit_id`, in the same transaction — CHECK); the duplicate answer; `fraud_flags` / `fraud_detail`; `phone_check_status`. A capture can't change after insert (trigger; only the system adds flags). |
+| `agent_phone_checks`                                                                        | T     | A shop phone's OTP outcome per submission id (HMAC of the phone; may precede the sync).                                                                                                                                                                                                                                                                                                                                   |
+
+RLS: an agent reads and inserts their own submissions, reads their tasks (and marks them done), keeps their phone checks;
+the area's staff read all of the area and manage tasks; the system flags. `agent_submission_outcomes(agent, from, to)` is
+THE review status (from the place's status and its `moderation_actions` reason, merged = duplicate; an update from its
+suggestion; a verification is recorded) and the estimated commission — own agent or staff only.
+`agent_photo_reuse()` finds the same photo (checksum or thumbhash) in other submissions of the area. Visit purpose
+`info_update`, outcome `submitted`. Settings `agent_*`.
+
 ## 11. Operations
 
 ### 11.1 `field_agents`

@@ -117,17 +117,6 @@ export const landmarkCardRow = z.object({
 });
 export type LandmarkCardRow = z.infer<typeof landmarkCardRow>;
 
-const bazarRow = z.object({
-  price_date: z.string(),
-  commodity_code: z.string(),
-  name_bn: z.string(),
-  name_en: z.string(),
-  unit_code: z.string(),
-  min_price: z.string(),
-  max_price: z.string(),
-});
-export type BazarRow = z.infer<typeof bazarRow>;
-
 const hotlineRow = z.object({
   service_type_code: z.string(),
   name_bn: z.string(),
@@ -338,23 +327,6 @@ export class FeedRepository {
   }
 
   // ---- info cards: the request tenant's own local information -------------
-
-  /** Today's published prices (the tenant's zone), one row per commodity and unit across markets. */
-  async bazarToday(tx: DatabaseTransaction, limit: number): Promise<BazarRow[]> {
-    const rows = await tx.execute(sql`
-      select bp.price_date::text as price_date, c.code as commodity_code, c.name_bn, c.name_en,
-             bp.unit_code, min(bp.min_price)::text as min_price, max(bp.max_price)::text as max_price
-      from public.bazar_prices bp
-      join public.bazar_commodities c on c.id = bp.commodity_id
-      where bp.status_code = 'published'
-        -- Today in the tenant's own zone (tenants.timezone), never an assumed one.
-        and bp.price_date = (select (now() at time zone t.timezone)::date
-                             from public.tenants t where t.id = bp.tenant_id)
-      group by bp.price_date, c.id, c.code, c.name_bn, c.name_en, c.sort_order, bp.unit_code
-      order by c.sort_order, c.code, bp.unit_code
-      limit ${limit}`);
-    return z.array(bazarRow).parse([...rows]);
-  }
 
   async hotlines(tx: DatabaseTransaction, limit: number): Promise<HotlineRow[]> {
     const rows = await tx.execute(sql`

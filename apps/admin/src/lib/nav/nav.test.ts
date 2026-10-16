@@ -36,6 +36,8 @@ describe('visibleNav', () => {
       'overview',
       'moderation',
       'heatmap',
+      'localInfo',
+      'agents',
       'roles',
     ]);
     const marketer = {
@@ -44,6 +46,20 @@ describe('visibleNav', () => {
       role: 'marketer',
     };
     expect(keys(visibleNav(marketer))).toEqual(['overview']);
+  });
+
+  it('shows the local information to the area team by role, field agents included (ADR 064)', () => {
+    const agent = { isPlatformAdmin: false, grants: [], role: 'agent' };
+    expect(keys(visibleNav(agent))).toEqual(['overview', 'localInfo']);
+    const marketer = { isPlatformAdmin: false, grants: [], role: 'marketer' };
+    expect(keys(visibleNav(marketer))).toEqual(['overview']);
+  });
+
+  it('shows field agent management to the area staff, not to agents themselves (ADR 066)', () => {
+    const mod = { isPlatformAdmin: false, grants: [], role: 'moderator' };
+    expect(keys(visibleNav(mod))).toEqual(['overview', 'localInfo', 'agents']);
+    const agent = { isPlatformAdmin: false, grants: [], role: 'agent' };
+    expect(keys(visibleNav(agent))).not.toContain('agents');
   });
 
   it('hides items whose grant the viewer lacks', () => {

@@ -1,6 +1,6 @@
 /** rule 6: no hardcoded user-facing strings in application code — this is the one place the OTP SMS bodies are defined. */
 const TEMPLATES: Record<
-  'login' | 'place_claim' | 'appeal',
+  'login' | 'place_claim' | 'appeal' | 'agent_shop_phone',
   Record<'bn' | 'en', (code: string) => string>
 > = {
   login: {
@@ -21,13 +21,20 @@ const TEMPLATES: Record<
     en: (code) =>
       `Amar Elaka: your ban appeal code is ${code}. It does not sign you in; do not share it.`,
   },
+  // The shop owner tells it to the field agent in front of them: it only confirms the number.
+  agent_shop_phone: {
+    bn: (code) =>
+      `আমার এলাকা: আপনার দোকানের নম্বর যাচাইয়ের কোড ${code}। শুধু আপনার দোকানে আসা আমার এলাকার প্রতিনিধিকে বলুন।`,
+    en: (code) =>
+      `Amar Elaka: code ${code} confirms your shop's number. Tell it only to the Amar Elaka agent at your shop.`,
+  },
 };
 
 /** No account/locale is known yet at OTP-request time, so this defaults to Bengali (the platform default locale). */
 export function otpMessage(
   code: string,
   locale: 'bn' | 'en' = 'bn',
-  purpose: 'login' | 'place_claim' | 'appeal' = 'login',
+  purpose: 'login' | 'place_claim' | 'appeal' | 'agent_shop_phone' = 'login',
 ): string {
   return TEMPLATES[purpose][locale](code);
 }

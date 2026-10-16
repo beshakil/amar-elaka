@@ -34,6 +34,10 @@ String? computeRedirect({
   required String location,
   AccountGate accountGate = AccountGate.open,
 }) {
+  // The emergency page is never redirected away from (ADR 064): no area
+  // yet, no network, signed out, banned or terminated — it still opens.
+  if (location == RoutePaths.emergency) return null;
+
   // A terminated account has no session: the public appeal path only.
   // A banned one sees its notice and appeals — nothing else answers anyway.
   switch (accountGate) {

@@ -72,6 +72,9 @@ async function main(): Promise<void> {
       await seedSavedSearches(tx, tenantIds, userIds.get('buyer')!);
       await seedEmergencyContacts(tx, tenantIds);
       await seedBloodDonors(tx, tenantIds, memberIds);
+      await seedLocalInfoServices(tx, tenantIds, memberIds, commodityIds);
+      await seedInfoEngine(tx, tenantIds, memberIds);
+      await seedFieldAgents(tx, tenantIds, memberIds);
       await seedBazarPrices(
         tx,
         tenantIds,
@@ -642,6 +645,7 @@ interface MemberIds {
     moderator: string;
     seller: string;
     buyer: string;
+    fieldAgent: string;
     community: string[];
   };
   trishal: { seller: string; buyer: string; community: string[] };
@@ -670,6 +674,7 @@ async function seedTenantMembers(
     moderator: push(mirpurId, TENANT_SLUGS.mirpur, 'moderator', 'moderator'),
     seller: push(mirpurId, TENANT_SLUGS.mirpur, 'seller', 'member'),
     buyer: push(mirpurId, TENANT_SLUGS.mirpur, 'buyer', 'member'),
+    fieldAgent: push(mirpurId, TENANT_SLUGS.mirpur, 'field-agent', 'agent'),
     community: [] as string[],
   };
   const trishal = {
@@ -789,26 +794,28 @@ function buildFields(category: CategoryDef, label: string, rand: () => number): 
 // Bazar commodities + markets
 // ---------------------------------------------------------------------------
 
+/**
+ * The global catalogue ships with migration 0060; this keeps the fixture
+ * codes present (by code, never a second row) and returns the real ids.
+ */
 async function seedBazarCommodities(tx: TransactionSql): Promise<Map<string, string>> {
-  const idByCode = new Map<string, string>();
-  const rows = BAZAR_COMMODITIES.map((c, i) => {
-    const id = seedId(`bazar-commodity:${c.code}`);
-    idByCode.set(c.code, id);
-    return {
-      id,
-      code: c.code,
-      name_bn: c.nameBn,
-      name_en: c.nameEn,
-      group_code: c.group,
-      default_unit_code: c.unit,
-      sort_order: (i + 1) * 10,
-    };
-  });
+  const rows = BAZAR_COMMODITIES.map((c, i) => ({
+    id: seedId(`bazar-commodity:${c.code}`),
+    code: c.code,
+    name_bn: c.nameBn,
+    name_en: c.nameEn,
+    group_code: c.group,
+    default_unit_code: c.unit,
+    sort_order: (i + 1) * 10,
+  }));
   await tx`
     insert into bazar_commodities ${tx(rows, 'id', 'code', 'name_bn', 'name_en', 'group_code', 'default_unit_code', 'sort_order')}
-    on conflict (id) do nothing`;
-  console.log(`bazar_commodities: ${rows.length}`);
-  return idByCode;
+    on conflict (code) do nothing`;
+  const codes = BAZAR_COMMODITIES.map((c) => c.code);
+  const found = await tx<{ id: string; code: string }[]>`
+    select id, code from bazar_commodities where code in ${tx(codes)}`;
+  console.log(`bazar_commodities: ${found.length}`);
+  return new Map(found.map((r) => [r.code, r.id]));
 }
 
 async function seedBazarMarkets(
@@ -1323,12 +1330,15 @@ async function seedBloodDonors(
   memberIds: MemberIds,
 ): Promise<void> {
   const bloodGroups = ['a_pos', 'a_neg', 'b_pos', 'b_neg', 'ab_pos', 'ab_neg', 'o_pos', 'o_neg'];
+  const windows = ['any', 'morning', 'evening', 'daytime', 'any'];
   const donorMembers = [
     ...memberIds.mirpur.community.slice(0, 5),
     ...memberIds.trishal.community.slice(0, 5),
   ];
   const rows = donorMembers.map((memberId, i) => {
     const isMirpur = i < 5;
+    const area = GEO_AREAS.find((a) => a.slug === (isMirpur ? 'mirpur-thana' : 'trishal-upazila'))!;
+    const [lon, lat] = randomPointIn(area.bbox, rngFor(`blood-donor-point:${i}`));
     return [
       seedId(`blood-donor:${i}`),
       isMirpur ? tenantIds.get(TENANT_SLUGS.mirpur) : tenantIds.get(TENANT_SLUGS.trishal),
@@ -1336,18 +1346,235 @@ async function seedBloodDonors(
       bloodGroups[i % bloodGroups.length]!,
       true,
       tx`now()`,
+      `SRID=4326;POINT(${lon} ${lat})`,
+      windows[i % windows.length]!,
+      i % 2 === 0 ? 'reveal_on_request' : 'in_app_only',
     ];
   });
   await tx`
-    insert into blood_donors (id, tenant_id, member_id, blood_group_code, is_available, eligibility_confirmed_at)
+    insert into blood_donors
+      (id, tenant_id, member_id, blood_group_code, is_available, eligibility_confirmed_at, approx_location,
+       contact_window_code, contact_preference_code)
     values ${tx(rows as never)}
     on conflict (id) do nothing`;
   console.log(`blood_donors: ${rows.length}`);
 }
 
-// ---------------------------------------------------------------------------
-// Bazar prices (7 days)
-// ---------------------------------------------------------------------------
+/**
+ * ADR 064: Mirpur's own price board and sponsor, an open urgent request with
+ * its alert, and a donor contact ("who contacted me").
+ */
+async function seedLocalInfoServices(
+  tx: TransactionSql,
+  tenantIds: Map<string, string>,
+  memberIds: MemberIds,
+  commodityIds: Map<string, string>,
+): Promise<void> {
+  const mirpur = tenantIds.get(TENANT_SLUGS.mirpur)!;
+  const items = BAZAR_COMMODITIES.map((c, i) => [
+    seedId(`tenant-bazar-item:mirpur:${c.code}`),
+    mirpur,
+    commodityIds.get(c.code),
+    c.unit,
+    (i + 1) * 10,
+  ]);
+  await tx`
+    insert into tenant_bazar_items (id, tenant_id, commodity_id, unit_code, sort_order)
+    values ${tx(items as never)}
+    on conflict (id) do nothing`;
+  await tx`
+    insert into bazar_board_sponsors (id, tenant_id, name_bn, name_en, tagline_bn, starts_on)
+    values (${seedId('bazar-sponsor:mirpur')}, ${mirpur}, 'মিরপুর সুপার শপ', 'Mirpur Super Shop',
+            'তাজা বাজার, ন্যায্য দাম', current_date - 1)
+    on conflict (id) do nothing`;
+
+  const area = GEO_AREAS.find((a) => a.slug === 'mirpur-thana')!;
+  const [lon, lat] = randomPointIn(area.bbox, rngFor('blood-request:mirpur'));
+  const requestId = seedId('blood-request:mirpur:0');
+  // The buyer asks (their own number); donor 0 was alerted and the buyer called them.
+  await tx`
+    insert into blood_requests
+      (id, tenant_id, requester_member_id, blood_group_code, units_needed, hospital_name, contact_phone_e164,
+       needed_by, urgency_code, location, alerted_at)
+    select ${requestId}, ${mirpur}, tm.id, 'o_pos', 2, 'মিরপুর জেনারেল হাসপাতাল', u.phone_e164,
+           now() + interval '1 day', 'urgent', ${`SRID=4326;POINT(${lon} ${lat})`}, now()
+    from tenant_members tm join users u on u.id = tm.user_id
+    where tm.id = ${memberIds.mirpur.buyer}
+    on conflict (id) do nothing`;
+  await tx`
+    insert into blood_request_alerts (id, tenant_id, blood_donor_id, blood_request_id, distance_m)
+    values (${seedId('blood-request-alert:mirpur:0')}, ${mirpur}, ${seedId('blood-donor:0')}, ${requestId}, 1200)
+    on conflict (id) do nothing`;
+  await tx`
+    insert into blood_donor_contacts (id, tenant_id, blood_donor_id, requester_user_id, blood_request_id, channel_code)
+    select ${seedId('blood-donor-contact:mirpur:0')}, ${mirpur}, ${seedId('blood-donor:0')}, tm.user_id,
+           ${requestId}, 'call_click'
+    from tenant_members tm where tm.id = ${memberIds.mirpur.buyer}
+    on conflict (id) do nothing`;
+  console.log('local info services: board, sponsor, blood request, alert, contact');
+}
+
+/**
+ * ADR 065: Mirpur's info engine — a scheduled outage and live reports, a
+ * transport route, a gov guide entry (two versions), a local notice, a
+ * janaza notice waiting for review, and a lost & found report.
+ */
+/**
+ * Field agent mode (ADR 066): Mirpur's field agent with targets, today's
+ * tasks (map shops on a road, verify a shop) and one synced capture waiting
+ * in the places review queue — the agent's phone and the admin's agent page
+ * both have something to show. Written as the system (the API's own path is
+ * agent_submissions' idempotent sync).
+ */
+async function seedFieldAgents(
+  tx: TransactionSql,
+  tenantIds: Map<string, string>,
+  memberIds: MemberIds,
+): Promise<void> {
+  const mirpur = tenantIds.get(TENANT_SLUGS.mirpur)!;
+  const agentId = seedId('field-agent:mirpur:0');
+  await tx`
+    insert into field_agents (id, tenant_id, member_id, agent_code, employment_type_code, joined_on, targets)
+    values (${agentId}, ${mirpur}, ${memberIds.mirpur.fieldAgent}, 'MIR-01', 'commission_only', current_date,
+            '{"daily_shops": 15, "weekly_shops": 80}')
+    on conflict (id) do nothing`;
+  const [shop] = await tx<{ id: string; category_id: string; lat: number; lng: number }[]>`
+    select id, category_id, st_y(location::geometry) as lat, st_x(location::geometry) as lng
+    from places where tenant_id = ${mirpur} and status_code = 'published' order by slug limit 1`;
+  if (!shop) return;
+  await tx`
+    insert into agent_tasks (id, tenant_id, field_agent_id, type_code, title, target_location, due_on)
+    values (${seedId('agent-task:mirpur:0')}, ${mirpur}, ${agentId}, 'map_shop', 'সেকশন ১১-এর বাজার রোডের দোকান',
+            ${`SRID=4326;POINT(${shop.lng + 0.002} ${shop.lat})`}::geography, current_date)
+    on conflict (id) do nothing`;
+  await tx`
+    insert into agent_tasks (id, tenant_id, field_agent_id, type_code, title, place_id, due_on)
+    values (${seedId('agent-task:mirpur:1')}, ${mirpur}, ${agentId}, 'verify_shop', 'দোকানটি এখনো খোলা কি না দেখুন',
+            ${shop.id}, current_date)
+    on conflict (id) do nothing`;
+
+  // One capture already synced: a new shop pending review, its visit and its submission.
+  const placeId = seedId('place:agent-capture:mirpur:0');
+  const submissionId = seedId('agent-submission:mirpur:0');
+  const at = `SRID=4326;POINT(${shop.lng + 0.001} ${shop.lat + 0.001})`;
+  await tx`
+    insert into places (id, tenant_id, category_id, slug, name_bn, location, source_code, status_code,
+                        created_by_user_id, field_verified_at)
+    values (${placeId}, ${mirpur}, ${shop.category_id}, 'agent-capture-mirpur-0', 'নিউ মদিনা স্টোর', ${at}::geography,
+            'agent_survey', 'pending_review',
+            (select user_id from tenant_members where id = ${memberIds.mirpur.fieldAgent}), now())
+    on conflict (id) do nothing`;
+  const visitId = seedId('agent-visit:mirpur:0');
+  await tx`
+    insert into agent_visits (id, tenant_id, field_agent_id, place_id, purpose_code, outcome_code, visited_at,
+                              check_in_location, check_in_accuracy_m, client_visit_id)
+    values (${visitId}, ${mirpur}, ${agentId}, ${placeId}, 'onboarding', 'submitted', now() - interval '1 hour',
+            ${at}::geography, 6, ${submissionId})
+    on conflict (id) do nothing`;
+  await tx`
+    insert into agent_submissions (id, tenant_id, field_agent_id, kind_code, captured_at, location, accuracy_m,
+                                   photo_location, photo_taken_at, payload, place_id, agent_visit_id)
+    values (${submissionId}, ${mirpur}, ${agentId}, 'new_shop', now() - interval '1 hour', ${at}::geography, 6,
+            ${at}::geography, now() - interval '62 minutes',
+            ${JSON.stringify({ nameBn: 'নিউ মদিনা স্টোর', categoryId: shop.category_id, notes: 'কোণার দোকান' })}::text::jsonb,
+            ${placeId}, ${visitId})
+    on conflict (id) do nothing`;
+  console.log('field agents: 1 (2 tasks, 1 submission)');
+}
+
+async function seedInfoEngine(
+  tx: TransactionSql,
+  tenantIds: Map<string, string>,
+  memberIds: MemberIds,
+): Promise<void> {
+  const mirpur = tenantIds.get(TENANT_SLUGS.mirpur)!;
+  const userOf = async (memberId: string) =>
+    (await tx<{ user_id: string }[]>`select user_id from tenant_members where id = ${memberId}`)[0]!
+      .user_id;
+  const admin = await userOf(memberIds.mirpur.tenantAdmin);
+
+  await tx`
+    insert into utility_outages (id, tenant_id, utility_code, area_text, starts_at, ends_at, reason_text, created_by_user_id)
+    values (${seedId('outage:mirpur:0')}, ${mirpur}, 'electricity', 'মিরপুর ১০, সেকশন ১১',
+            now() + interval '3 hours', now() + interval '6 hours', 'লাইন রক্ষণাবেক্ষণ', ${admin})
+    on conflict (id) do nothing`;
+  for (const [i, memberId] of memberIds.mirpur.community.slice(0, 3).entries()) {
+    await tx`
+      insert into outage_reports (id, tenant_id, utility_code, reporter_user_id, expires_at)
+      values (${seedId(`outage-report:mirpur:${i}`)}, ${mirpur}, 'water', ${await userOf(memberId)},
+              now() + interval '90 minutes')
+      on conflict (id) do nothing`;
+  }
+
+  const route = seedId('transport-route:mirpur:0');
+  await tx`
+    insert into transport_routes (id, tenant_id, mode_code, name_bn, name_en, operator_name, origin_name,
+                                  destination_name, fare_min, fare_max, fare_updated_on, last_verified_at)
+    values (${route}, ${mirpur}, 'bus', 'মিরপুর ১০ – মতিঝিল', 'Mirpur 10 – Motijheel', 'বিকল্প পরিবহন',
+            'মিরপুর ১০', 'মতিঝিল', 30, 45, current_date, now())
+    on conflict (id) do nothing`;
+  for (const [i, name] of ['মিরপুর ১০', 'কাজীপাড়া', 'ফার্মগেট', 'মতিঝিল'].entries()) {
+    await tx`
+      insert into transport_route_stops (id, tenant_id, transport_route_id, seq, name_bn, minutes_from_origin)
+      values (${seedId(`transport-stop:mirpur:${i}`)}, ${mirpur}, ${route}, ${i + 1}, ${name}, ${i * 15})
+      on conflict (id) do nothing`;
+  }
+  for (const [i, time] of ['06:30', '08:00', '10:00', '13:00', '17:30', '20:00'].entries()) {
+    await tx`
+      insert into transport_schedules (id, tenant_id, transport_route_id, departure_time, fare)
+      values (${seedId(`transport-schedule:mirpur:${i}`)}, ${mirpur}, ${route}, ${time}::time, 40)
+      on conflict (id) do nothing`;
+  }
+
+  const gov = seedId('gov-service:mirpur:birth');
+  await tx`
+    insert into gov_services (id, tenant_id, slug, category_code, last_verified_on, verified_by_user_id)
+    values (${gov}, ${mirpur}, 'birth-registration', 'certificate', current_date, ${admin})
+    on conflict (id) do nothing`;
+  for (const [no, fee] of [
+    [1, '50.00'],
+    [2, '100.00'],
+  ] as const) {
+    await tx`
+      insert into gov_service_versions (id, tenant_id, gov_service_id, version_no, name_bn, name_en, office_name,
+                                        hours_text, documents, fees, steps, links, change_note, created_by_user_id)
+      values (${seedId(`gov-service-version:mirpur:birth:${no}`)}, ${mirpur}, ${gov}, ${no}, 'জন্ম নিবন্ধন',
+              'Birth registration', 'ওয়ার্ড কাউন্সিলর কার্যালয়', 'রবি–বৃহস্পতি, সকাল ৯টা–বিকাল ৫টা',
+              '["টিকার কার্ড", "বাবা-মায়ের জাতীয় পরিচয়পত্র"]'::jsonb,
+              ${JSON.stringify([{ label: 'আবেদন ফি', amount: fee }])}::text::jsonb,
+              '["অনলাইনে আবেদন করুন", "কার্যালয়ে কাগজ জমা দিন", "সনদ সংগ্রহ করুন"]'::jsonb,
+              '[{"label": "জন্ম ও মৃত্যু নিবন্ধন", "url": "https://bdris.gov.bd"}]'::jsonb,
+              ${no === 2 ? 'ফি হালনাগাদ' : null}, ${admin})
+      on conflict (id) do nothing`;
+  }
+  await tx`update gov_services set current_version_id = ${seedId('gov-service-version:mirpur:birth:2')} where id = ${gov}`;
+
+  await tx`
+    insert into notices (id, tenant_id, notice_type_code, title, body, issuer_name, is_official, published_by_member_id,
+                         status_code, published_at, expires_at)
+    values (${seedId('notice:mirpur:local')}, ${mirpur}, 'pourashava', 'হোল্ডিং কর জমার শেষ তারিখ',
+            'চলতি অর্থবছরের হোল্ডিং কর ৩০ তারিখের মধ্যে জমা দিন।', 'ওয়ার্ড কাউন্সিলর কার্যালয়', true,
+            ${memberIds.mirpur.tenantAdmin}, 'published', now(), now() + interval '30 days')
+    on conflict (id) do nothing`;
+  await tx`
+    insert into notices (id, tenant_id, notice_type_code, title, body, published_by_member_id, template_code,
+                         template_fields, status_code)
+    values (${seedId('notice:mirpur:janaza')}, ${mirpur}, 'obituary', 'জানাজার নামাজ',
+            'মরহুমের রুহের মাগফিরাত কামনা করছি।', ${memberIds.mirpur.community[0]!}, 'janaza',
+            ${JSON.stringify({ deceasedName: 'মোঃ আব্দুল করিম', age: 72, janazaPlace: 'মিরপুর কেন্দ্রীয় মসজিদ' })}::text::jsonb,
+            'pending_review')
+    on conflict (id) do nothing`;
+  await tx`
+    insert into lost_found_items (id, tenant_id, kind_code, item_type_code, title, description, location_text,
+                                  reporter_member_id, contact_via_code, contact_phone_e164, status_code,
+                                  last_seen_at, expires_at)
+    select ${seedId('lost-found:mirpur:0')}, ${mirpur}, 'lost', 'pet', 'সাদা বিড়াল হারিয়েছে', 'গলায় লাল ফিতা।',
+           'মিরপুর ১০ গোলচত্বর', tm.id, 'phone', u.phone_e164, 'open', now() - interval '5 hours',
+           now() + interval '30 days'
+    from tenant_members tm join users u on u.id = tm.user_id where tm.id = ${memberIds.mirpur.buyer}
+    on conflict (id) do nothing`;
+  console.log('info engine: outage + reports, route, gov guide, notices, lost & found');
+}
 
 async function seedBazarPrices(
   tx: TransactionSql,

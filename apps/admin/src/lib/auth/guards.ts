@@ -16,6 +16,13 @@ export async function requireGrant(required: { module: string; action: string })
   return viewer;
 }
 
+/** The area's own team by role (local information, ADR 064: the API checks the role, not a grant). */
+export async function requireRoles(roles: readonly string[]): Promise<Viewer> {
+  const viewer = await currentViewer();
+  if (!roles.includes(viewer.permissions.role ?? '')) notFound();
+  return viewer;
+}
+
 export async function requirePlatformAdmin(): Promise<Viewer> {
   const viewer = await currentViewer();
   if (!viewer.permissions.isPlatformAdmin) notFound();

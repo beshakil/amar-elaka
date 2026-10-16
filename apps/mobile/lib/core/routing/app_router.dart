@@ -13,7 +13,20 @@ import '../../features/auth/presentation/otp_verify_screen.dart';
 import '../../features/design_system_debug/presentation/design_system_screen.dart';
 import '../../features/form_preview/form_preview_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
+import '../../features/agent/data/agent_models.dart';
+import '../../features/agent/presentation/agent_capture_screen.dart';
+import '../../features/agent/presentation/agent_hub_screen.dart';
+import '../../features/agent/presentation/agent_queue_screen.dart';
+import '../../features/agent/presentation/agent_stats_screen.dart';
+import '../../features/agent/presentation/agent_today_screen.dart';
+import '../../features/info/data/info_models.dart';
+import '../../features/info/presentation/bazar_screens.dart';
+import '../../features/info/presentation/blood_screens.dart';
+import '../../features/info/presentation/emergency_screen.dart';
+import '../../features/info/presentation/info_engine_screens.dart';
 import '../../features/info/presentation/info_screen.dart';
+import '../../features/info/presentation/lost_found_screens.dart';
+import '../../features/info/presentation/prayer_screen.dart';
 import '../../features/map/presentation/map_screen.dart';
 import '../../features/map_debug/presentation/map_debug_screen.dart';
 import '../../features/post/presentation/editor/post_editor_screen.dart';
@@ -293,6 +306,131 @@ GoRouter appRouter(Ref ref) {
       GoRoute(
         path: RoutePaths.verification,
         builder: (context, state) => const VerificationScreen(),
+      ),
+      // Local information services (ADR 064). Full-screen, above the shell;
+      // the emergency page is exempt from every redirect.
+      GoRoute(
+        path: RoutePaths.emergency,
+        builder: (context, state) => const EmergencyScreen(),
+      ),
+      GoRoute(
+        path: RoutePaths.bazar,
+        builder: (context, state) => BazarBoardScreen(
+          board: state.uri.queryParameters['board'] ?? 'bazar',
+        ),
+      ),
+      GoRoute(
+        path: RoutePaths.bazarEntry,
+        builder: (context, state) => BazarEntryScreen(
+          board: state.uri.queryParameters['board'] ?? 'bazar',
+        ),
+      ),
+      GoRoute(
+        path: RoutePaths.blood,
+        builder: (context, state) => const BloodScreen(),
+      ),
+      GoRoute(
+        path: RoutePaths.bloodRegister,
+        builder: (context, state) =>
+            RegisterDonorScreen(existing: state.extra as MyDonor?),
+      ),
+      GoRoute(
+        path: RoutePaths.bloodContacts,
+        builder: (context, state) => const DonorContactsScreen(),
+      ),
+      GoRoute(
+        path: RoutePaths.bloodNewRequest,
+        builder: (context, state) => const NewBloodRequestScreen(),
+      ),
+      GoRoute(
+        path: '/info/blood/requests/:id',
+        builder: (context, state) =>
+            BloodRequestScreen(requestId: state.pathParameters['id']!),
+      ),
+      // Field agent mode (ADR 066). The API checks the role on every call.
+      GoRoute(
+        path: RoutePaths.agent,
+        builder: (context, state) => const AgentHubScreen(),
+      ),
+      GoRoute(
+        path: RoutePaths.agentCapture,
+        builder: (context, state) => AgentCaptureScreen(
+          task: state.extra is AgentTask ? state.extra! as AgentTask : null,
+        ),
+      ),
+      GoRoute(
+        path: RoutePaths.agentToday,
+        builder: (context, state) => const AgentTodayScreen(),
+      ),
+      GoRoute(
+        path: RoutePaths.agentQueue,
+        builder: (context, state) => const AgentQueueScreen(),
+      ),
+      GoRoute(
+        path: RoutePaths.agentStats,
+        builder: (context, state) => const AgentStatsScreen(),
+      ),
+      // The info engine (ADR 065). The "new" paths come before ":id".
+      GoRoute(
+        path: RoutePaths.outages,
+        builder: (context, state) => const OutagesScreen(),
+      ),
+      GoRoute(
+        path: RoutePaths.notices,
+        builder: (context, state) =>
+            NoticesScreen(category: state.uri.queryParameters['category']),
+      ),
+      GoRoute(
+        path: RoutePaths.noticeNew,
+        builder: (context, state) => const NoticeNewScreen(),
+      ),
+      GoRoute(
+        path: '${RoutePaths.notices}/:id',
+        builder: (context, state) =>
+            NoticeDetailScreen(id: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: RoutePaths.lostFound,
+        builder: (context, state) => const LostFoundScreen(),
+      ),
+      GoRoute(
+        path: RoutePaths.lostFoundNew,
+        builder: (context, state) => const LostFoundNewScreen(),
+      ),
+      GoRoute(
+        path: '${RoutePaths.lostFound}/:id',
+        builder: (context, state) =>
+            LostFoundDetailScreen(id: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: RoutePaths.transport,
+        builder: (context, state) => const TransportScreen(),
+      ),
+      GoRoute(
+        path: '${RoutePaths.transport}/:id',
+        builder: (context, state) =>
+            RouteDetailScreen(id: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: RoutePaths.govServices,
+        builder: (context, state) => const GovServicesScreen(),
+      ),
+      GoRoute(
+        path: '${RoutePaths.govServices}/:slug',
+        builder: (context, state) =>
+            GovServiceDetailScreen(slugOrId: state.pathParameters['slug']!),
+      ),
+      GoRoute(
+        path: RoutePaths.directory,
+        builder: (context, state) => const DirectoryScreen(),
+      ),
+      GoRoute(
+        path: RoutePaths.prayer,
+        builder: (context, state) => const PrayerScreen(),
+      ),
+      GoRoute(
+        path: RoutePaths.agri,
+        builder: (context, state) => const AgriScreen(),
       ),
       // Debug-only: `kDebugMode` is a compile-time constant, so this branch
       // (and DesignSystemScreen's tree) is tree-shaken out of release builds.

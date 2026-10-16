@@ -542,12 +542,12 @@ export class PlaceModerationService {
 
 type Hours = NonNullable<SuggestionChanges['hours']>;
 
-function sortHours(hours: Hours): Hours {
+export function sortHours(hours: Hours): Hours {
   return [...hours].sort((a, b) => a.day - b.day || a.opens.localeCompare(b.opens));
 }
 
 /** The place's values for the fields a suggestion touches. */
-function currentValues(
+export function currentValues(
   location: { lat: number; lng: number },
   phones: readonly string[],
   hours: Hours,
@@ -561,7 +561,7 @@ function currentValues(
 }
 
 /** Drops suggested fields that equal what the place already has. */
-function withoutUnchanged(
+export function withoutUnchanged(
   changes: SuggestionChanges,
   current: SuggestionChanges,
 ): SuggestionChanges {

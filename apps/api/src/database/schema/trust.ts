@@ -419,7 +419,8 @@ export const moderationActions = pgTable('moderation_actions', {
   // place_claims, (tenant_id, store_id) -> stores, (tenant_id, conversation_id)
   // -> conversations, (tenant_id, review_id) -> reviews (0057), (tenant_id,
   // verification_id) -> verifications (0058), (tenant_id, ban_id) -> bans
-  // (0059), all RESTRICT; blacklist_entry_id -> blacklist_entries (global, 0059).
+  // (0059), (tenant_id, blood_request_id) -> blood_requests (0060), all RESTRICT;
+  // blacklist_entry_id -> blacklist_entries (global, 0059).
   postId: uuid('post_id'),
   placeId: uuid('place_id'),
   placeClaimId: uuid('place_claim_id'),
@@ -431,6 +432,10 @@ export const moderationActions = pgTable('moderation_actions', {
   blacklistEntryId: uuid('blacklist_entry_id').references(() => blacklistEntries.id, {
     onDelete: 'restrict',
   }),
+  bloodRequestId: uuid('blood_request_id'),
+  // 0061: (tenant_id, notice_id) -> notices, (tenant_id, lost_found_item_id) -> lost_found_items, RESTRICT.
+  noticeId: uuid('notice_id'),
+  lostFoundItemId: uuid('lost_found_item_id'),
   actorUserId: uuid('actor_user_id').references(() => users.id, { onDelete: 'restrict' }),
   actionCode: text('action_code')
     .notNull()

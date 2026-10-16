@@ -9,6 +9,7 @@ import { StorageModule } from '../storage/storage.module';
 import { ContactService } from './contact.service';
 import { EngagementController, StoreContactController } from './engagement.controller';
 import { EngagementRepository } from './engagement.repository';
+import { LeadGate } from './lead-gate';
 import { ENGAGEMENT_STORE, RedisEngagementStore } from './engagement.store';
 import { PostDetailService } from './post-detail.service';
 import { PostViewsService } from './post-views.service';
@@ -33,13 +34,15 @@ import { ShareService } from './share.service';
   ],
   controllers: [EngagementController, StoreContactController, ShareController],
   // The stores module's catalog export links products by their share links (ADR 056);
-  // chat writes its lead (the first seller reply, ADR 058) through the same insertLead.
-  exports: [ShareService, EngagementRepository],
+  // chat writes its lead (the first seller reply, ADR 058) through the same insertLead;
+  // the blood donor and request contacts (ADR 064) pass the same LeadGate.
+  exports: [ShareService, EngagementRepository, LeadGate],
   providers: [
     EngagementRepository,
     PostDetailService,
     PostViewsService,
     ContactService,
+    LeadGate,
     ReportsService,
     ShareService,
     { provide: ENGAGEMENT_STORE, useClass: RedisEngagementStore },

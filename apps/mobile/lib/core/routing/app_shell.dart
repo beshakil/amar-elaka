@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/chat/presentation/chat_button.dart';
 import '../../features/auth/application/auth_controller.dart';
 import '../../features/auth/domain/auth_session_state.dart';
+import '../../features/info/application/info_providers.dart';
 import '../../features/notifications/presentation/notifications_screen.dart';
 import '../../features/tenant_bootstrap/application/tenant_bootstrap_controller.dart';
 import '../../features/tenant_bootstrap/domain/tenant_bootstrap_state.dart';
@@ -33,6 +34,8 @@ class AppShell extends ConsumerWidget {
       l10n.navInfo,
       l10n.navProfile,
     ];
+    // Keeps the offline emergency page fresh in the background (ADR 064).
+    ref.watch(emergencyPrefetchProvider);
     final tenantState = ref.watch(tenantBootstrapControllerProvider);
     final tenantName = switch (tenantState) {
       AsyncData(value: TenantBootstrapReady(:final config)) => config.nameBn,

@@ -8,10 +8,14 @@ import { TenantNotFoundException, TenantRequiredException } from '../database/te
 import { TenantDb } from '../database/tenant-db';
 import { toOpenState } from '../hours/open-state';
 import { parseVariants } from '../media/media.types';
+import { BazarBoardService } from '../info/bazar-board.service';
+import { InfoRepository } from '../info/info.repository';
+import { InfoFeedService } from '../info-engine/info-feed.service';
 import { SettingsService } from '../settings/settings.service';
 import { STORAGE_SERVICE, type StorageService } from '../storage/storage.ports';
 import type {
   BazarCard,
+  BloodCard,
   EmergencyCard,
   FeedItem,
   FeedQuery,
@@ -39,8 +43,9 @@ import {
 import { geohashCenter, geohashEncode } from './geohash';
 
 // v2: post cards carry isSaved (always false in the cache). v3: store and
-// landmark cards carry openState.
-const CACHE_KEY_VERSION = 'v3';
+// landmark cards carry openState. v4: the bazar card's arrows, stale flag and
+// sponsor; the blood card (ADR 064). v5: info and prayer cards (ADR 065).
+const CACHE_KEY_VERSION = 'v5';
 
 interface Plan {
   tenantId: string;
@@ -62,7 +67,7 @@ interface Plan {
 /**
  * GET /feed (ADR 035): a ranked, radius-based mix of post cards, nearby store
  * cards and — on the first page — info cards (emergency shortcut, bazar
- * prices today, landmarks).
+ * prices, urgent blood requests nearby, landmarks).
  *
  * Ranking happens in feed_posts (SQL, weights from SettingsService); cards
  * are then read in each owning tenant's context as `anon`, so a card never
@@ -80,6 +85,9 @@ export class FeedService {
     private readonly context: TenantContext,
     private readonly cache: CacheService,
     @Inject(STORAGE_SERVICE) private readonly storage: StorageService,
+    private readonly bazarBoard: BazarBoardService,
+    private readonly info: InfoRepository,
+    private readonly infoFeed: InfoFeedService,
   ) {}
 
   async feed(query: FeedQuery): Promise<FeedResponse> {
@@ -421,20 +429,38 @@ export class FeedService {
 
   private async infoCards(plan: Plan, nearby: boolean): Promise<InfoSlot<FeedItem>[]> {
     const tenantId = plan.tenantId;
-    const [emergencyAt, emergencyItems, bazarAt, bazarItems, landmarkAt, landmarkMax] =
-      await Promise.all([
-        this.settings.get('feed_emergency_card_position', tenantId),
-        this.settings.get('feed_emergency_card_items'),
-        this.settings.get('feed_bazar_card_position', tenantId),
-        this.settings.get('feed_bazar_card_items', tenantId),
-        this.settings.get('feed_landmark_card_position', tenantId),
-        this.settings.get('feed_landmark_cards_max', tenantId),
-      ]);
+    const [
+      emergencyAt,
+      emergencyItems,
+      bazarAt,
+      bazarItems,
+      landmarkAt,
+      landmarkMax,
+      bloodAt,
+      bloodRadiusKm,
+      infoAt,
+      infoMax,
+      prayerAt,
+    ] = await Promise.all([
+      this.settings.get('feed_emergency_card_position', tenantId),
+      this.settings.get('feed_emergency_card_items'),
+      this.settings.get('feed_bazar_card_position', tenantId),
+      this.settings.get('feed_bazar_card_items', tenantId),
+      this.settings.get('feed_landmark_card_position', tenantId),
+      this.settings.get('feed_landmark_cards_max', tenantId),
+      this.settings.get('feed_blood_card_position', tenantId),
+      this.settings.get('blood_search_radius_km', tenantId),
+      this.settings.get('feed_info_card_position', tenantId),
+      this.settings.get('feed_info_cards_max', tenantId),
+      this.settings.get('feed_prayer_card_position', tenantId),
+    ]);
 
-    const [hotlines, bazar, landmarks] = await Promise.all([
+    const [hotlines, bazarCard, bloodCard, landmarks, infoCards] = await Promise.all([
       emergencyAt > 0 ? this.readOnly((tx) => this.repo.hotlines(tx, emergencyItems)) : [],
-      bazarAt > 0 ? this.readOnly((tx) => this.repo.bazarToday(tx, bazarItems)) : [],
+      bazarAt > 0 ? this.bazarCard(bazarItems) : null,
+      bloodAt > 0 ? this.bloodCard(plan.origin, bloodRadiusKm) : null,
       landmarkAt > 0 && nearby ? this.landmarkCards(plan.origin, landmarkMax, plan.openOnly) : [],
+      infoAt > 0 ? this.infoFeed.cards(tenantId, plan.origin, infoMax) : [],
     ]);
 
     const emergency: EmergencyCard | null =
@@ -448,25 +474,59 @@ export class FeedService {
               dial: h.dial_string,
             })),
           };
-    const bazarCard: BazarCard | null =
-      bazar.length === 0
-        ? null
-        : {
-            kind: 'bazar_prices',
-            date: bazar[0]!.price_date,
-            items: bazar.map((b) => ({
-              commodity: b.commodity_code,
-              name: { bn: b.name_bn, en: b.name_en },
-              unit: b.unit_code,
-              minPrice: b.min_price,
-              maxPrice: b.max_price,
-            })),
-          };
     return [
       { position: emergencyAt, cards: emergency ? [emergency] : [] },
       { position: bazarAt, cards: bazarCard ? [bazarCard] : [] },
+      { position: bloodAt, cards: bloodCard ? [bloodCard] : [] },
+      { position: prayerAt, cards: prayerAt > 0 ? [{ kind: 'prayer' as const }] : [] },
+      { position: infoAt, cards: infoCards.map((card) => ({ kind: 'info' as const, card })) },
       { position: landmarkAt, cards: landmarks },
     ];
+  }
+
+  /**
+   * The bazar card from THE board (BazarBoardService): today's prices, or —
+   * not updated today — the last day entered, flagged stale. No prices in the
+   * trend window: no card.
+   */
+  private async bazarCard(limit: number): Promise<BazarCard | null> {
+    const board = await this.bazarBoard.board();
+    const date = board.isStale ? board.lastUpdated : board.date;
+    if (!date) return null;
+    const items = board.items.flatMap((item) => {
+      const price = item.trend.find((t) => t?.date === date);
+      if (!price) return [];
+      return [
+        {
+          commodity: item.code,
+          name: item.name,
+          unit: item.unit,
+          minPrice: price.min,
+          maxPrice: price.max,
+          direction: board.isStale ? null : item.direction,
+        },
+      ];
+    });
+    if (items.length === 0) return null;
+    return {
+      kind: 'bazar_prices',
+      date,
+      isStale: board.isStale,
+      items: items.slice(0, limit),
+      sponsor: board.sponsor ? { name: board.sponsor.name, linkUrl: board.sponsor.linkUrl } : null,
+    };
+  }
+
+  /** Open urgent requests near the origin, any area (counts only): no requests, no card. */
+  private async bloodCard(origin: Origin, radiusKm: number): Promise<BloodCard | null> {
+    const s = await this.readOnly((tx) => this.info.requestsSummaryNear(tx, origin, radiusKm));
+    if (s.open_count === 0) return null;
+    return {
+      kind: 'blood',
+      openRequests: s.open_count,
+      groups: s.groups,
+      mostUrgent: s.most_urgent,
+    };
   }
 
   private async landmarkCards(

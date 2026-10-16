@@ -16,6 +16,9 @@ import {
   activityEventTypes,
   agentEmploymentTypes,
   agentStatuses,
+  agentSubmissionKinds,
+  agentTaskStatuses,
+  agentTaskTypes,
   commissionSources,
   commissionStatuses,
   legalHoldSubjectTypes,
@@ -60,6 +63,11 @@ export const fieldAgents = pgTable('field_agents', {
     .references(() => agentStatuses.code, { onDelete: 'restrict' }),
   joinedOn: date('joined_on').notNull(),
   terminatedOn: date('terminated_on'),
+  // 0062: taka per approved shop (NULL = agent_commission_per_shop) and {daily_shops, weekly_shops}.
+  commissionRate: numeric('commission_rate', { precision: 12, scale: 2 }),
+  targets: jsonb('targets')
+    .notNull()
+    .default(sql`'{}'::jsonb`),
   createdAt: timestamptz('created_at').notNull().defaultNow(),
   updatedAt: timestamptz('updated_at').notNull().defaultNow(),
   deletedAt: timestamptz('deleted_at'),
@@ -309,4 +317,92 @@ export const jobRuns = pgTable('job_runs', {
     .default(sql`'{}'::jsonb`),
   errorMessage: text('error_message'),
   ...auditColumns(),
+});
+
+// ---- field agent mode (0062, ADR 066) ---------------------------------------
+
+/** What an agent is asked to do, where, by when. */
+export const agentTasks = pgTable('agent_tasks', {
+  id: id(),
+  tenantId: uuid('tenant_id')
+    .notNull()
+    .references(() => tenants.id, { onDelete: 'restrict' }),
+  // Composite FK (tenant_id, field_agent_id) -> field_agents, RESTRICT.
+  fieldAgentId: uuid('field_agent_id').notNull(),
+  typeCode: text('type_code')
+    .notNull()
+    .references(() => agentTaskTypes.code, { onDelete: 'restrict' }),
+  title: text('title').notNull(),
+  // Composite FKs (tenant_id, *) -> localities / places, SET NULL.
+  localityId: uuid('locality_id'),
+  targetLocation: geographyPoint('target_location'),
+  placeId: uuid('place_id'),
+  dueOn: date('due_on').notNull(),
+  statusCode: text('status_code')
+    .notNull()
+    .default('open')
+    .references(() => agentTaskStatuses.code, { onDelete: 'restrict' }),
+  doneAt: timestamptz('done_at'),
+  notes: text('notes'),
+  createdByUserId: uuid('created_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamptz('created_at').notNull().defaultNow(),
+  updatedAt: timestamptz('updated_at').notNull().defaultNow(),
+});
+
+/** One captured submission; the id is the phone's own UUID (the sync's idempotency key). */
+export const agentSubmissions = pgTable('agent_submissions', {
+  id: uuid('id').primaryKey(),
+  tenantId: uuid('tenant_id')
+    .notNull()
+    .references(() => tenants.id, { onDelete: 'restrict' }),
+  // Composite FKs (tenant_id, *) -> field_agents, agent_tasks, places,
+  // place_edit_suggestions, agent_visits.
+  fieldAgentId: uuid('field_agent_id').notNull(),
+  taskId: uuid('task_id'),
+  kindCode: text('kind_code')
+    .notNull()
+    .references(() => agentSubmissionKinds.code, { onDelete: 'restrict' }),
+  capturedAt: timestamptz('captured_at').notNull(),
+  location: geographyPoint('location').notNull(),
+  accuracyM: numeric('accuracy_m', { precision: 6, scale: 1 }).notNull(),
+  photoLocation: geographyPoint('photo_location'),
+  photoTakenAt: timestamptz('photo_taken_at'),
+  photoMediaIds: uuid('photo_media_ids')
+    .array()
+    .notNull()
+    .default(sql`'{}'::uuid[]`),
+  payload: jsonb('payload').notNull(),
+  placeId: uuid('place_id'),
+  placeEditSuggestionId: uuid('place_edit_suggestion_id'),
+  agentVisitId: uuid('agent_visit_id'),
+  duplicateDecision: text('duplicate_decision'),
+  duplicateOfPlaceId: uuid('duplicate_of_place_id'),
+  fraudFlags: text('fraud_flags')
+    .array()
+    .notNull()
+    .default(sql`'{}'::text[]`),
+  fraudDetail: jsonb('fraud_detail')
+    .notNull()
+    .default(sql`'{}'::jsonb`),
+  phoneCheckStatus: text('phone_check_status').notNull().default('none'),
+  createdAt: timestamptz('created_at').notNull().defaultNow(),
+  updatedAt: timestamptz('updated_at').notNull().defaultNow(),
+});
+
+/** A shop phone's OTP outcome, by submission (possibly before it syncs). */
+export const agentPhoneChecks = pgTable('agent_phone_checks', {
+  id: id(),
+  tenantId: uuid('tenant_id')
+    .notNull()
+    .references(() => tenants.id, { onDelete: 'restrict' }),
+  // Composite FK (tenant_id, field_agent_id) -> field_agents, RESTRICT.
+  fieldAgentId: uuid('field_agent_id').notNull(),
+  submissionId: uuid('submission_id').notNull(),
+  phoneHash: text('phone_hash').notNull(),
+  statusCode: text('status_code').notNull().default('sent'),
+  attempts: integer('attempts')
+    .notNull()
+    .default(sql`0`),
+  createdAt: timestamptz('created_at').notNull().defaultNow(),
+  updatedAt: timestamptz('updated_at').notNull().defaultNow(),
 });

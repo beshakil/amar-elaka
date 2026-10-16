@@ -20,6 +20,11 @@ const GLYPHS: Record<string, string> = {
   bus: '<path d="M5 4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v13h-1v2h-3v-2H9v2H6v-2H5zm2 2v5h10V6zm1 7.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm8 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"/>',
   shop: '<path d="M4 4h16l1.5 5a3 3 0 0 1-5.25 2 3 3 0 0 1-4.5 0 3 3 0 0 1-4.5 0A3 3 0 0 1 2.5 9zM5 13.5V21h5v-5h4v5h5v-7.5a4.9 4.9 0 0 1-2.75.5 5 5 0 0 1-4.25-1.4A5 5 0 0 1 5 13.5z"/>',
   listing: '<path d="M3 3h8l10 10-8 8L3 11zm4.5 2.5a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/>',
+  // The info engine (ADR 065).
+  school: '<path d="M12 3 1 9l11 6 9-4.9V17h2V9zM5 13.2v4L12 21l7-3.8v-4L12 17z"/>',
+  lost: '<path d="M10 2a8 8 0 0 1 6.32 12.9l5.39 5.4-1.42 1.4-5.39-5.38A8 8 0 1 1 10 2zm0 2a6 6 0 1 0 0 12 6 6 0 0 0 0-12z"/>',
+  office: '<path d="M12 2 2 7v2h20V7zM4 11h3v7H4zm6.5 0h3v7h-3zM17 11h3v7h-3zM2 20h20v2H2z"/>',
+  power: '<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>',
 };
 const DEFAULT_GLYPH = '<circle cx="12" cy="12" r="4"/>';
 
@@ -33,6 +38,10 @@ export const PIN_COLOURS: Record<string, string> = {
   bus: '#0c8599',
   shop: '#1c7ed6',
   listing: '#d6336c',
+  school: '#7048e8',
+  lost: '#e8590c',
+  office: '#364fc7',
+  power: '#f59f00',
 };
 export const DEFAULT_PIN_COLOUR = '#495057';
 

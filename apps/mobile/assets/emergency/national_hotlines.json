@@ -1,0 +1,124 @@
+{
+  "version": "bundled",
+  "refreshAfterSeconds": 0,
+  "national": [
+    {
+      "id": "bundled-999",
+      "serviceType": "national_emergency",
+      "name": {
+        "bn": "জাতীয় জরুরি সেবা",
+        "en": "National Emergency Service"
+      },
+      "description": {
+        "bn": "পুলিশ, ফায়ার সার্ভিস ও অ্যাম্বুলেন্স — বিনা খরচে, ২৪ ঘণ্টা",
+        "en": "Police, fire and ambulance — toll-free, 24 hours"
+      },
+      "dial": "999"
+    },
+    {
+      "id": "bundled-16163",
+      "serviceType": "fire_service",
+      "name": {
+        "bn": "ফায়ার সার্ভিস ও সিভিল ডিফেন্স",
+        "en": "Fire Service & Civil Defence"
+      },
+      "description": {
+        "bn": "আগুন, দুর্ঘটনা ও উদ্ধার",
+        "en": "Fire, accidents and rescue"
+      },
+      "dial": "16163"
+    },
+    {
+      "id": "bundled-16263",
+      "serviceType": "health_helpline",
+      "name": {
+        "bn": "স্বাস্থ্য বাতায়ন",
+        "en": "Shastho Batayon (health line)"
+      },
+      "description": {
+        "bn": "ডাক্তারের পরামর্শ ও অ্যাম্বুলেন্সের তথ্য, ২৪ ঘণ্টা",
+        "en": "Doctor advice and ambulance information, 24 hours"
+      },
+      "dial": "16263"
+    },
+    {
+      "id": "bundled-109",
+      "serviceType": "women_child_helpline",
+      "name": {
+        "bn": "নারী ও শিশু নির্যাতন প্রতিরোধ",
+        "en": "Violence against women & children"
+      },
+      "description": {
+        "bn": "নারী ও শিশু নির্যাতন প্রতিরোধে জাতীয় হেল্পলাইন",
+        "en": "National helpline against violence on women and children"
+      },
+      "dial": "109"
+    },
+    {
+      "id": "bundled-1098",
+      "serviceType": "child_helpline",
+      "name": {
+        "bn": "শিশু সহায়তা",
+        "en": "Child Helpline"
+      },
+      "description": {
+        "bn": "বিপদে পড়া শিশুর জন্য",
+        "en": "For children at risk"
+      },
+      "dial": "1098"
+    },
+    {
+      "id": "bundled-333",
+      "serviceType": "information",
+      "name": {
+        "bn": "জাতীয় তথ্য বাতায়ন",
+        "en": "National information line"
+      },
+      "description": {
+        "bn": "সরকারি সেবা, তথ্য ও অভিযোগ",
+        "en": "Government services, information and complaints"
+      },
+      "dial": "333"
+    },
+    {
+      "id": "bundled-1090",
+      "serviceType": "disaster_warning",
+      "name": {
+        "bn": "দুর্যোগের আগাম বার্তা",
+        "en": "Disaster early warning"
+      },
+      "description": {
+        "bn": "ঘূর্ণিঝড়, বন্যা ও আবহাওয়ার সতর্কবার্তা",
+        "en": "Cyclone, flood and weather warnings"
+      },
+      "dial": "1090"
+    },
+    {
+      "id": "bundled-16430",
+      "serviceType": "legal_aid",
+      "name": {
+        "bn": "সরকারি আইনগত সহায়তা",
+        "en": "Government legal aid"
+      },
+      "description": {
+        "bn": "বিনা খরচে আইনি পরামর্শ",
+        "en": "Free legal advice"
+      },
+      "dial": "16430"
+    },
+    {
+      "id": "bundled-106",
+      "serviceType": "anti_corruption",
+      "name": {
+        "bn": "দুর্নীতি দমন কমিশন",
+        "en": "Anti-Corruption Commission"
+      },
+      "description": {
+        "bn": "দুর্নীতির অভিযোগ",
+        "en": "Report corruption"
+      },
+      "dial": "106"
+    }
+  ],
+  "groups": []
+}

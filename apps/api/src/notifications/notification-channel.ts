@@ -38,6 +38,10 @@ export const NOTIFICATION_TYPES = [
   'complaint_assigned',
   'complaint_sla_breached',
   'complaint_resolved',
+  'blood_request_nearby',
+  'blood_donor_contacted',
+  'info_item_decided',
+  'lost_found_contacted',
 ] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
 

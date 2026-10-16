@@ -44,7 +44,16 @@ export default defineConfig({
         ...devices['Desktop Chrome'],
         // Chromium already resolves every *.localhost to loopback, which is
         // what tenant subdomains use; this maps the custom-domain fixture too.
-        launchOptions: { args: ['--host-resolver-rules=MAP mirpur-bazaar.test 127.0.0.1'] },
+        // The maps need WebGL. A CI runner has no GPU, and newer Chromium no
+        // longer falls back to software rendering by itself (the map then never
+        // leaves "loading"): ask for SwiftShader explicitly, the same everywhere.
+        launchOptions: {
+          args: [
+            '--host-resolver-rules=MAP mirpur-bazaar.test 127.0.0.1',
+            '--use-angle=swiftshader',
+            '--enable-unsafe-swiftshader',
+          ],
+        },
       },
     },
   ],

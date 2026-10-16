@@ -466,6 +466,9 @@ describe('Post lifecycle jobs (e2e)', () => {
         'expire-bans',
         'escalate-appeals',
         'complaint-sla',
+        'expire-blood-requests',
+        'alert-blood-donors',
+        'expire-info-items',
       ]);
       const drafts = jobs.find((job) => job.code === 'clean-stale-drafts')!;
       expect(drafts.schedule?.pattern).toBe('0 4 * * *');

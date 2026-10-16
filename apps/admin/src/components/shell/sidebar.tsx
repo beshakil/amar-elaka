@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import {
   Building2,
   Flag,
+  Info,
   LayoutDashboard,
   Map as MapIcon,
   PanelLeftClose,
@@ -25,6 +26,7 @@ const ICONS = {
   building: Building2,
   flag: Flag,
   map: MapIcon,
+  info: Info,
 } as const;
 
 /**

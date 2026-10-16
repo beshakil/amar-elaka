@@ -234,7 +234,10 @@ describe('Feed (e2e)', () => {
     // Emergency at slot 1, bazar at slot 3, store after every 2 posts, landmark appended.
     expect(body.items[0]).toMatchObject({
       kind: 'emergency',
-      hotlines: [expect.objectContaining({ dial: '999', serviceType: 'police' })],
+      // The fixture hotline sorts first; the national ones seeded by 0060 follow.
+      hotlines: expect.arrayContaining([
+        expect.objectContaining({ dial: '999', serviceType: 'police' }),
+      ]) as unknown,
     });
     expect(body.items[2]).toMatchObject({
       kind: 'bazar_prices',

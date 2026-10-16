@@ -23,11 +23,14 @@ export function ContactActions({
   channels,
   sold,
   loginPath,
+  endpoint = `/api/posts/${postId}/contact`,
 }: {
   postId: string;
   channels: string[];
   sold: boolean;
   loginPath: string;
+  /** This site's reveal route (a lost & found report has its own, ADR 065). */
+  endpoint?: string;
 }) {
   const t = useTranslations('listing.contact');
   const [busy, setBusy] = useState<string | null>(null);
@@ -43,7 +46,7 @@ export function ContactActions({
     setBusy(channel);
     setError(null);
     try {
-      const response = await fetch(`/api/posts/${postId}/contact`, {
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ channel }),

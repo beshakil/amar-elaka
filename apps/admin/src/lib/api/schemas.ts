@@ -566,3 +566,385 @@ export type _BansContract = [
   Assert<Accepts<z.infer<typeof complaintUpdatedSchema>, Api['ComplaintUpdatedDto']>>,
   Assert<Accepts<z.infer<typeof complaintResolvedSchema>, Api['ComplaintResolvedDto']>>,
 ];
+
+// ---- local information services (ADR 064) ----------------------------------
+
+const localizedName = z.object({ bn: z.string().nullable(), en: z.string().nullable() });
+const priceRange = z.object({ min: z.string(), max: z.string() });
+
+/** GET /info/emergency/contacts: the area's own contacts, inactive ones too. */
+export const emergencyAdminListSchema = z.object({
+  items: z.array(
+    z.object({
+      id: z.string(),
+      serviceType: z.string(),
+      name: localizedName,
+      phones: z.array(z.string()),
+      address: z.string().nullable(),
+      location: z.object({ lat: z.number(), lng: z.number() }).nullable(),
+      is24h: z.boolean(),
+      availabilityNote: z.string().nullable(),
+      lastVerifiedAt: z.string().nullable(),
+      isActive: z.boolean(),
+      sortOrder: z.number(),
+    }),
+  ),
+});
+export type EmergencyAdminContact = z.infer<typeof emergencyAdminListSchema>['items'][number];
+
+/** GET /bazar/entry: the fast entry sheet, the previous day prefilled. */
+export const bazarEntrySheetSchema = z.object({
+  date: z.string(),
+  earliestDate: z.string(),
+  items: z.array(
+    z.object({
+      commodityId: z.string(),
+      code: z.string(),
+      name: localizedName,
+      group: z.string(),
+      unit: z.string(),
+      entered: priceRange.nullable(),
+      previous: priceRange.nullable(),
+    }),
+  ),
+});
+export type BazarEntrySheet = z.infer<typeof bazarEntrySheetSchema>;
+
+export const bazarCatalogueSchema = z.object({
+  customised: z.boolean(),
+  commodities: z.array(
+    z.object({
+      id: z.string(),
+      code: z.string(),
+      name: localizedName,
+      group: z.string(),
+      defaultUnit: z.string(),
+      selected: z.object({ unit: z.string(), sortOrder: z.number() }).nullable(),
+    }),
+  ),
+});
+export type BazarCatalogue = z.infer<typeof bazarCatalogueSchema>;
+
+export const bazarSponsorAdminSchema = z.object({
+  sponsor: z
+    .object({
+      id: z.string(),
+      nameBn: z.string(),
+      nameEn: z.string().nullable(),
+      taglineBn: z.string().nullable(),
+      linkUrl: z.string().nullable(),
+      startsOn: z.string(),
+      endsOn: z.string().nullable(),
+    })
+    .nullable(),
+});
+export type BazarSponsorAdmin = z.infer<typeof bazarSponsorAdminSchema>;
+
+export const bloodRequestListSchema = z.object({
+  items: z.array(
+    z.object({
+      id: z.string(),
+      bloodGroup: z.string(),
+      units: z.number(),
+      hospitalName: z.string(),
+      neededBy: z.string(),
+      urgency: z.string(),
+      status: z.string(),
+      createdAt: z.string(),
+    }),
+  ),
+});
+export type AdminBloodRequest = z.infer<typeof bloodRequestListSchema>['items'][number];
+
+export const createdIdSchema = z.object({ id: z.string() });
+export const savedCountSchema = z.object({ saved: z.number() });
+/** A 204 answer: apiFetch hands back null. */
+export const noContentSchema = z.null();
+
+// ---- the info engine (ADR 065) -------------------------------------------------
+
+const enginePoint = z.object({ lat: z.number(), lng: z.number() });
+
+/** The engine's one card (the lists the team manages from). */
+export const infoCardSchema = z.object({
+  type: z.string(),
+  id: z.string(),
+  tenantId: z.string(),
+  title: localizedName,
+  summary: z.string().nullable(),
+  badges: z.array(z.string()),
+  startsAt: z.string().nullable(),
+  endsAt: z.string().nullable(),
+  updatedAt: z.string().nullable(),
+  isStale: z.boolean(),
+  distanceMeters: z.number().nullable(),
+  location: enginePoint.nullable(),
+  image: z.object({ url: z.string(), thumbhash: z.string().nullable() }).nullable(),
+});
+export type InfoCard = z.infer<typeof infoCardSchema>;
+export const infoListSchema = z.object({
+  items: z.array(infoCardSchema),
+  radiusKm: z.number().nullable(),
+  next: z.string().nullable(),
+});
+
+/** GET /info/outages/manage: the area team's scheduled outages and the localities. */
+export const outageAdminListSchema = z.object({
+  items: z.array(
+    z.object({
+      id: z.string(),
+      utility: z.string(),
+      localityId: z.string().nullable(),
+      areaText: z.string().nullable(),
+      startsAt: z.string(),
+      endsAt: z.string(),
+      reason: z.string().nullable(),
+      status: z.string(),
+    }),
+  ),
+  localities: z.array(z.object({ id: z.string(), name: localizedName })),
+});
+export type OutageAdminList = z.infer<typeof outageAdminListSchema>;
+
+/** A route in full (GET /info/transport/manage). */
+export const routeDetailSchema = z.object({
+  card: infoCardSchema,
+  mode: z.string(),
+  operatorName: z.string().nullable(),
+  originName: z.string(),
+  destinationName: z.string(),
+  originLocation: enginePoint.nullable(),
+  destinationLocation: enginePoint.nullable(),
+  typicalDurationMinutes: z.number().nullable(),
+  fareMin: z.string().nullable(),
+  fareMax: z.string().nullable(),
+  fareUpdatedOn: z.string().nullable(),
+  lastVerifiedAt: z.string().nullable(),
+  contactPhones: z.array(z.string()),
+  notes: z.string().nullable(),
+  stops: z.array(
+    z.object({
+      seq: z.number(),
+      name: localizedName,
+      location: enginePoint.nullable(),
+      minutesFromOrigin: z.number().nullable(),
+      fareFromOrigin: z.string().nullable(),
+    }),
+  ),
+  schedules: z.array(
+    z.object({
+      id: z.string(),
+      direction: z.string(),
+      departureTime: z.string(),
+      days: z.array(z.number()),
+      validFrom: z.string().nullable(),
+      validTo: z.string().nullable(),
+      serviceClass: z.string().nullable(),
+      fare: z.string().nullable(),
+    }),
+  ),
+  nextDepartures: z.array(
+    z.object({
+      departsAt: z.string(),
+      direction: z.string(),
+      serviceClass: z.string().nullable(),
+      fare: z.string().nullable(),
+    }),
+  ),
+});
+export type RouteDetail = z.infer<typeof routeDetailSchema>;
+export const routeAdminListSchema = z.object({ items: z.array(routeDetailSchema) });
+
+const govVersionSchema = z.object({
+  versionNo: z.number(),
+  name: localizedName,
+  summary: z.string().nullable(),
+  officeName: z.string(),
+  officePlaceId: z.string().nullable(),
+  address: z.string().nullable(),
+  location: enginePoint.nullable(),
+  hours: z.string().nullable(),
+  documents: z.array(z.string()),
+  fees: z.array(z.object({ label: z.string(), amount: z.string() })),
+  steps: z.array(z.string()),
+  links: z.array(z.object({ label: z.string(), url: z.string() })),
+  changeNote: z.string().nullable(),
+  createdAt: z.string(),
+});
+export const govServiceDetailSchema = z.object({
+  card: infoCardSchema,
+  id: z.string(),
+  slug: z.string(),
+  category: z.string(),
+  lastVerifiedOn: z.string(),
+  current: govVersionSchema,
+  versions: z.array(
+    z.object({ versionNo: z.number(), createdAt: z.string(), changeNote: z.string().nullable() }),
+  ),
+});
+export type GovServiceDetail = z.infer<typeof govServiceDetailSchema>;
+export const publishedSchema = z.object({ id: z.string(), versionNo: z.number() });
+
+/** GET /info/moderation/queue: notices and lost & found waiting or reported. */
+export const infoModerationQueueSchema = z.object({
+  items: z.array(
+    z.object({
+      kind: z.enum(['notice', 'lost_found']),
+      id: z.string(),
+      type: z.string(),
+      title: z.string(),
+      body: z.string().nullable(),
+      template: z.string().nullable(),
+      templateFields: z.record(z.unknown()),
+      authorName: z.string().nullable(),
+      createdAt: z.string(),
+      photos: z.array(
+        z.object({
+          id: z.string(),
+          kind: z.enum(['image', 'document']),
+          mimeType: z.string(),
+          url: z.string(),
+          thumbhash: z.string().nullable(),
+        }),
+      ),
+      openReports: z.number(),
+      /** pending_review = waiting; anything else is live and reported. */
+      status: z.string(),
+    }),
+  ),
+});
+export type InfoModerationItem = z.infer<typeof infoModerationQueueSchema>['items'][number];
+export const infoCreatedSchema = z.object({ id: z.string(), status: z.string() });
+export const infoDecidedSchema = z.object({ status: z.string() });
+export const infoServicesSchema = z.object({ agri: z.boolean() });
+
+export type _InfoEngineContract = [
+  Assert<Accepts<z.infer<typeof infoListSchema>, Api['InfoListDto']>>,
+  Assert<Accepts<OutageAdminList, Api['OutageAdminListDto']>>,
+  Assert<Accepts<z.infer<typeof routeAdminListSchema>, Api['RouteAdminListDto']>>,
+  Assert<Accepts<GovServiceDetail, Api['GovServiceDetailDto']>>,
+  Assert<Accepts<z.infer<typeof publishedSchema>, Api['PublishedDto']>>,
+  Assert<Accepts<z.infer<typeof infoModerationQueueSchema>, Api['ModerationQueueDto']>>,
+  Assert<Accepts<z.infer<typeof infoCreatedSchema>, Api['CreatedDto']>>,
+  Assert<Accepts<z.infer<typeof infoServicesSchema>, Api['InfoServicesDto']>>,
+];
+
+/** POST /media/presign and GET /media/:id (a notice's attachment upload). */
+export const presignedMediaSchema = z.object({
+  id: z.string(),
+  upload: z.object({ url: z.string(), method: z.literal('PUT'), headers: z.record(z.string()) }),
+});
+export const mediaStatusSchema = z.object({
+  id: z.string(),
+  status: z.enum(['pending_upload', 'processing', 'ready', 'rejected', 'quarantined']),
+});
+
+// ---- field agent mode (ADR 066) --------------------------------------------------
+
+const agentCountsSchema = z.object({
+  submitted: z.number(),
+  approved: z.number(),
+  rejected: z.number(),
+  pending: z.number(),
+  commission: z.string(),
+});
+const agentTargetsSchema = z.object({
+  dailyShops: z.number().nullable(),
+  weeklyShops: z.number().nullable(),
+});
+
+/** GET /agents: the area's agents with today's and this week's numbers. */
+export const agentListSchema = z.object({
+  date: z.string(),
+  items: z.array(
+    z.object({
+      id: z.string(),
+      memberId: z.string(),
+      code: z.string(),
+      name: z.string().nullable(),
+      status: z.string(),
+      commissionRate: z.string().nullable(),
+      targets: agentTargetsSchema,
+      today: agentCountsSchema,
+      week: agentCountsSchema,
+      approvalRate: z.number().nullable(),
+      flagged: z.number(),
+    }),
+  ),
+  candidates: z.array(z.object({ memberId: z.string(), name: z.string().nullable() })),
+});
+export type AgentList = z.infer<typeof agentListSchema>;
+export type AgentRow = AgentList['items'][number];
+
+const agentTaskSchema = z.object({
+  id: z.string(),
+  type: z.string(),
+  title: z.string(),
+  status: z.string(),
+  dueOn: z.string(),
+  notes: z.string().nullable(),
+  placeId: z.string().nullable(),
+  placeName: z.string().nullable(),
+  localityName: z.string().nullable(),
+  location: z.object({ lat: z.number(), lng: z.number() }).nullable(),
+  doneAt: z.string().nullable(),
+});
+export type AgentTask = z.infer<typeof agentTaskSchema>;
+export const agentTaskListSchema = z.object({ items: z.array(agentTaskSchema) });
+
+/** GET /agents/submissions: a day's submissions (the map and the review list). */
+export const agentSubmissionDaySchema = z.object({
+  date: z.string(),
+  items: z.array(
+    z.object({
+      id: z.string(),
+      agentId: z.string(),
+      agentCode: z.string(),
+      kind: z.string(),
+      capturedAt: z.string(),
+      location: z.object({ lat: z.number(), lng: z.number() }),
+      accuracyM: z.number(),
+      placeId: z.string().nullable(),
+      placeEditSuggestionId: z.string().nullable(),
+      name: z.string().nullable(),
+      reviewStatus: z.enum(['pending', 'approved', 'rejected']),
+      reasonCode: z.string().nullable(),
+      fraudFlags: z.array(z.string()),
+      fraudDetail: z.record(z.unknown()),
+      phoneCheck: z.string(),
+      photos: z.array(z.object({ id: z.string(), url: z.string().nullable() })),
+      notes: z.string().nullable(),
+    }),
+  ),
+});
+export type AgentSubmissionDay = z.infer<typeof agentSubmissionDaySchema>;
+export type AgentSubmission = AgentSubmissionDay['items'][number];
+
+/** GET /agents/commissions: estimated commission per agent (calculation only). */
+export const commissionReportSchema = z.object({
+  from: z.string(),
+  to: z.string(),
+  items: z.array(
+    z.object({
+      agentId: z.string(),
+      agentCode: z.string(),
+      name: z.string().nullable(),
+      rate: z.string(),
+      newShops: z.number(),
+      verifications: z.number(),
+      updates: z.number(),
+      rejected: z.number(),
+      pending: z.number(),
+      amount: z.string(),
+    }),
+  ),
+  total: z.string(),
+});
+export type CommissionReport = z.infer<typeof commissionReportSchema>;
+
+export type _AgentsContract = [
+  Assert<Accepts<AgentList, Api['AgentListDto']>>,
+  Assert<Accepts<z.infer<typeof agentTaskListSchema>, Api['TaskListDto']>>,
+  Assert<Accepts<AgentSubmissionDay, Api['SubmissionDayDto']>>,
+  Assert<Accepts<CommissionReport, Api['CommissionReportDto']>>,
+];

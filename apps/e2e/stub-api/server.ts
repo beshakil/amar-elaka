@@ -809,12 +809,91 @@ async function handlePublic(
     send(res, 200, body);
     return true;
   }
+  // Local information services (ADR 064).
+  if (req.method === 'GET' && path === '/info/emergency') {
+    const body: Schemas['EmergencyPageDto'] = {
+      version: 'stub',
+      generatedAt: '2026-09-28T00:00:00.000Z',
+      refreshAfterSeconds: 43_200,
+      radiusKm: 15,
+      national: [
+        {
+          id: 'hotline-999',
+          serviceType: 'national_emergency',
+          name: { bn: 'জাতীয় জরুরি সেবা', en: 'National Emergency Service' },
+          description: { bn: 'পুলিশ, ফায়ার সার্ভিস ও অ্যাম্বুলেন্স', en: null },
+          dial: '999',
+        },
+      ],
+      groups: [
+        {
+          serviceType: 'police',
+          contacts: [
+            {
+              id: 'contact-mirpur-thana',
+              tenantId: TENANT_MIRPUR,
+              serviceType: 'police',
+              name: { bn: 'মিরপুর থানা', en: null },
+              phones: ['+8801320000000'],
+              address: null,
+              location: null,
+              is24h: true,
+              availabilityNote: null,
+              lastVerifiedAt: null,
+              distanceMeters: null,
+            },
+          ],
+        },
+      ],
+    };
+    send(res, 200, body);
+    return true;
+  }
+  if (req.method === 'GET' && path === '/bazar/board') {
+    const body: Schemas['BazarBoardDto'] = {
+      date: '2026-09-28',
+      lastUpdated: '2026-09-27',
+      isStale: true,
+      trendDays: 7,
+      sponsor: { name: { bn: 'রহিম স্টোর', en: null }, tagline: null, linkUrl: null },
+      items: [
+        {
+          commodityId: 'rice',
+          code: 'rice-coarse',
+          name: { bn: 'মোটা চাল', en: 'Coarse rice' },
+          group: 'rice_grains',
+          unit: 'kg',
+          today: null,
+          yesterday: { min: '52.00', max: '56.00' },
+          direction: null,
+          trend: [
+            null,
+            null,
+            null,
+            null,
+            null,
+            { date: '2026-09-26', min: '50.00', max: '54.00' },
+            { date: '2026-09-27', min: '52.00', max: '56.00' },
+          ],
+        },
+      ],
+    };
+    send(res, 200, body);
+    return true;
+  }
+  // The info engine (ADR 065).
+  const engine = infoEngineStub(req.method ?? 'GET', path);
+  if (engine) {
+    send(res, engine.status, engine.body);
+    return true;
+  }
   if (req.method === 'GET' && path === '/feed') {
     const feed: Schemas['FeedResponseDto'] = {
       items: [
         {
           kind: 'bazar_prices',
           date: '2026-09-28',
+          isStale: false,
           items: [
             {
               commodity: 'rice_coarse',
@@ -822,8 +901,10 @@ async function handlePublic(
               unit: 'kg',
               minPrice: '52.00',
               maxPrice: '56.00',
+              direction: 'up',
             },
           ],
+          sponsor: null,
         },
         {
           kind: 'emergency',
@@ -835,6 +916,8 @@ async function handlePublic(
             },
           ],
         },
+        { kind: 'prayer' },
+        { kind: 'info', card: STUB_INFO_CARDS.notice },
       ],
       nextCursor: null,
       scope: 'area',
@@ -1974,5 +2057,161 @@ async function handleSeller(
       });
       res.end(Buffer.from('%PDF-1.4\n%%EOF\n', 'latin1'));
       return true;
+  }
+}
+
+// ---- the info engine (ADR 065) ---------------------------------------------------
+
+const infoCard = (
+  over: Partial<Schemas['InfoListDto']['items'][number]> &
+    Pick<Schemas['InfoListDto']['items'][number], 'type' | 'id'>,
+): Schemas['InfoListDto']['items'][number] => ({
+  tenantId: TENANT_MIRPUR,
+  title: { bn: '', en: null },
+  summary: null,
+  badges: [],
+  startsAt: null,
+  endsAt: null,
+  updatedAt: null,
+  isStale: false,
+  distanceMeters: null,
+  location: null,
+  image: null,
+  ...over,
+});
+
+const STUB_INFO_CARDS = {
+  notice: infoCard({
+    type: 'notice',
+    id: '0191e3a0-0000-7000-8000-0000000a0001',
+    title: { bn: 'পৌরসভার কর পরিশোধের নোটিশ', en: null },
+    summary: 'কর পরিশোধের শেষ তারিখ ৩০ অক্টোবর।',
+    badges: ['pourashava', 'official'],
+    startsAt: '2026-09-27T04:00:00.000Z',
+    distanceMeters: 820,
+  }),
+  outage: infoCard({
+    type: 'outage',
+    id: '0191e3a0-0000-7000-8000-0000000a0002',
+    title: { bn: 'বিদ্যুৎ বন্ধ: পল্লবী', en: null },
+    badges: ['electricity', 'scheduled', 'upcoming'],
+    startsAt: '2026-09-28T04:00:00.000Z',
+    endsAt: '2026-09-28T07:00:00.000Z',
+  }),
+  route: infoCard({
+    type: 'transport',
+    id: '0191e3a0-0000-7000-8000-0000000a0003',
+    title: { bn: 'মিরপুর – গুলিস্তান বাস', en: null },
+    badges: ['bus'],
+    updatedAt: '2026-06-01T00:00:00.000Z',
+    isStale: true,
+  }),
+};
+
+/** GETs of the info engine the web reads; null = not one of them. */
+function infoEngineStub(method: string, path: string): { status: number; body: unknown } | null {
+  if (method !== 'GET') return null;
+  const list = (items: Schemas['InfoListDto']['items']): Schemas['InfoListDto'] => ({
+    items,
+    radiusKm: 15,
+    next: null,
+  });
+  switch (path) {
+    case '/info/services':
+      return { status: 200, body: { agri: false } satisfies Schemas['InfoServicesDto'] };
+    case '/info/prayer/settings':
+      return {
+        status: 200,
+        body: {
+          method: 'karachi',
+          asrSchool: 'hanafi',
+          hijriAdjustDays: 0,
+          sehriCautionMinutes: 0,
+          iftarCautionMinutes: 0,
+          center: { lat: 23.8069, lng: 90.3687 },
+          timezone: 'Asia/Dhaka',
+        } satisfies Schemas['PrayerSettingsDto'],
+      };
+    case '/info/notices':
+      return { status: 200, body: list([STUB_INFO_CARDS.notice]) };
+    case '/info/outages':
+      return { status: 200, body: list([STUB_INFO_CARDS.outage]) };
+    case '/info/transport/routes':
+      return { status: 200, body: list([STUB_INFO_CARDS.route]) };
+    case '/info/lost-found':
+    case '/info/gov-services':
+    case '/info/directory':
+      return { status: 200, body: list([]) };
+    case `/info/notices/${STUB_INFO_CARDS.notice.id}`:
+      return {
+        status: 200,
+        body: {
+          card: STUB_INFO_CARDS.notice,
+          type: 'pourashava',
+          category: 'local',
+          body: 'চলতি অর্থবছরের পৌরকর ৩০ অক্টোবরের মধ্যে পরিশোধ করুন।',
+          issuerName: 'মিরপুর পৌরসভা',
+          isOfficial: true,
+          isPinned: false,
+          template: null,
+          templateFields: {},
+          validFrom: null,
+          expiresAt: '2026-10-30T18:00:00.000Z',
+          publishedAt: '2026-09-27T04:00:00.000Z',
+          areaName: null,
+          attachments: [],
+        } satisfies Schemas['NoticeDetailDto'],
+      };
+    case `/info/transport/routes/${STUB_INFO_CARDS.route.id}`:
+      return {
+        status: 200,
+        body: {
+          card: STUB_INFO_CARDS.route,
+          mode: 'bus',
+          operatorName: 'বিহঙ্গ পরিবহন',
+          originName: 'মিরপুর ১০',
+          destinationName: 'গুলিস্তান',
+          originLocation: null,
+          destinationLocation: null,
+          typicalDurationMinutes: 60,
+          fareMin: '30.00',
+          fareMax: '45.00',
+          fareUpdatedOn: '2026-06-01',
+          lastVerifiedAt: '2026-06-01T00:00:00.000Z',
+          contactPhones: [],
+          notes: null,
+          stops: [
+            {
+              seq: 1,
+              name: { bn: 'ফার্মগেট', en: null },
+              location: null,
+              minutesFromOrigin: 25,
+              fareFromOrigin: '25.00',
+            },
+          ],
+          schedules: [
+            {
+              id: 's1',
+              direction: 'outbound',
+              departureTime: '07:30',
+              days: [1, 2, 3, 4, 5, 6, 7],
+              validFrom: null,
+              validTo: null,
+              serviceClass: null,
+              fare: null,
+            },
+          ],
+          nextDepartures: [
+            {
+              departsAt: '2026-09-28T01:30:00.000Z',
+              direction: 'outbound',
+              serviceClass: null,
+              fare: null,
+            },
+          ],
+        } satisfies Schemas['RouteDetailDto'],
+      };
+    default:
+      return null;
   }
 }

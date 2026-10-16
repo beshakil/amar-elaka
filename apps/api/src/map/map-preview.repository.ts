@@ -69,7 +69,8 @@ export class MapPreviewRepository {
       case 'landmarks':
         return this.place(tx, id);
       case 'info':
-        // An info feature is an emergency service, a bus stop or an info place (banks…).
+        // An info feature is an emergency service, a bus stop, an info place (banks…),
+        // or an info engine item: lost & found, a government office, an outage.
         return (
           (await this.one(
             tx,
@@ -86,6 +87,33 @@ export class MapPreviewRepository {
                    null::text as cover_thumbhash, null::jsonb as cover_variants, null::text as title
             from public.transport_route_stops st
             where st.id = ${id}`,
+          )) ??
+          // The info engine (0061). A lost & found pin never carries a phone (the contact is tracked).
+          (await this.one(
+            tx,
+            sql`
+            select i.title as name_bn, null::text as name_en, null::text[] as phones, i.location_text as address,
+                   null::text as cover_thumbhash, null::jsonb as cover_variants, null::text as title
+            from public.lost_found_items i
+            where i.id = ${id} and i.status_code = 'open' and i.deleted_at is null`,
+          )) ??
+          (await this.one(
+            tx,
+            sql`
+            select v.name_bn, v.name_en, null::text[] as phones, v.address_text as address,
+                   null::text as cover_thumbhash, null::jsonb as cover_variants, v.office_name as title
+            from public.gov_services g
+            join public.gov_service_versions v on v.tenant_id = g.tenant_id and v.id = g.current_version_id
+            where g.id = ${id} and g.is_active and g.deleted_at is null`,
+          )) ??
+          (await this.one(
+            tx,
+            sql`
+            select l.name_bn, l.name_en, null::text[] as phones, o.area_text as address,
+                   null::text as cover_thumbhash, null::jsonb as cover_variants, o.reason_text as title
+            from public.utility_outages o
+            join public.localities l on l.tenant_id = o.tenant_id and l.id = o.locality_id
+            where o.id = ${id} and o.status_code = 'scheduled' and o.deleted_at is null`,
           )) ??
           (await this.place(tx, id))
         );

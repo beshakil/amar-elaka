@@ -24,6 +24,18 @@ class MediaUploadService {
     File file, {
     required MediaKind kind,
     required String contentType,
+  }) async => (await uploadAsset(
+    file,
+    kind: kind,
+    contentType: contentType,
+  )).storageKey;
+
+  /// The same upload, returning the asset's id too (what an attachment
+  /// needs: a notice's PDF, a lost & found photo — ADR 065).
+  Future<({String id, String storageKey})> uploadAsset(
+    File file, {
+    required MediaKind kind,
+    required String contentType,
   }) async {
     final bytes = await file.readAsBytes();
     final checksum = sha256.convert(bytes).toString();
@@ -53,7 +65,7 @@ class MediaUploadService {
       );
 
       await _dio.post<void>('/media/${created.id}/confirm');
-      return created.storageKey;
+      return (id: created.id, storageKey: created.storageKey);
     } on DioException catch (e) {
       throw mapDioException(e);
     }

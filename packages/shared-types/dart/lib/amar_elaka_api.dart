@@ -13,6 +13,7 @@ export 'src/categories/catalog_category.dart';
 export 'src/common/api_error_body.dart';
 export 'src/feed/feed.dart';
 export 'src/geocode/geocode.dart';
+export 'src/info/info_card.dart';
 export 'src/map/map_config.dart';
 export 'src/map/map_features.dart';
 export 'src/map/offline_map.dart';

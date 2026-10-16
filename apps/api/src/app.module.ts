@@ -7,6 +7,9 @@ import { ChatModule } from './chat/chat.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { VerificationModule } from './verification/verification.module';
 import { BansModule } from './bans/bans.module';
+import { InfoModule } from './info/info.module';
+import { AgentsModule } from './agents/agents.module';
+import { InfoEngineModule } from './info-engine/info-engine.module';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { ZodValidationPipe } from './common/pipes/zod-validation.pipe';
 import { APP_CONFIG, ConfigModule } from './config/config.module';
@@ -78,6 +81,9 @@ import { TenantsModule } from './tenants/tenants.module';
     ReviewsModule,
     VerificationModule,
     BansModule,
+    InfoModule,
+    InfoEngineModule,
+    AgentsModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },

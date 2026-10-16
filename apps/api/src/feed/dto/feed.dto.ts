@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { createZodDto } from '../../common/pipes/zod-dto';
 import { openStateSchema } from '../../hours/open-state';
 import { filtersParam } from '../../search/dto/search.dto';
+import { infoCardSchema } from '../../info-engine/dto/info-card.schema';
 
 // settings-exempt: latitude/longitude ranges, facts of the coordinate system.
 const MAX_LAT = 90;
@@ -121,8 +122,10 @@ export const landmarkCardSchema = z.object({
 
 export const bazarCardSchema = z.object({
   kind: z.literal('bazar_prices'),
-  /** Today in Asia/Dhaka, YYYY-MM-DD. */
+  /** The day the prices are from (the area's zone), YYYY-MM-DD: today, or the last day entered. */
   date: z.string(),
+  /** Not updated today: the card says so (ADR 064). */
+  isStale: z.boolean(),
   items: z.array(
     z.object({
       commodity: z.string(),
@@ -130,8 +133,20 @@ export const bazarCardSchema = z.object({
       unit: z.string(),
       minPrice: z.string(),
       maxPrice: z.string(),
+      /** Today against yesterday; null without both. */
+      direction: z.enum(['up', 'down', 'same']).nullable(),
     }),
   ),
+  /** The board's sponsor (display only). */
+  sponsor: z.object({ name: localized, linkUrl: z.string().nullable() }).nullable(),
+});
+
+/** Open urgent blood requests near the viewer: counts only, nothing personal (ADR 064). */
+export const bloodCardSchema = z.object({
+  kind: z.literal('blood'),
+  openRequests: z.number(),
+  groups: z.array(z.string()),
+  mostUrgent: z.string().nullable(),
 });
 
 export const emergencyCardSchema = z.object({
@@ -139,12 +154,21 @@ export const emergencyCardSchema = z.object({
   hotlines: z.array(z.object({ serviceType: z.string(), name: localized, dial: z.string() })),
 });
 
+/** A local information card (ADR 065): the info engine's one card, by type. */
+export const infoFeedCardSchema = z.object({ kind: z.literal('info'), card: infoCardSchema });
+
+/** Prayer times: the app calculates them on the device (ADR 065); the feed only places the card. */
+export const prayerCardSchema = z.object({ kind: z.literal('prayer') });
+
 export const feedItemSchema = z.discriminatedUnion('kind', [
   postCardSchema,
   storeCardSchema,
   landmarkCardSchema,
   bazarCardSchema,
   emergencyCardSchema,
+  bloodCardSchema,
+  infoFeedCardSchema,
+  prayerCardSchema,
 ]);
 export type FeedItem = z.infer<typeof feedItemSchema>;
 export type PostCard = z.infer<typeof postCardSchema>;
@@ -152,6 +176,7 @@ export type StoreCard = z.infer<typeof storeCardSchema>;
 export type LandmarkCard = z.infer<typeof landmarkCardSchema>;
 export type BazarCard = z.infer<typeof bazarCardSchema>;
 export type EmergencyCard = z.infer<typeof emergencyCardSchema>;
+export type BloodCard = z.infer<typeof bloodCardSchema>;
 
 export const feedResponseSchema = z.object({
   items: z.array(feedItemSchema),

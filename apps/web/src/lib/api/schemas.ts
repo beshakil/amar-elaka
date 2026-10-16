@@ -527,6 +527,8 @@ export type SearchResponse = z.infer<typeof searchResponseSchema>;
 export const bazarCardSchema = z.object({
   kind: z.literal('bazar_prices'),
   date: z.string(),
+  /** Not updated today (ADR 064): the date is the last day entered. */
+  isStale: z.boolean().default(false),
   items: z.array(
     z.object({
       commodity: z.string(),
@@ -534,9 +536,79 @@ export const bazarCardSchema = z.object({
       unit: z.string(),
       minPrice: z.string(),
       maxPrice: z.string(),
+      direction: z.enum(['up', 'down', 'same']).nullable().default(null),
+    }),
+  ),
+  sponsor: z
+    .object({ name: localizedText, linkUrl: z.string().nullable() })
+    .nullable()
+    .default(null),
+});
+/** Open urgent blood requests nearby — counts only (ADR 064). */
+export const bloodCardSchema = z.object({
+  kind: z.literal('blood'),
+  openRequests: z.number(),
+  groups: z.array(z.string()),
+  mostUrgent: z.string().nullable(),
+});
+export type BloodCard = z.infer<typeof bloodCardSchema>;
+
+/** GET /info/emergency (ADR 064): national hotlines, local contacts by type. */
+export const emergencyPageSchema = z.object({
+  version: z.string(),
+  national: z.array(
+    z.object({
+      id: z.string(),
+      serviceType: z.string(),
+      name: localizedText,
+      description: localizedText,
+      dial: z.string(),
+    }),
+  ),
+  groups: z.array(
+    z.object({
+      serviceType: z.string(),
+      contacts: z.array(
+        z.object({
+          id: z.string(),
+          name: localizedText,
+          phones: z.array(z.string()),
+          address: z.string().nullable(),
+          is24h: z.boolean(),
+          availabilityNote: z.string().nullable(),
+          distanceMeters: z.number().nullable(),
+        }),
+      ),
     }),
   ),
 });
+export type EmergencyPage = z.infer<typeof emergencyPageSchema>;
+
+const priceRange = z.object({ min: z.string(), max: z.string() });
+/** GET /bazar/board (ADR 064): today vs yesterday, the trend, stale flag, sponsor. */
+export const bazarBoardSchema = z.object({
+  date: z.string(),
+  lastUpdated: z.string().nullable(),
+  isStale: z.boolean(),
+  trendDays: z.number(),
+  sponsor: z
+    .object({ name: localizedText, tagline: z.string().nullable(), linkUrl: z.string().nullable() })
+    .nullable(),
+  items: z.array(
+    z.object({
+      commodityId: z.string(),
+      code: z.string(),
+      name: localizedText,
+      group: z.string(),
+      unit: z.string(),
+      today: priceRange.nullable(),
+      yesterday: priceRange.nullable(),
+      direction: z.enum(['up', 'down', 'same']).nullable(),
+      trend: z.array(z.object({ date: z.string(), min: z.string(), max: z.string() }).nullable()),
+    }),
+  ),
+});
+export type BazarBoard = z.infer<typeof bazarBoardSchema>;
 export const emergencyCardSchema = z.object({
   kind: z.literal('emergency'),
   hotlines: z.array(z.object({ serviceType: z.string(), name: localizedText, dial: z.string() })),
@@ -1197,4 +1269,178 @@ export type _BanContract = [
   Assert<Accepts<z.infer<typeof appealSubmittedSchema>, Api['AppealSubmittedDto']>>,
   Assert<Accepts<z.infer<typeof appealOtpAcceptedSchema>, Api['AppealOtpAcceptedDto']>>,
   Assert<Accepts<PublicAppealStatus, Api['PublicAppealStatusDto']>>,
+];
+
+// ---- the info engine (ADR 065) ---------------------------------------------------
+
+/** The engine's one card: every info type's list item and feed card. */
+export const infoCardSchema = z.object({
+  type: z.string(),
+  id: z.string(),
+  tenantId: z.string(),
+  title: localizedText,
+  summary: z.string().nullable(),
+  badges: z.array(z.string()),
+  startsAt: z.string().nullable(),
+  endsAt: z.string().nullable(),
+  updatedAt: z.string().nullable(),
+  isStale: z.boolean(),
+  distanceMeters: z.number().nullable(),
+  location: point.nullable(),
+  image: z.object({ url: z.string(), thumbhash: z.string().nullable() }).nullable(),
+});
+export type InfoCard = z.infer<typeof infoCardSchema>;
+
+export const infoListSchema = z.object({
+  items: z.array(infoCardSchema),
+  radiusKm: z.number().nullable(),
+  next: z.string().nullable(),
+});
+export type InfoList = z.infer<typeof infoListSchema>;
+
+/** A feed item carrying an info card (the home page shows a few). */
+export const infoFeedCardSchema = z.object({ kind: z.literal('info'), card: infoCardSchema });
+export const prayerFeedCardSchema = z.object({ kind: z.literal('prayer') });
+
+const infoAttachmentSchema = z.object({
+  id: z.string(),
+  kind: z.enum(['image', 'document']),
+  mimeType: z.string(),
+  url: z.string(),
+  thumbhash: z.string().nullable(),
+});
+
+export const noticeDetailSchema = z.object({
+  card: infoCardSchema,
+  type: z.string(),
+  category: z.string(),
+  body: z.string(),
+  issuerName: z.string().nullable(),
+  isOfficial: z.boolean(),
+  isPinned: z.boolean(),
+  template: z.string().nullable(),
+  templateFields: z.record(z.unknown()),
+  validFrom: z.string().nullable(),
+  expiresAt: z.string().nullable(),
+  publishedAt: z.string().nullable(),
+  areaName: z.string().nullable(),
+  attachments: z.array(infoAttachmentSchema),
+});
+export type NoticeDetail = z.infer<typeof noticeDetailSchema>;
+
+export const lostFoundDetailSchema = z.object({
+  card: infoCardSchema,
+  kind: z.string(),
+  itemType: z.string(),
+  description: z.string().nullable(),
+  locationText: z.string().nullable(),
+  lastSeenAt: z.string().nullable(),
+  reward: z.string().nullable(),
+  status: z.string(),
+  isMine: z.boolean(),
+  photos: z.array(infoAttachmentSchema),
+  createdAt: z.string(),
+});
+export type LostFoundDetail = z.infer<typeof lostFoundDetailSchema>;
+
+export const routeDetailSchema = z.object({
+  card: infoCardSchema,
+  mode: z.string(),
+  operatorName: z.string().nullable(),
+  originName: z.string(),
+  destinationName: z.string(),
+  originLocation: point.nullable(),
+  destinationLocation: point.nullable(),
+  typicalDurationMinutes: z.number().nullable(),
+  fareMin: z.string().nullable(),
+  fareMax: z.string().nullable(),
+  fareUpdatedOn: z.string().nullable(),
+  lastVerifiedAt: z.string().nullable(),
+  contactPhones: z.array(z.string()),
+  notes: z.string().nullable(),
+  stops: z.array(
+    z.object({
+      seq: z.number(),
+      name: localizedText,
+      location: point.nullable(),
+      minutesFromOrigin: z.number().nullable(),
+      fareFromOrigin: z.string().nullable(),
+    }),
+  ),
+  schedules: z.array(
+    z.object({
+      id: z.string(),
+      direction: z.string(),
+      departureTime: z.string(),
+      days: z.array(z.number()),
+      validFrom: z.string().nullable(),
+      validTo: z.string().nullable(),
+      serviceClass: z.string().nullable(),
+      fare: z.string().nullable(),
+    }),
+  ),
+  nextDepartures: z.array(
+    z.object({
+      departsAt: z.string(),
+      direction: z.string(),
+      serviceClass: z.string().nullable(),
+      fare: z.string().nullable(),
+    }),
+  ),
+});
+export type RouteDetail = z.infer<typeof routeDetailSchema>;
+
+export const govVersionSchema = z.object({
+  versionNo: z.number(),
+  name: localizedText,
+  summary: z.string().nullable(),
+  officeName: z.string(),
+  officePlaceId: z.string().nullable(),
+  address: z.string().nullable(),
+  location: point.nullable(),
+  hours: z.string().nullable(),
+  documents: z.array(z.string()),
+  fees: z.array(z.object({ label: z.string(), amount: z.string() })),
+  steps: z.array(z.string()),
+  links: z.array(z.object({ label: z.string(), url: z.string() })),
+  changeNote: z.string().nullable(),
+  createdAt: z.string(),
+});
+export type GovVersion = z.infer<typeof govVersionSchema>;
+
+export const govServiceDetailSchema = z.object({
+  card: infoCardSchema,
+  id: z.string(),
+  slug: z.string(),
+  category: z.string(),
+  lastVerifiedOn: z.string(),
+  current: govVersionSchema,
+  versions: z.array(
+    z.object({ versionNo: z.number(), createdAt: z.string(), changeNote: z.string().nullable() }),
+  ),
+});
+export type GovServiceDetail = z.infer<typeof govServiceDetailSchema>;
+
+export const prayerSettingsSchema = z.object({
+  method: z.enum(['karachi', 'mwl', 'isna', 'egypt', 'umm_al_qura']),
+  asrSchool: z.enum(['hanafi', 'standard']),
+  hijriAdjustDays: z.number(),
+  sehriCautionMinutes: z.number(),
+  iftarCautionMinutes: z.number(),
+  center: point.nullable(),
+  timezone: z.string(),
+});
+export type PrayerSettings = z.infer<typeof prayerSettingsSchema>;
+
+export const infoServicesSchema = z.object({ agri: z.boolean() });
+
+export type _InfoEngineContract = [
+  Assert<Accepts<InfoList, Api['InfoListDto']>>,
+  Assert<Accepts<NoticeDetail, Api['NoticeDetailDto']>>,
+  Assert<Accepts<LostFoundDetail, Api['LostFoundDetailDto']>>,
+  Assert<Accepts<RouteDetail, Api['RouteDetailDto']>>,
+  Assert<Accepts<GovServiceDetail, Api['GovServiceDetailDto']>>,
+  Assert<Accepts<GovVersion, Api['GovVersionDto']>>,
+  Assert<Accepts<PrayerSettings, Api['PrayerSettingsDto']>>,
+  Assert<Accepts<z.infer<typeof infoServicesSchema>, Api['InfoServicesDto']>>,
 ];

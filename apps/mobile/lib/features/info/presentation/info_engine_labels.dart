@@ -1,0 +1,115 @@
+import '../../../l10n/app_localizations.dart';
+
+/// Words for the info engine's codes (ADR 065): badges, types, prayer
+/// names. The API sends codes; the app names them (rule 6). Generated
+/// from the ARB keys — an unknown code shows nothing rather than a code.
+abstract final class InfoEngineLabels {
+  static String? badge(String code, AppLocalizations l10n) => switch (code) {
+    'electricity' => l10n.infoBadgeElectricity,
+    'gas' => l10n.infoBadgeGas,
+    'water' => l10n.infoBadgeWater,
+    'ongoing' => l10n.infoBadgeOngoing,
+    'upcoming' => l10n.infoBadgeUpcoming,
+    'scheduled' => l10n.infoBadgeScheduled,
+    'reported' => l10n.infoBadgeReported,
+    'government' => l10n.infoBadgeGovernment,
+    'union_parishad' => l10n.infoBadgeUnionParishad,
+    'pourashava' => l10n.infoBadgePourashava,
+    'education' => l10n.infoBadgeEducation,
+    'religious' => l10n.infoBadgeReligious,
+    'community_event' => l10n.infoBadgeCommunityEvent,
+    'obituary' => l10n.infoBadgeObituary,
+    'weather_alert' => l10n.infoBadgeWeatherAlert,
+    'power_outage' => l10n.infoBadgePowerOutage,
+    'water_supply' => l10n.infoBadgeWaterSupply,
+    'janaza' => l10n.infoBadgeJanaza,
+    'condolence' => l10n.infoBadgeCondolence,
+    'official' => l10n.infoBadgeOfficial,
+    'pinned' => l10n.infoBadgePinned,
+    'attachment' => l10n.infoBadgeAttachment,
+    'lost' => l10n.infoBadgeLost,
+    'found' => l10n.infoBadgeFound,
+    'phone' => l10n.infoBadgePhone,
+    'wallet' => l10n.infoBadgeWallet,
+    'documents' => l10n.infoBadgeDocuments,
+    'person' => l10n.infoBadgePerson,
+    'pet' => l10n.infoBadgePet,
+    'livestock' => l10n.infoBadgeLivestock,
+    'vehicle' => l10n.infoBadgeVehicle,
+    'bag' => l10n.infoBadgeBag,
+    'jewellery' => l10n.infoBadgeJewellery,
+    'reward' => l10n.infoBadgeReward,
+    'bus' => l10n.infoBadgeBus,
+    'train' => l10n.infoBadgeTrain,
+    'launch' => l10n.infoBadgeLaunch,
+    'ferry' => l10n.infoBadgeFerry,
+    'cng' => l10n.infoBadgeCng,
+    'cng_stand' => l10n.infoBadgeCngStand,
+    'auto_rickshaw' => l10n.infoBadgeAutoRickshaw,
+    'leguna' => l10n.infoBadgeLeguna,
+    'microbus' => l10n.infoBadgeMicrobus,
+    'identity' => l10n.infoBadgeIdentity,
+    'certificate' => l10n.infoBadgeCertificate,
+    'land' => l10n.infoBadgeLand,
+    'license' => l10n.infoBadgeLicense,
+    'social_safety' => l10n.infoBadgeSocialSafety,
+    'agriculture' => l10n.infoBadgeAgriculture,
+    'health' => l10n.infoBadgeHealth,
+    'utility' => l10n.infoBadgeUtility,
+    'hospital-doctor-chambers' => l10n.infoBadgeHospitalDoctorChambers,
+    'pharmacy' => l10n.infoBadgePharmacy,
+    'schools-colleges' => l10n.infoBadgeSchoolsColleges,
+    '24h' => l10n.infoBadgeH24,
+    'open_state:open' => l10n.infoBadgeOpenStateOpen,
+    'open_state:closed' => l10n.infoBadgeOpenStateClosed,
+    'open_state:closes_soon' => l10n.infoBadgeOpenStateClosesSoon,
+    'open_state:opens_soon' => l10n.infoBadgeOpenStateOpensSoon,
+    'field_verified' => l10n.infoBadgeFieldVerified,
+    'inactive' => l10n.infoBadgeInactive,
+    _ => null,
+  };
+
+  static String type(String code, AppLocalizations l10n) => switch (code) {
+    'outage' => l10n.infoTypeOutage,
+    'outage_report' => l10n.infoTypeOutageReport,
+    'notice' => l10n.infoTypeNotice,
+    'lost_found' => l10n.infoTypeLostFound,
+    'transport' => l10n.infoTypeTransport,
+    'gov_service' => l10n.infoTypeGovService,
+    'directory' => l10n.infoTypeDirectory,
+    _ => code,
+  };
+
+  static String hijriMonth(int month, AppLocalizations l10n) => switch (month) {
+    1 => l10n.hijriMonth1,
+    2 => l10n.hijriMonth2,
+    3 => l10n.hijriMonth3,
+    4 => l10n.hijriMonth4,
+    5 => l10n.hijriMonth5,
+    6 => l10n.hijriMonth6,
+    7 => l10n.hijriMonth7,
+    8 => l10n.hijriMonth8,
+    9 => l10n.hijriMonth9,
+    10 => l10n.hijriMonth10,
+    11 => l10n.hijriMonth11,
+    12 => l10n.hijriMonth12,
+    _ => '',
+  };
+
+  static String reportReason(String code, AppLocalizations l10n) =>
+      switch (code) {
+        'false_information' => l10n.infoReportReasonFalseInformation,
+        'privacy_risk' => l10n.infoReportReasonPrivacyRisk,
+        'spam' => l10n.infoReportReasonSpam,
+        'harassment' => l10n.infoReportReasonHarassment,
+        _ => l10n.infoReportReasonOther,
+      };
+
+  static String method(String code, AppLocalizations l10n) => switch (code) {
+    'mwl' => l10n.prayerMethodMwl,
+    'isna' => l10n.prayerMethodIsna,
+    'egypt' => l10n.prayerMethodEgypt,
+    'umm_al_qura' => l10n.prayerMethodUmmAlQura,
+    _ => l10n.prayerMethodKarachi,
+  };
+}

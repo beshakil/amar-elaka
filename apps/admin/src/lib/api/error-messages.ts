@@ -33,6 +33,44 @@ export function apiErrorMessageKey(error: unknown): string {
     case 'TENANT_SUSPENDED':
     case 'TENANT_TERMINATED':
       return 'tenantUnavailable';
+    // Local information services (ADR 064).
+    case 'INFO_STAFF_ONLY':
+      return 'permissionDenied';
+    case 'BAZAR_ENTRY_REFUSED':
+      return 'bazarEntryRefused';
+    case 'BLOOD_REQUEST_REFUSED':
+    case 'BLOOD_REQUEST_NOT_FOUND':
+      return 'bloodRequestRefused';
+    case 'EMERGENCY_CONTACT_NOT_FOUND':
+      return 'emergencyContactNotFound';
+    // Field agent mode (ADR 066).
+    case 'AGENT_NOT_ACTIVE':
+      return 'agentNotActive';
+    case 'AGENT_ADMIN_ONLY':
+      return 'agentAdminOnly';
+    case 'AGENT_NOT_FOUND':
+      return 'agentNotFound';
+    case 'AGENT_ALREADY_EXISTS':
+      return 'agentAlreadyExists';
+    case 'AGENT_TASK_NOT_FOUND':
+      return 'agentTaskNotFound';
+    // The info engine (ADR 065).
+    case 'OUTAGE_REFUSED':
+      return 'outageRefused';
+    case 'NOTICE_REFUSED':
+      return 'noticeRefused';
+    case 'LOST_FOUND_REFUSED':
+      return 'lostFoundRefused';
+    case 'GOV_SERVICE_REFUSED':
+      return 'govServiceRefused';
+    case 'INFO_DECISION_REFUSED':
+      return 'infoDecisionRefused';
+    case 'INFO_ITEM_NOT_FOUND':
+      return 'infoItemNotFound';
+    case 'INFO_SERVICE_DISABLED':
+      return 'infoServiceDisabled';
+    case 'INFO_AREA_REQUIRED':
+      return 'tenantRequired';
     case 'VERIFICATION_NOT_FOUND':
       return 'verificationNotFound';
     case 'VERIFICATION_DECISION_INVALID':

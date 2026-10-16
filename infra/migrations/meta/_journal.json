@@ -421,6 +421,27 @@
       "when": 1791894735764,
       "tag": "0059_bans_appeals",
       "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1791981135764,
+      "tag": "0060_local_info_services",
+      "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1792067535764,
+      "tag": "0061_info_services",
+      "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1792153935764,
+      "tag": "0062_field_agent_mode",
+      "breakpoints": true
     }
   ]
 }

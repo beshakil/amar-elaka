@@ -221,10 +221,15 @@ describe('Row level security: local information domain (0011)', () => {
       insert into transport_schedules (id, tenant_id, transport_route_id, departure_time) values
         (${TRANSPORT_SCHEDULE_1}, ${TENANT_A}, ${TRANSPORT_ROUTE_1}, '07:00')`;
 
-    await admin`
-      insert into lost_found_items
-        (id, tenant_id, kind_code, item_type_code, title, reporter_member_id, is_sensitive, status_code)
-      values (${LOST_FOUND_ITEM_1}, ${TENANT_A}, 'lost', 'phone', 'Lost phone near market', ${MEMBER_ALICE}, false, 'open')`;
+    // A member's report is always reviewed (0061): the fixture is inserted as
+    // the system, as if a moderator had already approved it.
+    await admin.begin(async (tx) => {
+      await tx`select set_config('app.role', 'system', true)`;
+      await tx`
+        insert into lost_found_items
+          (id, tenant_id, kind_code, item_type_code, title, reporter_member_id, is_sensitive, status_code)
+        values (${LOST_FOUND_ITEM_1}, ${TENANT_A}, 'lost', 'phone', 'Lost phone near market', ${MEMBER_ALICE}, false, 'open')`;
+    });
   });
 
   afterAll(async () => {
@@ -720,7 +725,10 @@ describe('Row level security: local information domain (0011)', () => {
           tx`update lost_found_items set status_code = 'removed' where id = ${LOST_FOUND_ITEM_1}`,
       );
       expect(result.count).toBe(1);
-      await admin`update lost_found_items set status_code = 'open' where id = ${LOST_FOUND_ITEM_1}`;
+      await admin.begin(async (tx) => {
+        await tx`select set_config('app.role', 'system', true)`;
+        await tx`update lost_found_items set status_code = 'open' where id = ${LOST_FOUND_ITEM_1}`;
+      });
     });
   });
 });

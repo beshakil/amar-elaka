@@ -14,6 +14,9 @@ import {
   JOB_EXPIRE_BANS,
   JOB_ESCALATE_APPEALS,
   JOB_COMPLAINT_SLA,
+  JOB_EXPIRE_BLOOD_REQUESTS,
+  JOB_ALERT_BLOOD_DONORS,
+  JOB_EXPIRE_INFO_ITEMS,
   QUEUE_NOTIFICATIONS,
   type DeliverNotificationJob,
   type ScheduledJobData,
@@ -23,6 +26,8 @@ import { NotificationDispatcher } from './notification-dispatcher';
 import { ReviewPromptsService } from '../reviews/review-prompts.service';
 import { VerificationJobsService } from '../verification/verification-jobs.service';
 import { BansJobsService } from '../bans/bans-jobs.service';
+import { BloodAlertsService } from '../info/blood-alerts.service';
+import { InfoJobsService } from '../info-engine/info-jobs.service';
 import { NotificationOutboxRelay } from './notification-outbox.relay';
 
 type NotificationsJob = Job<OutgoingNotification | DeliverNotificationJob | ScheduledJobData>;
@@ -40,6 +45,8 @@ export class NotificationsProcessor extends WorkerHost {
     private readonly reviewPrompts: ReviewPromptsService,
     private readonly verificationJobs: VerificationJobsService,
     private readonly banJobs: BansJobsService,
+    private readonly bloodAlerts: BloodAlertsService,
+    private readonly infoJobs: InfoJobsService,
     private readonly runner: JobRunner,
     @InjectQueue(deadLetterQueueName(QUEUE_NOTIFICATIONS)) private readonly dlq: Queue,
     private readonly logger: PinoLogger,
@@ -102,6 +109,27 @@ export class NotificationsProcessor extends WorkerHost {
           job.data as ScheduledJobData,
           job.id ?? null,
           (budget) => this.banJobs.complaintSla(budget),
+        );
+      case JOB_EXPIRE_BLOOD_REQUESTS:
+        return this.runner.run(
+          JOB_EXPIRE_BLOOD_REQUESTS,
+          job.data as ScheduledJobData,
+          job.id ?? null,
+          (budget) => this.bloodAlerts.expire(budget),
+        );
+      case JOB_ALERT_BLOOD_DONORS:
+        return this.runner.run(
+          JOB_ALERT_BLOOD_DONORS,
+          job.data as ScheduledJobData,
+          job.id ?? null,
+          (budget) => this.bloodAlerts.alertPending(budget),
+        );
+      case JOB_EXPIRE_INFO_ITEMS:
+        return this.runner.run(
+          JOB_EXPIRE_INFO_ITEMS,
+          job.data as ScheduledJobData,
+          job.id ?? null,
+          (budget) => this.infoJobs.expire(budget),
         );
       default:
         throw new Error(`notifications queue: unknown job ${job.name}`);

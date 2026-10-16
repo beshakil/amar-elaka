@@ -3,8 +3,11 @@ import { ApiError } from '../api/errors';
 import { apiFetch } from '../api/fetch';
 import {
   bazarCardSchema,
+  bloodCardSchema,
   catalogCategorySchema,
   emergencyCardSchema,
+  infoFeedCardSchema,
+  prayerFeedCardSchema,
   feedInfoSchema,
   listingStatusSchema,
   postDetailSchema,
@@ -24,7 +27,7 @@ import { z } from 'zod';
  */
 type Window = keyof NonNullable<TenantConfig['web']>;
 
-const revalidate = (tenant: TenantConfig, window: Window): number | undefined =>
+export const revalidate = (tenant: TenantConfig, window: Window): number | undefined =>
   tenant.web?.[window];
 
 export const listingStatus = cache((tenant: TenantConfig, id: string) =>
@@ -89,7 +92,7 @@ export const recentListings = cache((tenant: TenantConfig) =>
   }),
 );
 
-/** The feed's info cards: today's bazar prices and the emergency shortcut. */
+/** The feed's info cards: bazar prices, the emergency shortcut, urgent blood requests, info engine cards, prayer. */
 export const infoCards = cache(async (tenant: TenantConfig) => {
   const page = await apiFetch({
     path: '/feed',
@@ -104,7 +107,19 @@ export const infoCards = cache(async (tenant: TenantConfig) => {
     }
     return undefined;
   };
-  return { bazar: first(bazarCardSchema), emergency: first(emergencyCardSchema) };
+  const all = <T>(schema: z.ZodType<T>): T[] =>
+    page.items.flatMap((item) => {
+      const parsed = schema.safeParse(item);
+      return parsed.success ? [parsed.data] : [];
+    });
+  return {
+    bazar: first(bazarCardSchema),
+    emergency: first(emergencyCardSchema),
+    blood: first(bloodCardSchema),
+    // The info engine's cards (ADR 065) and whether the feed carries a prayer slot.
+    info: all(infoFeedCardSchema).map((item) => item.card),
+    prayer: first(prayerFeedCardSchema) !== undefined,
+  };
 });
 
 /** The store's public page; null when there's no such active store here. */

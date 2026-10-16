@@ -66,6 +66,11 @@ export const JOB_PURGE_VERIFICATION_DOCUMENTS = 'purge-verification-documents';
 export const JOB_EXPIRE_BANS = 'expire-bans';
 export const JOB_ESCALATE_APPEALS = 'escalate-appeals';
 export const JOB_COMPLAINT_SLA = 'complaint-sla';
+/** Blood requests (ADR 064). */
+export const JOB_EXPIRE_BLOOD_REQUESTS = 'expire-blood-requests';
+export const JOB_ALERT_BLOOD_DONORS = 'alert-blood-donors';
+/** The info engine's expiry (ADR 065). */
+export const JOB_EXPIRE_INFO_ITEMS = 'expire-info-items';
 
 /** One channel's send of one notification; the row says the rest (notification_deliveries). */
 export interface DeliverNotificationJob {

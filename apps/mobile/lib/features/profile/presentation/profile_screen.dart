@@ -43,6 +43,16 @@ class ProfileScreen extends ConsumerWidget {
                   onPressed: () => context.push(RoutePaths.profileCompletion),
                 ),
               ),
+              // Field agents (ADR 066): agent mode, unlocked by the role.
+              if (me.role == 'agent')
+                ListTile(
+                  key: const ValueKey('profile-agent-mode'),
+                  leading: const Icon(Icons.add_business_outlined),
+                  title: Text(l10n.agentEntryTitle),
+                  subtitle: Text(l10n.agentEntrySubtitle),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => context.push(RoutePaths.agent),
+                ),
               ListTile(
                 key: const ValueKey('profile-my-store'),
                 leading: const Icon(Icons.storefront_outlined),

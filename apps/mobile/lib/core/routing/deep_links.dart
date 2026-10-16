@@ -15,6 +15,10 @@ import 'route_paths.dart';
 ///   /complaints                        the member's complaints
 ///   /stores/<id>/verification          a store's business verification
 ///   /stores/me, /stores/<id>/imports/… "আমার দোকান" (the import report is on the web panel)
+///   /info/blood/requests/<id>          an urgent blood request (ADR 064)
+///   /info/blood/me/contacts            who contacted me, as a donor
+///   /info/notices/<id>                 a notice's moderation decision (ADR 065)
+///   /info/lost-found/<id>              a lost & found decision or contact
 /// ```
 String? appRouteForDeepLink(String? link) {
   if (link == null || link.isEmpty) return null;
@@ -53,6 +57,20 @@ String? appRouteForDeepLink(String? link) {
       return RoutePaths.banNotice;
     case 'complaints':
       return RoutePaths.myComplaints;
+    case 'info'
+        when segments.length == 4 &&
+            segments[1] == 'blood' &&
+            segments[2] == 'requests':
+      return RoutePaths.bloodRequestFor(segments[3]);
+    case 'info'
+        when segments.length == 4 &&
+            segments[1] == 'blood' &&
+            segments[3] == 'contacts':
+      return RoutePaths.bloodContacts;
+    case 'info' when segments.length == 3 && segments[1] == 'notices':
+      return RoutePaths.noticeFor(segments[2]);
+    case 'info' when segments.length == 3 && segments[1] == 'lost-found':
+      return RoutePaths.lostFoundFor(segments[2]);
     default:
       return null;
   }

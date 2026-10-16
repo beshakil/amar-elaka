@@ -100,6 +100,40 @@ abstract final class RoutePaths {
 
   static const String offlineMap = '/offline-map';
 
+  /// Local information services (ADR 064). The emergency page is reachable
+  /// from anywhere — before an area is picked, signed out, even banned.
+  static const String emergency = '/info/emergency';
+  static const String blood = '/info/blood';
+  static const String bloodRegister = '/info/blood/register';
+  static const String bloodNewRequest = '/info/blood/requests/new';
+  static String bloodRequestFor(String id) => '/info/blood/requests/$id';
+  static const String bloodContacts = '/info/blood/me/contacts';
+  static const String bazar = '/info/bazar';
+  static const String bazarEntry = '/info/bazar/entry';
+
+  /// The info engine (ADR 065).
+  static const String outages = '/info/outages';
+  static const String notices = '/info/notices';
+  static const String noticeNew = '/info/notices/new';
+  static String noticeFor(String id) => '/info/notices/$id';
+  static const String lostFound = '/info/lost-found';
+  static const String lostFoundNew = '/info/lost-found/new';
+  static String lostFoundFor(String id) => '/info/lost-found/$id';
+  static const String transport = '/info/transport';
+  static String routeFor(String id) => '/info/transport/$id';
+  static const String govServices = '/info/gov';
+  static String govServiceFor(String slugOrId) => '/info/gov/$slugOrId';
+  static const String directory = '/info/directory';
+  static const String prayer = '/info/prayer';
+  static const String agri = '/info/agri';
+
+  /// Field agent mode (ADR 066), for members with the agent role.
+  static const String agent = '/agent';
+  static const String agentCapture = '/agent/capture';
+  static const String agentToday = '/agent/today';
+  static const String agentQueue = '/agent/queue';
+  static const String agentStats = '/agent/stats';
+
   static const String designSystem = '/design-system';
   static const String formPreview = '/form-preview';
   static const String mapDebug = '/map-debug';

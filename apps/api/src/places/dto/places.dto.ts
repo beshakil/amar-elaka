@@ -38,7 +38,7 @@ const clock = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'a time like 09:30')
  * Weekly opening hours: one entry per opening range. `closes` at or before
  * `opens` means it closes after midnight. A day without an entry is closed.
  */
-const businessHours = z
+export const businessHoursSchema = z
   .array(
     z
       .object({
@@ -49,7 +49,7 @@ const businessHours = z
       .strict(),
   )
   .max(MAX_HOURS_RANGES);
-export type BusinessHoursInput = z.infer<typeof businessHours>;
+export type BusinessHoursInput = z.infer<typeof businessHoursSchema>;
 
 export const createPlaceSchema = z
   .object({
@@ -63,7 +63,7 @@ export const createPlaceSchema = z
     photos: z.array(z.string().uuid()).default([]),
     /** One image of the shop front as seen from the street. */
     streetPhoto: z.string().uuid().optional(),
-    businessHours: businessHours.optional(),
+    businessHours: businessHoursSchema.optional(),
     addressText: optionalText.optional(),
     description: optionalText.optional(),
     /** Moderators only (403 otherwise). */
@@ -86,7 +86,7 @@ export const updatePlaceSchema = z
     categoryId: z.string().uuid(),
     location,
     phones: z.array(phone),
-    businessHours,
+    businessHours: businessHoursSchema,
     addressText: optionalText.nullable(),
     description: optionalText.nullable(),
     /** published ↔ temporarily_closed ↔ permanently_closed. */

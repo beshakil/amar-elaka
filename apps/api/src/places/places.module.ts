@@ -53,7 +53,8 @@ import { PlacesService } from './places.service';
     PlaceModerationService,
     PlaceModerationRepository,
   ],
-  // The stores module creates and keeps a store's map pin (ADR 054).
-  exports: [PlacesRepository, DuplicatesService],
+  // The stores module creates and keeps a store's map pin (ADR 054); field
+  // agent mode creates places and suggestions with the same rules (ADR 066).
+  exports: [PlacesRepository, DuplicatesService, PlacesService, PlaceModerationRepository],
 })
 export class PlacesModule {}

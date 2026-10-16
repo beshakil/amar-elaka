@@ -24,6 +24,8 @@ export const NAMED_USERS = [
   { key: 'moderator', phone: '+8801700000003', name: 'Moderator', platformRole: null },
   { key: 'seller', phone: '+8801700000004', name: 'Seller', platformRole: null },
   { key: 'buyer', phone: '+8801700000005', name: 'Buyer', platformRole: null },
+  // Field agent mode (ADR 066): Mirpur's field agent.
+  { key: 'field-agent', phone: '+8801700000006', name: 'Field Agent', platformRole: null },
 ] as const;
 
 /** Realistic Bangladeshi names for the filler community-member pool. */

@@ -22,6 +22,11 @@ abstract final class MapPinImages {
     'bus': Icons.directions_bus,
     'shop': Icons.storefront,
     'listing': Icons.sell,
+    // The info engine (ADR 065).
+    'school': Icons.school,
+    'lost': Icons.travel_explore,
+    'office': Icons.account_balance,
+    'power': Icons.power_off,
   };
   static const IconData fallback = Icons.place;
 
@@ -35,6 +40,10 @@ abstract final class MapPinImages {
     'bus': Color(0xFF0C8599),
     'shop': Color(0xFF1C7ED6),
     'listing': Color(0xFFD6336C),
+    'school': Color(0xFF7048E8),
+    'lost': Color(0xFFE8590C),
+    'office': Color(0xFF364FC7),
+    'power': Color(0xFFF59F00),
   };
   static const Color fallbackColour = Color(0xFF495057);
 

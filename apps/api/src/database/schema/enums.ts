@@ -148,7 +148,11 @@ export const appealStatuses = pgTable('appeal_statuses', enumTableColumns());
 export const moderationActionTypes = pgTable('moderation_action_types', enumTableColumns());
 
 // Enum tables added by migration 0011 (§12).
-export const commodityGroups = pgTable('commodity_groups', enumTableColumns());
+export const commodityGroups = pgTable('commodity_groups', {
+  ...enumTableColumns(),
+  // 0061: which board the group is on (bazar | agri).
+  boardCode: text('board_code').notNull().default('bazar'),
+});
 export const measurementUnits = pgTable('measurement_units', enumTableColumns());
 export const marketTypes = pgTable('market_types', enumTableColumns());
 export const priceSources = pgTable('price_sources', enumTableColumns());
@@ -159,7 +163,12 @@ export const bloodRequestStatuses = pgTable('blood_request_statuses', enumTableC
 export const urgencyLevels = pgTable('urgency_levels', enumTableColumns());
 export const donorResponseStatuses = pgTable('donor_response_statuses', enumTableColumns());
 export const emergencyServiceTypes = pgTable('emergency_service_types', enumTableColumns());
-export const noticeTypes = pgTable('notice_types', enumTableColumns());
+export const noticeTypes = pgTable('notice_types', {
+  ...enumTableColumns(),
+  // 0061: local | community | advisory, and whether members may post it.
+  categoryCode: text('category_code').notNull().default('local'),
+  memberAllowed: boolean('member_allowed').notNull().default(false),
+});
 export const noticeStatuses = pgTable('notice_statuses', enumTableColumns());
 export const transportModes = pgTable('transport_modes', enumTableColumns());
 export const routeDirections = pgTable('route_directions', enumTableColumns());
@@ -175,6 +184,11 @@ export const legalHoldSubjectTypes = pgTable('legal_hold_subject_types', enumTab
 export const agentEmploymentTypes = pgTable('agent_employment_types', enumTableColumns());
 export const agentStatuses = pgTable('agent_statuses', enumTableColumns());
 export const visitPurposes = pgTable('visit_purposes', enumTableColumns());
+// Field agent mode (0062, ADR 066).
+export const agentTaskTypes = pgTable('agent_task_types', enumTableColumns());
+export const agentTaskStatuses = pgTable('agent_task_statuses', enumTableColumns());
+export const agentSubmissionKinds = pgTable('agent_submission_kinds', enumTableColumns());
+export const agentFraudFlags = pgTable('agent_fraud_flags', enumTableColumns());
 export const visitOutcomes = pgTable('visit_outcomes', enumTableColumns());
 export const commissionSources = pgTable('commission_sources', enumTableColumns());
 export const commissionStatuses = pgTable('commission_statuses', enumTableColumns());

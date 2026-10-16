@@ -169,7 +169,7 @@ export class StoreContactController {
 }
 
 /** The prefilled message's language: English only when the client asks for it first. */
-function localeOf(request: FastifyRequest): 'bn' | 'en' {
+export function localeOf(request: FastifyRequest): 'bn' | 'en' {
   const accept = request.headers['accept-language'];
   return typeof accept === 'string' && accept.trim().toLowerCase().startsWith('en') ? 'en' : 'bn';
 }
