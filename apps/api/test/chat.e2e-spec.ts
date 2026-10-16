@@ -8,6 +8,7 @@ import type { Sql } from 'postgres';
 import sharp from 'sharp';
 import { io, type Socket as ClientSocket } from 'socket.io-client';
 import { AppModule } from '../src/app.module';
+import { BanStateService } from '../src/auth/ban-state.service';
 import { TokenService } from '../src/auth/tokens/token.service';
 import { CHAT_NAMESPACE, CHAT_SOCKET_PATH } from '../src/chat/realtime/chat-socket.server';
 import { MediaProcessingService } from '../src/media/media-processing.service';
@@ -281,6 +282,7 @@ describe('Chat (e2e, two API instances)', () => {
     await admin.begin(async (tx) => {
       await tx`set local session_replication_role = replica`;
       await tx`delete from moderation_actions where tenant_id in ${tx(tenants)}`;
+      await tx`delete from bans where tenant_id in ${tx(tenants)}`;
       await tx`delete from conversation_report_snapshots where tenant_id in ${tx(tenants)}`;
       await tx`delete from reports where tenant_id in ${tx(tenants)}`;
       await tx`delete from lead_events where tenant_id in ${tx(tenants)}`;
@@ -573,6 +575,55 @@ describe('Chat (e2e, two API instances)', () => {
     await emit(seller, 'typing', { conversationId: conversation.id, isTyping: true });
     await settle();
     expect(typings).toEqual([]);
+  });
+
+  it('bans bite on the socket as on HTTP: restricted reads but cannot send; banned cannot connect (ADR 063)', async () => {
+    const { conversation } = await openOnPost('buyer');
+    const seller = await connect(two.port, 'seller');
+    const bans = one.module.get(BanStateService);
+    const issue = (severity: 'restricted' | 'banned') =>
+      admin.begin(async (tx) => {
+        await tx`select set_config('app.tenant_id', ${TENANT_B}, true), set_config('app.user_id', ${PEOPLE.mod.user}, true),
+                        set_config('app.member_id', ${PEOPLE.mod.member}, true), set_config('app.role', 'moderator', true)`;
+        const [row] = await tx<{ id: string }[]>`
+          select id from public.issue_ban(${PEOPLE.seller.user}::uuid, ${severity}, 'scam', 'fake listings',
+                                          ${JSON.stringify([{ type: 'report', id: randomUUID() }])}::text::jsonb,
+                                          null, false, null)`;
+        return row!.id;
+      });
+    const revoke = (id: string) =>
+      admin`update bans set status_code = 'revoked', revoked_at = now() where id = ${id} and status_code = 'active'`;
+    // A restriction issued while the seller's socket is open bites on the next event.
+    const restricted = await issue('restricted');
+    let banned: string | undefined;
+    try {
+      await bans.invalidate(PEOPLE.seller.user);
+      expect(
+        await emit(seller, 'message:send', { conversationId: conversation.id, ...text('আছি') }),
+      ).toMatchObject({ ok: false, error: { code: 'ACCOUNT_RESTRICTED' } });
+      expect(
+        await emit(seller, 'typing', { conversationId: conversation.id, isTyping: true }),
+      ).toMatchObject({ ok: false, error: { code: 'ACCOUNT_RESTRICTED' } });
+      // Reading is still allowed to a restricted account.
+      expect(
+        (await emit(seller, 'conversation:join', { conversationId: conversation.id })).ok,
+      ).toBe(true);
+
+      // Banned: the socket can't even connect.
+      // (A ban supersedes the restriction it escalates.)
+      banned = await issue('banned');
+      await bans.invalidate(PEOPLE.seller.user);
+      await expect(connect(one.port, 'seller')).rejects.toMatchObject({
+        data: { code: 'ACCOUNT_BANNED' },
+      });
+      expect(
+        await emit(seller, 'conversation:join', { conversationId: conversation.id }),
+      ).toMatchObject({ ok: false, error: { code: 'ACCOUNT_BANNED' } });
+    } finally {
+      await revoke(restricted);
+      if (banned) await revoke(banned);
+      await bans.invalidate(PEOPLE.seller.user);
+    }
   });
 
   it('refuses a socket without a valid token', async () => {

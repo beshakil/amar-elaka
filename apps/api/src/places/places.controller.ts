@@ -10,6 +10,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { ActiveAccountRequired } from '../auth/ban-access.decorator';
 import { ApiCreatedResponse, ApiOkResponse } from '@nestjs/swagger';
 import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { RequirePermission } from '../rbac/require-permission.decorator';
@@ -49,6 +50,8 @@ export class PlacesController {
    * for review (`status: pending_review`).
    */
   @Post()
+  // A restricted account may not publish (ADR 063, extended to places and stores in the Month 3 review).
+  @ActiveAccountRequired()
   @RequirePermission('places', 'write')
   @ApiCreatedResponse({ type: PlaceDto })
   create(@Body() body: CreatePlaceDto): Promise<PlaceView> {
@@ -72,6 +75,8 @@ export class PlacesController {
 
   /** Staff, field agents and the verified owner. Every change becomes a revision. */
   @Patch(':id')
+  // A restricted account may not publish (ADR 063, extended to places and stores in the Month 3 review).
+  @ActiveAccountRequired()
   @RequirePermission('places', 'write')
   @ApiOkResponse({ type: PlaceDto })
   update(@Param() params: PlaceIdParamDto, @Body() body: UpdatePlaceDto): Promise<PlaceView> {

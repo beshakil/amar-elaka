@@ -8,6 +8,7 @@ import { SettingsService } from '../settings/settings.service';
 import { BAN_DEEP_LINKS, BanNotifier } from './ban-notifier';
 import { mapBanErrors, pageSize } from './bans-errors';
 import { BanNotAllowedException } from './bans.exceptions';
+import { BanEffects } from './ban-effects';
 import { BansRepository, type BanRow } from './bans.repository';
 import type {
   BanList,
@@ -26,6 +27,7 @@ import type {
 @Injectable()
 export class BansService {
   constructor(
+    private readonly effects: BanEffects,
     private readonly tenantDb: TenantDb,
     private readonly context: TenantContext,
     private readonly repo: BansRepository,
@@ -94,7 +96,7 @@ export class BansService {
         return row;
       }),
     );
-    await this.state.invalidate(input.userId);
+    await this.effects.changed(input.userId, tenantId);
     await this.notifier.toUser(
       input.userId,
       'ban_issued',
@@ -119,7 +121,7 @@ export class BansService {
     const lifted = await mapBanErrors(() =>
       this.tenantDb.transaction((tx) => this.repo.lift(tx, id, reason)),
     );
-    await this.state.invalidate(lifted.user_id);
+    await this.effects.changed(lifted.user_id, tenantId);
     await this.notifier.toUser(
       lifted.user_id,
       'ban_lifted',

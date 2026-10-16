@@ -11,7 +11,10 @@ import type { Server as HttpServer } from 'node:http';
 import { PinoLogger } from 'nestjs-pino';
 import { Server, type DefaultEventsMap, type Namespace, type Socket } from 'socket.io';
 import { z, type ZodTypeAny } from 'zod';
+import type { BanAccess } from '../../auth/ban-access.decorator';
+import { BanStateService } from '../../auth/ban-state.service';
 import { UnauthenticatedException } from '../../auth/exceptions/auth.exceptions';
+import { enforceBanAccess } from '../../auth/guards/ban-enforcement';
 import { TokenService, type AccessTokenClaims } from '../../auth/tokens/token.service';
 import { DomainException } from '../../common/exceptions/domain-exception';
 import { APP_CONFIG } from '../../config/config.module';
@@ -106,6 +109,7 @@ export class ChatSocketServer implements OnApplicationBootstrap, BeforeApplicati
     private readonly adapterHost: HttpAdapterHost,
     @Inject(APP_CONFIG) private readonly env: Pick<Env, 'REDIS_URL'>,
     private readonly tokens: TokenService,
+    private readonly bans: BanStateService,
     private readonly context: TenantContext,
     private readonly tenants: TenantLookupService,
     private readonly settings: SettingsService,
@@ -176,6 +180,9 @@ export class ChatSocketServer implements OnApplicationBootstrap, BeforeApplicati
     if (!tenant) throw new UnauthenticatedException();
     if (tenant.statusCode === 'suspended') throw new TenantSuspendedException();
     if (tenant.statusCode === 'terminated') throw new TenantTerminatedException();
+    // Bans bite on the socket as on HTTP (ADR 063): banned or terminated
+    // accounts can't connect; a restricted one may read, not write (see on()).
+    enforceBanAccess(undefined, claims, await this.bans.stateFor(claims.userId, claims.tenantId));
     return claims;
   }
 
@@ -183,31 +190,31 @@ export class ChatSocketServer implements OnApplicationBootstrap, BeforeApplicati
     void socket.join(userRoom(socket.data.claims.userId));
     void this.scheduleExpiry(socket);
 
-    this.on(socket, CLIENT_EVENTS.send, eventSchemas.send, (e) =>
+    this.on(socket, CLIENT_EVENTS.send, eventSchemas.send, 'active', (e) =>
       this.messages.send(e.conversationId, {
         clientMessageId: e.clientMessageId,
         content: e.content,
       }),
     );
-    this.on(socket, CLIENT_EVENTS.delivered, eventSchemas.receipt, (e) =>
+    this.on(socket, CLIENT_EVENTS.delivered, eventSchemas.receipt, undefined, (e) =>
       this.conversations.receipt(e.conversationId, e.upToMessageId, 'delivered'),
     );
-    this.on(socket, CLIENT_EVENTS.read, eventSchemas.receipt, (e) =>
+    this.on(socket, CLIENT_EVENTS.read, eventSchemas.receipt, undefined, (e) =>
       this.conversations.receipt(e.conversationId, e.upToMessageId, 'read'),
     );
-    this.on(socket, CLIENT_EVENTS.join, eventSchemas.conversation, (e) =>
+    this.on(socket, CLIENT_EVENTS.join, eventSchemas.conversation, undefined, (e) =>
       this.join(socket, e.conversationId),
     );
-    this.on(socket, CLIENT_EVENTS.heartbeat, eventSchemas.conversation, (e) =>
+    this.on(socket, CLIENT_EVENTS.heartbeat, eventSchemas.conversation, undefined, (e) =>
       this.heartbeat(socket, e.conversationId),
     );
-    this.on(socket, CLIENT_EVENTS.leave, eventSchemas.conversation, (e) =>
+    this.on(socket, CLIENT_EVENTS.leave, eventSchemas.conversation, undefined, (e) =>
       this.leave(socket, e.conversationId),
     );
-    this.on(socket, CLIENT_EVENTS.typing, eventSchemas.typing, (e) =>
+    this.on(socket, CLIENT_EVENTS.typing, eventSchemas.typing, 'active', (e) =>
       this.typing(socket, e.conversationId, e.isTyping),
     );
-    this.on(socket, CLIENT_EVENTS.refresh, eventSchemas.refresh, (e) =>
+    this.on(socket, CLIENT_EVENTS.refresh, eventSchemas.refresh, undefined, (e) =>
       this.refresh(socket, e.token),
     );
 
@@ -227,35 +234,45 @@ export class ChatSocketServer implements OnApplicationBootstrap, BeforeApplicati
     socket: ChatSocket,
     event: string,
     schema: S,
+    /** 'active': chatting itself (send, typing) — refused to a restricted account, as @ActiveAccountRequired. */
+    access: BanAccess | undefined,
     handler: (input: z.infer<S>) => Promise<unknown>,
   ): void {
     socket.on(event, (raw: unknown, ack?: unknown) => {
       const reply = typeof ack === 'function' ? (ack as (answer: Ack) => void) : undefined;
       const { claims } = socket.data;
-      void this.context.run(
-        {
-          tenantId: claims.tenantId,
-          userId: claims.userId,
-          memberId: claims.memberId,
-          role: claims.role,
-        },
-        async () => {
-          try {
-            const parsed = schema.safeParse(raw);
-            if (!parsed.success) {
-              throw new ChatEventInvalidException(
-                parsed.error.issues.map((i) => ({ path: i.path.join('.'), message: i.message })),
-              );
-            }
-            reply?.({ ok: true, data: (await handler(parsed.data as z.infer<S>)) ?? null });
-          } catch (error) {
-            if (!(error instanceof DomainException)) {
-              this.logger.error({ err: error, event }, 'chat socket event failed');
-            }
-            reply?.({ ok: false, error: wireError(error) });
+      void (async () => {
+        try {
+          // A ban issued while the socket is open bites on the next event (one cached read).
+          const enforced = enforceBanAccess(
+            access,
+            claims,
+            await this.bans.stateFor(claims.userId, claims.tenantId),
+          );
+          await this.context.run(
+            {
+              tenantId: claims.tenantId,
+              userId: claims.userId,
+              memberId: claims.memberId,
+              role: enforced.role,
+            },
+            async () => {
+              const parsed = schema.safeParse(raw);
+              if (!parsed.success) {
+                throw new ChatEventInvalidException(
+                  parsed.error.issues.map((i) => ({ path: i.path.join('.'), message: i.message })),
+                );
+              }
+              reply?.({ ok: true, data: (await handler(parsed.data as z.infer<S>)) ?? null });
+            },
+          );
+        } catch (error) {
+          if (!(error instanceof DomainException)) {
+            this.logger.error({ err: error, event }, 'chat socket event failed');
           }
-        },
-      );
+          reply?.({ ok: false, error: wireError(error) });
+        }
+      })();
     });
   }
 

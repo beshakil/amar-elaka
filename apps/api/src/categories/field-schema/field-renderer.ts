@@ -30,6 +30,9 @@ export function renderFields(
     const value = values[key];
     const label = uiSchema.labels[key];
     if (property === undefined || value === undefined || label === undefined) continue;
+    // A phone number leaves only through the contact endpoint, which writes a
+    // lead (CLAUDE.md): never in a detail response or the HTML built from it.
+    if (property['x-field-type'] === 'phone') continue;
 
     const options = uiSchema.options?.[key] ?? {};
     const codes = Array.isArray(value) ? value : [value];

@@ -260,6 +260,8 @@ describe('Verification (e2e)', () => {
     expect(new URL(selfie.url).pathname.startsWith('/api/v1/storage/files/')).toBe(true);
     const got = await app.inject({ method: 'GET', url: new URL(selfie.url).pathname });
     expect(got.statusCode).toBe(200);
+    // No copy may outlive the signed URL: not in a shared cache, not in the browser.
+    expect(got.headers['cache-control']).toBe('private, no-store');
     expect(got.body).not.toContain('gps-should-go');
     const [row] = await admin<{ storage_key: string }[]>`
       select m.storage_key from media_assets m join verification_evidence e on e.media_asset_id = m.id

@@ -13,6 +13,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { FastifyRequest } from 'fastify';
+import { ActiveAccountRequired } from '../auth/ban-access.decorator';
 import { ApiCreatedResponse, ApiNoContentResponse, ApiOkResponse } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
@@ -61,6 +62,8 @@ export class StoresController {
 
   /** The caller becomes the owner; the store's area is the one its location falls in. */
   @Post()
+  // A restricted account may not publish (ADR 063, extended to places and stores in the Month 3 review).
+  @ActiveAccountRequired()
   @UseGuards(JwtAuthGuard)
   @ApiCreatedResponse({ type: StoreViewDto })
   create(@Body() body: CreateStoreDto): Promise<StoreView> {
@@ -111,6 +114,8 @@ export class StoresController {
 
   /** Owner and managers; the slug is the owner's, once. */
   @Patch(':id')
+  // A restricted account may not publish (ADR 063, extended to places and stores in the Month 3 review).
+  @ActiveAccountRequired()
   @UseGuards(JwtAuthGuard)
   @ApiOkResponse({ type: StoreViewDto })
   update(@Param() params: StoreIdParamDto, @Body() body: UpdateStoreDto): Promise<StoreView> {

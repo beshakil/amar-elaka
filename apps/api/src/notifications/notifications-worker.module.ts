@@ -11,9 +11,13 @@ import { VerificationRepository } from '../verification/verification.repository'
 import { SettingsModule } from '../settings/settings.module';
 import { BanStateService } from '../auth/ban-state.service';
 import { BanNotifier } from '../bans/ban-notifier';
+import { BanEffects } from '../bans/ban-effects';
 import { BansJobsService } from '../bans/bans-jobs.service';
+import { TrustModule } from '../trust/trust.module';
 import { BansRepository } from '../bans/bans.repository';
 import { CacheModule } from '../cache/cache.module';
+import { InfoWorkerModule } from '../info/info-worker.module';
+import { InfoEngineReadModule } from '../info-engine/info-engine-read.module';
 import { EmailNotificationChannel } from './channels/email.channel';
 import { PushNotificationChannel } from './channels/push.channel';
 import { SmsNotificationChannel } from './channels/sms.channel';
@@ -36,7 +40,8 @@ import { NotificationTexts } from './templates/notification-texts';
  * a new channel is one more entry; nothing that sends changes), the push
  * provider (PUSH_PROVIDER env: local logs, fcm sends), the price-drop
  * outbox relay, the review prompts (ADR 061), the verification jobs (ADR 062)
- * and the ban, appeal and complaint jobs (ADR 063).
+ * the ban, appeal and complaint jobs (ADR 063) and the blood request alert
+ * and expiry jobs (ADR 064).
  */
 @Module({
   imports: [
@@ -47,6 +52,9 @@ import { NotificationTexts } from './templates/notification-texts';
     NotificationsModule,
     SellerScoreModule,
     CacheModule,
+    InfoWorkerModule,
+    InfoEngineReadModule,
+    TrustModule,
   ],
   providers: [
     NotificationsRepository,
@@ -81,6 +89,7 @@ import { NotificationTexts } from './templates/notification-texts';
     BansRepository,
     BanNotifier,
     BanStateService,
+    BanEffects,
     BansJobsService,
     NotificationsProcessor,
     NotificationsSchedule,

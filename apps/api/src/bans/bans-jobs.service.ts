@@ -5,6 +5,7 @@ import { TenantDb } from '../database/tenant-db';
 import type { JobBudget, JobOutcome } from '../jobs/job-batches';
 import { SettingsService } from '../settings/settings.service';
 import { BAN_DEEP_LINKS, BanNotifier } from './ban-notifier';
+import { BanEffects } from './ban-effects';
 import { BansRepository } from './bans.repository';
 
 /**
@@ -18,6 +19,7 @@ import { BansRepository } from './bans.repository';
 @Injectable()
 export class BansJobsService {
   constructor(
+    private readonly effects: BanEffects,
     private readonly tenantDb: TenantDb,
     private readonly context: TenantContext,
     private readonly repo: BansRepository,
@@ -33,7 +35,7 @@ export class BansJobsService {
     );
     for (const r of rows) {
       if (!r.user_id) continue;
-      await this.state.invalidate(r.user_id);
+      await this.effects.changed(r.user_id, r.tenant_id);
       await this.notifier.toUser(
         r.user_id,
         'ban_lifted',

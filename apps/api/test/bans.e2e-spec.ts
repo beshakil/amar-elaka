@@ -91,6 +91,15 @@ class FakeSmsProvider implements SmsProvider {
 
 jest.setTimeout(30_000);
 
+/** Polls until the condition holds (background work after an answer), or fails after a few seconds. */
+async function waitFor(condition: () => boolean, timeoutMs = 5000): Promise<void> {
+  const until = Date.now() + timeoutMs;
+  while (!condition()) {
+    if (Date.now() > until) throw new Error('timed out waiting');
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+}
+
 describe('Bans and appeals (e2e)', () => {
   let admin: Sql;
   let app: NestFastifyApplication;
@@ -371,12 +380,32 @@ describe('Bans and appeals (e2e)', () => {
   describe('restricted: browses, cannot post, chat or review', () => {
     it('reads work; writing a post is refused', async () => {
       expect((await issue('restricted', 'restricted')).statusCode).toBe(201);
+      // The ban reaches the stored trust score at once (the feed and badge read it).
+      const [trust] = await admin<{ bans: number; stale: boolean }[]>`
+        select (components ->> 'bans')::numeric as bans,
+               coalesce(next_recompute_at <= now(), false) as stale
+        from member_trust_scores where member_id = ${PEOPLE.restricted.member}`;
+      expect(trust).toBeDefined();
+      expect(Number(trust!.bans)).toBeLessThan(0);
+      expect(trust!.stale).toBe(false);
       expect((await call('GET', '/notifications', 'restricted')).statusCode).toBe(200);
       expect((await call('GET', '/account/bans', 'restricted')).statusCode).toBe(200);
       const post = await call('POST', '/posts', 'restricted', {});
       expect(post.json()).toMatchObject({ error: 'ACCOUNT_RESTRICTED' });
       const chat = await call('POST', `/stores/${P}000000000077/conversations`, 'restricted', {});
       expect(chat.json()).toMatchObject({ error: 'ACCOUNT_RESTRICTED' });
+      // Places and stores are public content too (Month 3 review).
+      for (const [method, url] of [
+        ['POST', '/places'],
+        ['PATCH', `/places/${P}000000000078`],
+        ['POST', `/places/${P}000000000078/claim`],
+        ['POST', '/stores'],
+        ['PATCH', `/stores/${P}000000000077`],
+      ] as const) {
+        expect((await call(method, url, 'restricted', {})).json()).toMatchObject({
+          error: 'ACCOUNT_RESTRICTED',
+        });
+      }
       // A ban in area A does not follow them to area B.
       const signer = module.get(TokenService);
       const elsewhere = await signer.signAccessToken({
@@ -463,6 +492,8 @@ describe('Bans and appeals (e2e)', () => {
       );
       expect([unknown.statusCode, known.statusCode]).toEqual([202, 202]);
       expect(unknown.body).toBe(known.body);
+      // The SMS goes out after the answer (no timing difference): wait for it.
+      await waitFor(() => sms.sent.length > 0);
       expect(sms.sent.map((s) => s.phoneE164)).toEqual([PEOPLE.term.phone]);
       // That code can't sign anyone in.
       const code = sms.lastCodeFor(PEOPLE.term.phone);
@@ -484,7 +515,9 @@ describe('Bans and appeals (e2e)', () => {
       expect(wrong.json<{ error: string }>().error).toMatch(/^OTP_/);
 
       await clearCooldown(PEOPLE.term.phone);
+      const before = sms.sent.length;
       await call('POST', '/appeals/request-otp', null, { phone: PEOPLE.term.phone }, null);
+      await waitFor(() => sms.sent.length > before);
       const status = await call(
         'POST',
         '/appeals/status',

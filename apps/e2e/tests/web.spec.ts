@@ -65,13 +65,61 @@ test.describe('pages', () => {
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('ইলেকট্রনিক্স');
   });
 
-  test("/info shows the tenant's real emergency numbers as tap-to-call links", async ({ page }) => {
+  test("/info shows the area's emergency numbers as tap-to-call links", async ({ page }) => {
     await page.goto(tenantUrl('mirpur', '/info'));
     await expect(page.getByText('মিরপুর থানা')).toBeVisible();
-    await expect(page.getByRole('link', { name: '+8801320000000' })).toHaveAttribute(
+    // Bengali digits on screen, the dialable number in the link (ADR 064).
+    await expect(page.getByRole('link', { name: '+৮৮০১৩২০০০০০০০' })).toHaveAttribute(
       'href',
       'tel:+8801320000000',
     );
+    await expect(page.getByRole('link', { name: /জাতীয় জরুরি সেবা/ })).toHaveAttribute(
+      'href',
+      'tel:999',
+    );
+  });
+
+  test('/info/bazar shows the board with the stale banner and the sponsor', async ({ page }) => {
+    await page.goto(tenantUrl('mirpur', '/info/bazar'));
+    await expect(page.getByRole('heading', { level: 1, name: 'আজকের বাজারদর' })).toBeVisible();
+    await expect(page.getByRole('main').getByRole('status')).toContainText(
+      'আজকের দর এখনো দেওয়া হয়নি',
+    );
+    await expect(page.getByText('সৌজন্যে: রহিম স্টোর')).toBeVisible();
+    await expect(page.getByRole('cell', { name: 'মোটা চাল' })).toBeVisible();
+  });
+
+  test('the info engine: hub tiles, a notice list and detail, a route, prayer times', async ({
+    page,
+  }) => {
+    await page.goto(tenantUrl('mirpur', '/info'));
+    await expect(page.getByRole('link', { name: /নামাজের সময়/ })).toBeVisible();
+    await expect(page.getByRole('link', { name: /হারানো ও প্রাপ্তি/ })).toBeVisible();
+
+    await page.goto(tenantUrl('mirpur', '/info/notices?category=local'));
+    const notice = page.getByRole('link', { name: /পৌরসভার কর পরিশোধের নোটিশ/ });
+    await expect(notice).toBeVisible();
+    await expect(notice).toContainText('৮২০ মি দূরে');
+    await notice.click();
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('পৌরসভার কর পরিশোধের নোটিশ');
+    await expect(page.getByText('প্রকাশক: মিরপুর পৌরসভা')).toBeVisible();
+
+    await page.goto(tenantUrl('mirpur', '/info/transport'));
+    // Past its window: "may be out of date".
+    await expect(page.getByText('তথ্য পুরোনো হতে পারে')).toBeVisible();
+    await page.getByRole('link', { name: /মিরপুর – গুলিস্তান বাস/ }).click();
+    await expect(page.getByText('৳ ৩০ – ৳ ৪৫', { exact: false })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'পরের ছাড়ার সময়' })).toBeVisible();
+
+    await page.goto(tenantUrl('mirpur', '/info/prayer'));
+    await expect(page.getByTestId('next-prayer')).toContainText('পরের ওয়াক্ত');
+    await expect(page.getByText('ফজর', { exact: true })).toBeVisible();
+  });
+
+  test('the home page carries the prayer card and info cards', async ({ page }) => {
+    await page.goto(tenantUrl('mirpur', '/'));
+    await expect(page.getByRole('link', { name: /নামাজের সময়/ })).toBeVisible();
+    await expect(page.getByRole('link', { name: /পৌরসভার কর পরিশোধের নোটিশ/ })).toBeVisible();
   });
 
   test('an unknown path is a Bengali 404', async ({ page }) => {

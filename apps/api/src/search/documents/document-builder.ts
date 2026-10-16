@@ -136,9 +136,13 @@ export function fieldText(
 }
 
 /** Values of the list-card fields, exactly as stored (money stays a string). */
-export function cardFields(row: Pick<BaseRow, 'ui_schema' | 'fields'>): Record<string, unknown> {
+export function cardFields(
+  row: Pick<BaseRow, 'json_schema' | 'ui_schema' | 'fields'>,
+): Record<string, unknown> {
   const result: Record<string, unknown> = {};
   for (const key of row.ui_schema?.card ?? []) {
+    // Never a phone number on a card (only the contact endpoint gives one out).
+    if (row.json_schema?.properties[key]?.['x-field-type'] === 'phone') continue;
     const value = row.fields[key];
     if (value !== undefined && value !== null) result[key] = value;
   }

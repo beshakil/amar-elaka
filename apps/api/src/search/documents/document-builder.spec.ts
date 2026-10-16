@@ -107,6 +107,22 @@ describe('document builder', () => {
     expect(cardFields(row)).toEqual({ bedrooms: 3, price: '15000.00' });
   });
 
+  it('never puts a phone field on a card (only the contact endpoint gives a number out)', () => {
+    const withPhone = {
+      ...row,
+      json_schema: {
+        ...jsonSchema,
+        properties: {
+          ...jsonSchema.properties,
+          serial_phone: { 'x-field-type': 'phone', type: 'string' },
+        },
+      } as unknown as FieldSchema,
+      ui_schema: { ...uiSchema, card: ['bedrooms', 'serial_phone'] },
+      fields: { ...row.fields, serial_phone: '+8801711000000' },
+    };
+    expect(cardFields(withPhone)).toEqual({ bedrooms: 3 });
+  });
+
   it('builds a post document', () => {
     const doc = postDocument(row, terms, DOC_OPTIONS);
     expect(doc).toMatchObject({

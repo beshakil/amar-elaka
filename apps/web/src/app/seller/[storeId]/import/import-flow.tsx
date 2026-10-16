@@ -267,6 +267,7 @@ export function ImportFlow({
                       month: 'short',
                       hour: 'numeric',
                       minute: '2-digit',
+                      dayPeriod: 'short',
                     }),
                     'bn',
                   )}

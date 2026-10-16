@@ -11,6 +11,7 @@ import { SettingsService } from '../settings/settings.service';
 import { BAN_DEEP_LINKS, BanNotifier } from './ban-notifier';
 import { mapBanErrors, pageSize } from './bans-errors';
 import { AppealNotAllowedException, AppealVerificationFailedException } from './bans.exceptions';
+import { BanEffects } from './ban-effects';
 import {
   BansRepository,
   type AppealCreatedRow,
@@ -54,6 +55,7 @@ export class AppealsService {
   private readonly logger = new Logger(AppealsService.name);
 
   constructor(
+    private readonly effects: BanEffects,
     private readonly tenantDb: TenantDb,
     private readonly context: TenantContext,
     private readonly repo: BansRepository,
@@ -106,7 +108,13 @@ export class AppealsService {
   async requestOtp(phone: string, ip: string): Promise<AppealOtpAccepted> {
     try {
       const items = await this.asPublic((tx) => this.repo.publicStatus(tx, phone));
-      if (items.length > 0) await this.otp.requestOtp(phone, ip, APPEAL_OTP);
+      // Sent in the background: waiting for the SMS gateway would make a phone
+      // with a ban answer measurably slower — a timing oracle for "who is banned".
+      if (items.length > 0) {
+        void this.otp.requestOtp(phone, ip, APPEAL_OTP).catch((error: unknown) => {
+          this.logger.debug(`appeal OTP not sent: ${String(error)}`);
+        });
+      }
     } catch (error) {
       // Cooldowns and limits included: telling them apart would reveal the phone has a ban.
       this.logger.debug(`appeal OTP not sent: ${String(error)}`);
@@ -196,7 +204,7 @@ export class AppealsService {
         `appeal_escalated:${id}`,
       );
     } else {
-      await this.state.invalidate(decided.user_id);
+      await this.effects.changed(decided.user_id, decided.tenant_id);
       await this.notifier.toUser(
         decided.user_id,
         'appeal_decided',

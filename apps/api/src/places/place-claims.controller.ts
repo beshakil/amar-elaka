@@ -9,6 +9,7 @@ import {
   Query,
   Req,
 } from '@nestjs/common';
+import { ActiveAccountRequired } from '../auth/ban-access.decorator';
 import { ApiCreatedResponse, ApiOkResponse } from '@nestjs/swagger';
 import type { FastifyRequest } from 'fastify';
 import { RequirePermission } from '../rbac/require-permission.decorator';
@@ -58,6 +59,8 @@ export class PlaceClaimsController {
    * `pending` until a moderator decides.
    */
   @Post('places/:id/claim')
+  // A restricted account may not publish (ADR 063, extended to places and stores in the Month 3 review).
+  @ActiveAccountRequired()
   @RequirePermission('places', 'write')
   @ApiCreatedResponse({ type: ClaimDto })
   create(@Param() params: PlaceIdParamDto, @Body() body: CreateClaimDto): Promise<ClaimView> {

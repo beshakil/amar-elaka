@@ -159,6 +159,12 @@ export class NotificationDispatcher {
           startOfLocalDay(now, timeZone),
         );
         if (overCap(rules, sent, { daily: dailyCap, perType: typeCaps })) {
+          // Nothing else records a capped interruption: the logs are how a
+          // server answers "are the caps biting?" (Month 3 review §15).
+          this.logger.info(
+            { type: n.type, userId: n.userId, sentToday: sent.all, ofTypeToday: sent.ofType },
+            'notification capped',
+          );
           return { ...base, channels: [], capped: true, deferredUntil: null };
         }
 

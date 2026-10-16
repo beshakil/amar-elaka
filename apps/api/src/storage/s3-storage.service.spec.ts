@@ -7,6 +7,7 @@ jest.mock('@aws-sdk/client-s3', () => ({
   S3Client: jest.fn().mockImplementation(() => ({ send: mockSend })),
   PutObjectCommand: jest.fn().mockImplementation((input: unknown) => ({ input })),
   DeleteObjectCommand: jest.fn().mockImplementation((input: unknown) => ({ input })),
+  GetObjectCommand: jest.fn().mockImplementation((input: unknown) => ({ input })),
 }));
 
 jest.mock('@aws-sdk/s3-request-presigner', () => ({
@@ -66,6 +67,20 @@ describe('S3StorageService', () => {
     expect(() => service.getPublicUrl('documents', 'tenant/doc/id')).toThrow(
       PrivateBucketException,
     );
+  });
+
+  it('signs a private read that no cache may keep beyond its expiry', async () => {
+    const service = new S3StorageService(BASE_ENV);
+    await service.presignDownload('documents', 'tenant/verification/id', 300);
+    const [, command, options] = mockGetSignedUrl.mock.calls[0]!;
+    expect(command).toEqual({
+      input: {
+        Bucket: 'docs-bucket',
+        Key: 'tenant/verification/id',
+        ResponseCacheControl: 'private, no-store',
+      },
+    });
+    expect(options).toEqual({ expiresIn: 300 });
   });
 
   it('deletes an object from the right bucket', async () => {

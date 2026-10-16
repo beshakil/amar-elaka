@@ -37,6 +37,19 @@ export function enforceBan(
     executionContext.getHandler(),
     executionContext.getClass(),
   ]);
+  return enforceBanAccess(access, claims, state);
+}
+
+/**
+ * The rule itself, for a known access level: the guards pass the route's
+ * metadata; the chat socket passes 'active' for sending and typing and
+ * nothing for reading (ADR 063/058 — a socket event has no route metadata).
+ */
+export function enforceBanAccess(
+  access: BanAccess | undefined,
+  claims: AccessTokenClaims,
+  state: BanState | null,
+): Enforced {
   if (state?.severity === 'terminated') throw new AccountTerminatedException();
   const scopedToken = claims.scope?.join(' ') === APPEAL_SCOPE.join(' ');
   // The ban ended (appeal granted, lifted, expired) but this token was minted

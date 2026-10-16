@@ -78,6 +78,8 @@ export function localStorageRoutes(
       open: Promise<PublicObject | undefined>,
       reply: FastifyReply,
       withBody: boolean,
+      /** A signed (private) read: never cached, so the grant's expiry is the real end of access. */
+      privateRead = false,
     ) => {
       const object = await open;
       if (!object) {
@@ -91,7 +93,13 @@ export function localStorageRoutes(
         .header('content-type', object.contentType)
         .header('content-length', String(object.byteSize))
         .header('x-content-type-options', 'nosniff');
-      if (object.cacheControl) reply.header('cache-control', object.cacheControl);
+      if (privateRead) {
+        // NID and licence images, chat photos: no copy outlives the signed URL —
+        // not in a shared cache, not in the browser's disk cache on a shared PC.
+        reply.header('cache-control', 'private, no-store');
+      } else if (object.cacheControl) {
+        reply.header('cache-control', object.cacheControl);
+      }
       if (!withBody) {
         object.stream.destroy();
         return reply.send();
@@ -106,7 +114,7 @@ export function localStorageRoutes(
     );
     // A signed read (presignDownload): the token is the grant, as for uploads.
     scope.get<{ Params: { '*': string } }>(`${LOCAL_DOWNLOAD_PATH}/*`, (request, reply) =>
-      serve(storage.openGranted(request.params['*']), reply, true),
+      serve(storage.openGranted(request.params['*']), reply, true, true),
     );
     done();
   };

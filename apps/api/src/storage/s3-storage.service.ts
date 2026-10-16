@@ -213,7 +213,12 @@ export class S3StorageService implements StorageService {
   }
 
   presignDownload(bucket: StorageBucket, key: string, ttlSeconds: number): Promise<string> {
-    const command = new GetObjectCommand({ Bucket: this.buckets[bucket], Key: key });
+    // A signed read is never cached (as the local driver): the grant's expiry ends access.
+    const command = new GetObjectCommand({
+      Bucket: this.buckets[bucket],
+      Key: key,
+      ResponseCacheControl: 'private, no-store',
+    });
     return getSignedUrl(this.client, command, { expiresIn: ttlSeconds });
   }
 }

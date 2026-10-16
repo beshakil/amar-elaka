@@ -17,6 +17,8 @@ import {
   PlatformBlacklistController,
   PublicAppealsController,
 } from './bans.controller';
+import { TrustModule } from '../trust/trust.module';
+import { BanEffects } from './ban-effects';
 import { BansRepository } from './bans.repository';
 import { BansService } from './bans.service';
 import { BlacklistService } from './blacklist.service';
@@ -28,7 +30,15 @@ import { ComplaintsService } from './complaints.service';
  * both JWT guards); the jobs run in the notifications worker (BansJobsService).
  */
 @Module({
-  imports: [AuthModule, RbacModule, SettingsModule, CacheModule, PostsModule, NotificationsModule],
+  imports: [
+    AuthModule,
+    RbacModule,
+    SettingsModule,
+    CacheModule,
+    PostsModule,
+    NotificationsModule,
+    TrustModule,
+  ],
   controllers: [
     AccountBansController,
     PublicAppealsController,
@@ -40,6 +50,7 @@ import { ComplaintsService } from './complaints.service';
     ComplaintsController,
   ],
   providers: [
+    BanEffects,
     BansRepository,
     BanNotifier,
     BansService,
